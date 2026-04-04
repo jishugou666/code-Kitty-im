@@ -186,6 +186,6 @@ export function GroupSearchModal({ isOpen, onClose }: GroupSearchModalProps) {
           <ToastContainer />
         </motion.div>
       </div>
-    );
-  }
+    </AnimatePresence>
+  );
 }
