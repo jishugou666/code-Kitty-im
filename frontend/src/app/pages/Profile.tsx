@@ -6,6 +6,7 @@ import { userApi } from '../../api/user';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useToast } from '../../hooks/useToast';
 
+
 export function Profile() {
   const navigate = useNavigate();
   const { user, logout, loadUser, updateUser } = useAuthStore();
