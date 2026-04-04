@@ -89,7 +89,7 @@ export function Chat() {
       });
       const data = await response.json();
 
-      if (data.code === 200 && data.data) {
+      if ((data.code === 200 || data.code === 201) && data.data) {
         setMessages(prev => [...(prev || []), data.data]);
         fetchConversations();
       } else {
@@ -132,7 +132,7 @@ export function Chat() {
         });
         const data = await response.json();
 
-        if (data.code === 200 && data.data) {
+        if ((data.code === 200 || data.code === 201) && data.data) {
           setMessages(prev => [...(prev || []), data.data]);
           fetchConversations();
         } else {
@@ -179,7 +179,7 @@ export function Chat() {
         });
         const data = await response.json();
 
-        if (data.code === 200 && data.data) {
+        if ((data.code === 200 || data.code === 201) && data.data) {
           setMessages(prev => [...(prev || []), data.data]);
           fetchConversations();
         } else {
