@@ -139,6 +139,11 @@ export function Profile() {
               <p className="text-[14px] text-black/40 dark:text-white/40 mt-1">
                 {user?.email || 'No email set'}
               </p>
+              {user?.role === 'admin' && (
+                <div className="mt-2 px-3 py-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full shadow-sm">
+                  <span className="text-[12px] font-semibold text-white">Admin</span>
+                </div>
+              )}
             </>
           )}
         </div>

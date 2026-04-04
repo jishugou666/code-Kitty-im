@@ -26,7 +26,7 @@ export function Admin() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.email !== '3121601311@qq.com') {
+    if (user?.role !== 'admin') {
       navigate('/');
       return;
     }

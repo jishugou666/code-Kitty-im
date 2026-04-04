@@ -56,7 +56,7 @@ export function MainLayout() {
             );
           })}
 
-          {user?.email === '3121601311@qq.com' && (
+          {user?.role === 'admin' && (
             <button
               onClick={() => navigate("/admin")}
               className="flex flex-col items-center justify-center gap-1.5 group relative"
