@@ -22,7 +22,7 @@ export function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
-  const { conversations, fetchConversations } = useChatStore();
+  const { conversations, messages, fetchConversations, addMessage: storeAddMessage, fetchMessages: storeFetchMessages } = useChatStore();
   const { toast, ToastContainer } = useToast();
 
   const conversation = conversations.find(c => c.id === conversationId);
@@ -35,6 +35,12 @@ export function Chat() {
       markAsRead();
     }
   }, [conversationId, token]);
+
+  useEffect(() => {
+    if (conversationId && messages[conversationId]) {
+      setMessages(messages[conversationId]);
+    }
+  }, [messages, conversationId]);
 
   const markAsRead = async () => {
     if (!conversationId || !token) return;
@@ -85,6 +91,7 @@ export function Chat() {
       if (data.code === 200 && Array.isArray(data.data)) {
         console.log('设置 messages:', data.data || []);
         setMessages(data.data || []);
+        storeFetchMessages(conversationId);
       } else {
         console.log('条件不满足，设置空数组');
         setMessages([]);

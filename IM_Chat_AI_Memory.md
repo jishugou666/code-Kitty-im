@@ -14,7 +14,7 @@
 | 前端UI | TailwindCSS + radix-ui + MUI | 4.1.12 / 7.3.5 |
 | 后端框架 | Node.js + Express | Express 4.21.0 |
 | 数据库 | MySQL | 8.0+ |
-| 实时通讯 | WebSocket (ws) | 8.18.0 |
+| 实时通讯 | Pusher Channels | 第三方WebSocket服务 |
 | 认证 | JWT | 9.0.2 |
 | 状态管理 | Zustand | 5.0.0 |
 | HTTP客户端 | Axios | 1.7.7 |
@@ -32,6 +32,22 @@
 | 前端 | Vercel | SPA应用，需支持跨域、环境变量 |
 | 后端 | Render | Node.js + Express，会休眠需稳定异常捕获 |
 | 数据库 | TiDB Cloud | MySQL兼容，严格字段约束 |
+| 实时通信 | Pusher Channels | 第三方WebSocket服务，解决Render休眠问题 |
+
+### Pusher 配置（重要 - 永久保存）
+| 变量 | 值 |
+|------|-----|
+| APP_ID | 2136881 |
+| KEY | c83b4566e58d78c1dd50 |
+| SECRET | ed4de7ef1448ce39c28e |
+| CLUSTER | ap1 |
+| ENCRYPTED | true |
+
+### 线上服务地址
+| 服务 | 地址 |
+|------|------|
+| 后端 API | https://code-kitty-im-backend.onrender.com |
+| 前端 | https://code-kitty-im-frontend.vercel.app (推测) |
 
 ### 代码编写铁律（永久遵守）
 1. **所有接口必须加 try-catch，绝不返回 500**
@@ -231,6 +247,7 @@
 | motion | 12.23.24 | 动画库 |
 | zustand | ^5.0.0 | 状态管理 |
 | axios | ^1.7.7 | HTTP请求 |
+| pusher-js | ^8.0.0 | Pusher实时通信客户端 |
 
 ### 后端依赖 (backend/package.json)
 | 依赖包 | 版本 | 用途 |
@@ -239,11 +256,11 @@
 | mysql2 | ^3.11.0 | MySQL驱动 |
 | bcrypt | ^5.1.1 | 密码加密 |
 | jsonwebtoken | ^9.0.2 | JWT认证 |
-| ws | ^8.18.0 | WebSocket |
 | cors | ^2.8.5 | 跨域处理 |
 | dotenv | ^16.4.5 | 环境变量 |
 | express-validator | ^7.2.0 | 参数校验 |
 | uuid | ^10.0.0 | UUID生成 |
+| pusher | ^5.0.0 | Pusher实时通信 |
 
 ---
 

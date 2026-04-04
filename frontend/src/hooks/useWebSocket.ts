@@ -20,15 +20,18 @@ export function getPusher(): Pusher {
 export function useWebSocket(conversationId?: number) {
   const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
   const { token, isAuthenticated, user } = useAuthStore();
-  const { addMessage, fetchConversations } = useChatStore();
+  const { addMessage, fetchConversations, fetchMessages } = useChatStore();
 
   const handleNewMessage = useCallback((data: any) => {
     console.log('[Pusher] New message received:', data);
     if (data && data.id) {
       addMessage(data.conversation_id, data);
+      if (data.conversation_id === conversationId) {
+        fetchMessages(data.conversation_id);
+      }
       fetchConversations();
     }
-  }, [addMessage, fetchConversations]);
+  }, [addMessage, fetchConversations, fetchMessages, conversationId]);
 
   const handleMessageRead = useCallback((data: any) => {
     console.log('[Pusher] Message read:', data);
