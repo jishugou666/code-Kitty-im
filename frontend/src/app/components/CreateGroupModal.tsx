@@ -273,6 +273,6 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
           <ToastContainer />
         </motion.div>
       </div>
-    );
-  }
+    </AnimatePresence>
+  );
 }
