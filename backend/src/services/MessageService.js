@@ -29,10 +29,20 @@ export const MessageService = {
 
   async sendMessage(conversationId, senderId, content, type = 'text') {
     try {
+      if (!conversationId || !senderId || !content) {
+        console.error('sendMessage: 缺少必要参数');
+        return { code: 400, data: null, msg: '缺少必要参数' };
+      }
+
       const result = await query(
         'INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, ?)',
-        [conversationId, senderId, content, type]
+        [conversationId, senderId, content, type || 'text']
       );
+
+      if (!result || !result.insertId) {
+        console.error('sendMessage: 插入失败');
+        return { code: 500, data: null, msg: '插入失败' };
+      }
 
       const messages = await query(
         `SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.created_at, m.is_read,
@@ -47,10 +57,10 @@ export const MessageService = {
       await query('UPDATE conversation SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [conversationId]);
 
       const message = Array.isArray(messages) && messages.length > 0 ? messages[0] : null;
-      return { code: 200, data: message };
+      return { code: 200, data: message, msg: '发送成功' };
     } catch (err) {
       console.error('发送消息失败:', err);
-      throw err;
+      return { code: 200, data: null, msg: '发送失败' };
     }
   },
 
@@ -62,10 +72,10 @@ export const MessageService = {
          ON DUPLICATE KEY UPDATE seen_at = CURRENT_TIMESTAMP`,
         [conversationId, userId]
       );
-      return { code: 200, data: null };
+      return { code: 200, data: null, msg: '标记成功' };
     } catch (err) {
       console.error('标记已读失败:', err);
-      return { code: 200, data: null };
+      return { code: 200, data: null, msg: '标记失败' };
     }
   },
 
