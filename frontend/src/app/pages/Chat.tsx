@@ -229,16 +229,10 @@ export function Chat() {
     return groups;
   };
 
-  const handleBack = () => {
-    navigate('/');
-  };
-
   if (!conversationId) {
     return (
       <div className="h-full flex items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10]">
-        <div className="text-center text-gray-400">
-          <p className="text-sm sm:text-base">请选择一个会话</p>
-        </div>
+        <p className="text-gray-500">请选择一个会话</p>
       </div>
     );
   }
@@ -249,42 +243,42 @@ export function Chat() {
   return (
     <div className="h-full flex flex-col bg-[#FAFAFC] dark:bg-[#0A0C10]">
       {/* Header */}
-      <div className="h-12 sm:h-14 px-3 sm:px-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl flex-shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button onClick={handleBack} className="md:hidden p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft size={18} sm:size={20} className="text-gray-600 dark:text-gray-300" />
+      <div className="h-14 px-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">
+            <h2 className="font-semibold text-gray-900 dark:text-white text-sm">
               {conversation?.name || '聊天'}
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {(conversation?.members?.length || 0)} 位成员
             </p>
           </div>
         </div>
-        <button className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-          <Info size={18} sm:size={20} className="text-gray-600 dark:text-gray-300" />
+        <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+          <Info size={20} className="text-gray-600 dark:text-gray-300" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-2 sm:py-4 space-y-2 sm:space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : safeMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
-            <p className="text-sm">暂无消息</p>
+            <p>暂无消息</p>
             <p className="text-xs mt-1">开始聊天吧</p>
           </div>
         ) : (
           Object.entries(messageGroups).map(([date, msgs]) => (
             <div key={date}>
-              <div className="flex items-center gap-2 my-2 sm:my-4">
+              <div className="flex items-center gap-2 my-4">
                 <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
-                <span className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 px-2">{date}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 px-2">{date}</span>
                 <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
               </div>
               {Array.isArray(msgs) && msgs.map((message) => {
@@ -295,30 +289,30 @@ export function Chat() {
                     key={message.id || Math.random()}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={clsx("flex mb-2 sm:mb-3", isOwnMessage ? "justify-end" : "justify-start")}
+                    className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
                   >
                     {!isOwnMessage && (
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                         {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                    <div className={clsx("max-w-[75%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2", isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white")}>
-                      {message.type === 'text' && <p className="text-xs sm:text-sm">{message.content}</p>}
-                      {message.type === 'image' && <img src={message.content} alt="图片" className="rounded-lg max-w-full max-h-48 sm:max-h-64" />}
+                    <div className={clsx("max-w-[70%] rounded-2xl px-4 py-2", isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white")}>
+                      {message.type === 'text' && <p className="text-sm">{message.content}</p>}
+                      {message.type === 'image' && <img src={message.content} alt="图片" className="rounded-lg max-w-full" />}
                       {message.type === 'file' && (
                         (() => {
                           try {
                             const fileData = JSON.parse(message.content || '{}');
                             return (
                               <div className="flex items-center gap-2">
-                                <File size={14} sm:size={16} />
-                                <span className="text-xs sm:text-sm">{fileData.name || '未知文件'}</span>
+                                <File size={16} />
+                                <span className="text-sm">{fileData.name || '未知文件'}</span>
                               </div>
                             );
-                          } catch { return <p className="text-xs sm:text-sm">{message.content}</p>; }
+                          } catch { return <p className="text-sm">{message.content}</p>; }
                         })()
                       )}
-                      <p className={clsx("text-[10px] sm:text-[10px] mt-0.5", isOwnMessage ? "text-white/60" : "text-gray-400")}>
+                      <p className={clsx("text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400")}>
                         {formatTime(message.created_at)}
                       </p>
                     </div>
@@ -334,11 +328,11 @@ export function Chat() {
       {/* Preview */}
       <AnimatePresence>
         {previewImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-3 sm:px-4 py-2 bg-gray-100 dark:bg-[#1A1D21]">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 py-2 bg-gray-100 dark:bg-[#1A1D21]">
             <div className="relative inline-block">
-              <img src={previewImage} alt="Preview" className="h-16 sm:h-20 rounded-lg" />
-              <button onClick={() => setPreviewImage(null)} className="absolute -top-1.5 -right-1.5 p-1 bg-red-500 text-white rounded-full">
-                <X size={10} sm:size={12} />
+              <img src={previewImage} alt="Preview" className="h-20 rounded-lg" />
+              <button onClick={() => setPreviewImage(null)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full">
+                <X size={12} />
               </button>
             </div>
           </motion.div>
@@ -346,19 +340,19 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Input */}
-      <div className="p-2 sm:p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl flex-shrink-0 pb-safe">
-        <div className="flex items-end gap-1.5 sm:gap-2">
-          <button className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative">
-            <Plus size={20} sm:size={22} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
+      <div className="p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
+        <div className="flex items-end gap-2">
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative">
+            <Plus size={20} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
             {showAttachMenu && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-full left-0 mb-2 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[100px] sm:min-w-[120px]">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-12 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px]">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
-                <label htmlFor="image-upload" className="flex items-center gap-2 px-2 sm:px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-xs sm:text-sm">
-                  <Image size={14} sm:size={16} /> 图片
+                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                  <Image size={16} /> 图片
                 </label>
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                <button className="w-full flex items-center gap-2 px-2 sm:px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-xs sm:text-sm">
-                  <File size={14} sm:size={16} /> 文件
+                <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-sm">
+                  <File size={16} /> 文件
                 </button>
               </motion.div>
             )}
@@ -370,11 +364,11 @@ export function Chat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="输入消息..."
-              className="w-full h-10 sm:h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
+              className="w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
             />
           </div>
-          <button onClick={handleSend} disabled={!input.trim()} className="p-2 sm:p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors flex-shrink-0">
-            <Send size={16} sm:size={18} className="text-white" />
+          <button onClick={handleSend} disabled={!input.trim()} className="p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors">
+            <Send size={18} className="text-white" />
           </button>
         </div>
       </div>
