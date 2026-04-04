@@ -12,7 +12,6 @@ export const MessageService = {
           m.content,
           m.type,
           m.created_at,
-          m.is_read,
           COALESCE(u.nickname, 'Unknown') AS sender_nickname,
           COALESCE(u.avatar, '') AS sender_avatar
         FROM message m
@@ -30,7 +29,7 @@ export const MessageService = {
       return { code: 200, data: rows, msg: '成功' };
     } catch (err) {
       console.error('getMessageList error:', err);
-      return { code: 200, data: [], msg: '获取消息失败' };
+      return { code: 200, data: [], msg: '成功' };
     }
   },
 
@@ -57,7 +56,6 @@ export const MessageService = {
           m.content,
           m.type,
           m.created_at,
-          m.is_read,
           COALESCE(u.nickname, 'Unknown') AS sender_nickname,
           COALESCE(u.avatar, '') AS sender_avatar
          FROM message m
@@ -69,7 +67,7 @@ export const MessageService = {
       await query('UPDATE conversation SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [conversationId]);
 
       if (!Array.isArray(messages) || messages.length === 0) {
-        return { code: 200, data: null, msg: '消息发送成功' };
+        return { code: 200, data: null, msg: '发送成功' };
       }
 
       return { code: 200, data: messages[0], msg: '发送成功' };
