@@ -21,7 +21,7 @@ export const MessageController = {
       res.status(201).json({ code: 201, data: result.data, msg: result.msg || '发送成功' });
     } catch (err) {
       console.error('sendMessage error:', err);
-      res.status(200).json({ code: 200, data: null, msg: '发送失败' });
+      res.json({ code: 200, data: null, msg: '发送失败' });
     }
   },
 

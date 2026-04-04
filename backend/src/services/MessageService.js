@@ -2,6 +2,7 @@ import { query } from '../utils/db.js';
 
 export const MessageService = {
   async getMessageList(conversationId, limit = 50) {
+    console.log('getMessageList called with conversationId:', conversationId, 'limit:', limit);
     try {
       const safeLimit = parseInt(limit) || 50;
       const sql = `
@@ -20,9 +21,14 @@ export const MessageService = {
         ORDER BY m.created_at ASC
         LIMIT ?
       `;
+      console.log('Executing SQL:', sql);
+      console.log('With params:', [conversationId, safeLimit]);
+      
       const rows = await query(sql, [conversationId, safeLimit]);
+      console.log('Query result:', rows);
 
       if (!Array.isArray(rows)) {
+        console.error('Query result is not an array:', rows);
         return { code: 200, data: [], msg: '成功' };
       }
 
@@ -34,6 +40,7 @@ export const MessageService = {
   },
 
   async sendMessage(conversationId, senderId, content, type = 'text') {
+    console.log('sendMessage called with:', { conversationId, senderId, content, type });
     try {
       if (!conversationId || !senderId || !content) {
         return { code: 400, data: null, msg: '缺少必要参数' };
@@ -45,7 +52,7 @@ export const MessageService = {
       );
 
       if (!result || !result.insertId) {
-        return { code: 500, data: null, msg: '插入失败' };
+        return { code: 200, data: null, msg: '发送失败' };
       }
 
       const messages = await query(
@@ -78,6 +85,7 @@ export const MessageService = {
   },
 
   async markAsRead(conversationId, userId) {
+    console.log('markAsRead called with:', { conversationId, userId });
     try {
       await query(
         `INSERT INTO message_read (conversation_id, user_id, seen_at)
@@ -93,6 +101,7 @@ export const MessageService = {
   },
 
   async searchMessages(userId, keyword, limit = 50) {
+    console.log('searchMessages called with:', { userId, keyword, limit });
     try {
       const safeLimit = parseInt(limit) || 50;
       const messages = await query(
