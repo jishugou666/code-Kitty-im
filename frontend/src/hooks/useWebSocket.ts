@@ -1,134 +1,88 @@
 import { useEffect, useRef, useCallback } from 'react';
+import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 
-const WS_URL = import.meta.env.VITE_WS_URL;
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || 'c83b4566e58d78c1dd50';
+const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'ap1';
 
-export function useWebSocket() {
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { token, isAuthenticated } = useAuthStore();
-  const { conversations, addMessage, fetchConversations } = useChatStore();
+let globalPusher: Pusher | null = null;
 
-  const connect = useCallback(() => {
-    if (!token || !isAuthenticated) return;
+export function getPusher(): Pusher {
+  if (!globalPusher) {
+    globalPusher = new Pusher(PUSHER_KEY, {
+      cluster: PUSHER_CLUSTER
+    });
+  }
+  return globalPusher;
+}
 
-    try {
-      const ws = new WebSocket(`${WS_URL}?token=${token}`);
+export function useWebSocket(conversationId?: number) {
+  const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
+  const { token, isAuthenticated, user } = useAuthStore();
+  const { addMessage, fetchConversations } = useChatStore();
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          handleWebSocketMessage(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        wsRef.current = null;
-        if (isAuthenticated) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, 3000);
-        }
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-    }
-  }, [token, isAuthenticated]);
-
-  const handleWebSocketMessage = useCallback((message: any) => {
-    switch (message.type) {
-      case 'connected':
-        console.log('WebSocket authenticated:', message.userId);
-        break;
-
-      case 'new_message':
-        if (message.data) {
-          addMessage(message.data.conversation_id, message.data);
-          fetchConversations();
-        }
-        break;
-
-      case 'user_typing':
-        console.log('User typing:', message.data);
-        break;
-
-      case 'messages_read':
-        console.log('Messages read:', message.data);
-        fetchConversations();
-        break;
-
-      case 'user_status':
-        console.log('User status changed:', message.data);
-        fetchConversations();
-        break;
+  const handleNewMessage = useCallback((data: any) => {
+    console.log('[Pusher] New message received:', data);
+    if (data && data.id) {
+      addMessage(data.conversation_id, data);
+      fetchConversations();
     }
   }, [addMessage, fetchConversations]);
 
-  const sendMessage = useCallback((data: { type: string; data: any }) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data));
-    } else {
-      console.error('WebSocket is not connected');
-    }
-  }, []);
-
-  const sendChatMessage = useCallback((conversationId: number, content: string) => {
-    sendMessage({
-      type: 'chat',
-      data: { conversationId, content }
-    });
-  }, [sendMessage]);
-
-  const sendTyping = useCallback((conversationId: number) => {
-    sendMessage({
-      type: 'typing',
-      data: { conversationId }
-    });
-  }, [sendMessage]);
-
-  const sendRead = useCallback((conversationId: number) => {
-    sendMessage({
-      type: 'read',
-      data: { conversationId }
-    });
-  }, [sendMessage]);
+  const handleMessageRead = useCallback((data: any) => {
+    console.log('[Pusher] Message read:', data);
+    fetchConversations();
+  }, [fetchConversations]);
 
   useEffect(() => {
-    connect();
+    if (!isAuthenticated || !token) return;
 
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [connect]);
+    const pusher = getPusher();
+
+    if (conversationId) {
+      const channelName = `chat-${conversationId}`;
+      console.log(`[Pusher] Subscribing to channel: ${channelName}`);
+
+      channelRef.current = pusher.subscribe(channelName);
+
+      channelRef.current.bind('new-message', handleNewMessage);
+      channelRef.current.bind('message-read', handleMessageRead);
+
+      return () => {
+        if (channelRef.current) {
+          channelRef.current.unbind('new-message', handleNewMessage);
+          channelRef.current.unbind('message-read', handleMessageRead);
+          pusher.unsubscribe(channelName);
+          channelRef.current = null;
+        }
+      };
+    }
+  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead]);
 
   return {
-    sendMessage,
-    sendChatMessage,
-    sendTyping,
-    sendRead,
-    isConnected: wsRef.current?.readyState === WebSocket.OPEN
+    isConnected: true
   };
+}
+
+export function useGlobalWebSocket() {
+  const { isAuthenticated, token } = useAuthStore();
+  const { fetchConversations } = useChatStore();
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const pusher = getPusher();
+
+    const userChannel = pusher.subscribe(`user-${user?.id}`);
+
+    userChannel.bind('conversation-update', (data: any) => {
+      console.log('[Pusher] Conversation update:', data);
+      fetchConversations();
+    });
+
+    return () => {
+      pusher.unsubscribe(`user-${user?.id}`);
+    };
+  }, [isAuthenticated, token, user?.id, fetchConversations]);
 }

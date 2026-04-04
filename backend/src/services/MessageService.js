@@ -1,4 +1,5 @@
 import { query } from '../utils/db.js';
+import { triggerEvent } from '../utils/pusher.js';
 
 export const MessageService = {
   async getMessageList(conversationId, limit = 50) {
@@ -91,6 +92,8 @@ export const MessageService = {
         return { code: 200, data: null, msg: '发送成功' };
       }
 
+      triggerEvent(`chat-${conversationId}`, 'new-message', messages[0]);
+
       return { code: 200, data: messages[0], msg: '发送成功' };
     } catch (err) {
       console.error('sendMessage error:', err);
@@ -107,6 +110,9 @@ export const MessageService = {
          ON DUPLICATE KEY UPDATE seen_at = CURRENT_TIMESTAMP`,
         [conversationId, userId]
       );
+
+      triggerEvent(`chat-${conversationId}`, 'message-read', { conversationId, userId });
+
       return { code: 200, data: null, msg: '成功' };
     } catch (err) {
       console.error('markAsRead error:', err);

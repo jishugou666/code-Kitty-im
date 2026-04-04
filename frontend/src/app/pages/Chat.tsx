@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Info, Plus, Send, Image, File, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -25,6 +26,8 @@ export function Chat() {
   const { toast, ToastContainer } = useToast();
 
   const conversation = conversations.find(c => c.id === conversationId);
+
+  useWebSocket(conversationId || undefined);
 
   useEffect(() => {
     if (conversationId && token) {
