@@ -33,13 +33,13 @@ export function Chat() {
   }, [conversationId]);
 
   useEffect(() => {
-    if (conversationId && conversation?.messages) {
-      setMessages(conversation.messages);
+    if (conversation?.messages) {
+      setMessages(Array.isArray(conversation.messages) ? conversation.messages : []);
     }
   }, [conversation?.messages]);
 
   const loadMessages = async () => {
-    if (!conversationId) return;
+    if (!conversationId || !token) return;
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}`, {
@@ -48,11 +48,18 @@ export function Chat() {
         }
       });
       const data = await response.json();
-      if (data.code === 200) {
-        setMessages(data.data || []);
+
+      if (data.code === 200 && Array.isArray(data.data)) {
+        setMessages(data.data);
+      } else if (data.code === 200 && !data.data) {
+        setMessages([]);
+      } else {
+        console.error('Failed to load messages:', data.msg || 'Unknown error');
+        setMessages([]);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
+      setMessages([]);
     } finally {
       setIsLoading(false);
     }
@@ -73,18 +80,18 @@ export function Chat() {
     setInput("");
 
     try {
-          const response = await fetch(`${API_BASE_URL}/message/send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              conversationId,
-              content: text,
-              type: 'text'
-            })
-          });
+      const response = await fetch(`${API_BASE_URL}/message/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId,
+          content: text,
+          type: 'text'
+        })
+      });
       const data = await response.json();
       if (data.code === 200) {
         setMessages(prev => [...prev, data.data]);
@@ -182,218 +189,166 @@ export function Chat() {
   const formatTime = (timeStr: string | undefined) => {
     if (!timeStr) return '';
     const date = new Date(timeStr);
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getOtherUser = () => {
-    if (conversation?.type === 'single' && conversation?.members) {
-      return conversation.members.find((m: any) => m.id !== user?.id) || { nickname: 'Unknown', avatar: '', status: 0 };
+  const formatDate = (timeStr: string | undefined) => {
+    if (!timeStr) return '';
+    const date = new Date(timeStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return '今天';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return '昨天';
     }
-    return { nickname: conversation?.name || 'Chat', avatar: conversation?.avatar || '', status: 0 };
+    return date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
   };
 
-  const otherUser = getOtherUser();
-
-  const renderMessageContent = (msg: any) => {
-    if (msg.type === 'image') {
-      return (
-        <a href={msg.content} target="_blank" rel="noopener noreferrer" className="block max-w-[300px]">
-          <img src={msg.content} alt="Image" className="max-w-full rounded-lg" loading="lazy" />
-        </a>
-      );
-    }
-    if (msg.type === 'file') {
-      try {
-        const fileData = JSON.parse(msg.content);
-        return (
-          <a href={fileData.data} download={fileData.name} className="flex items-center gap-2 p-2 bg-black/10 dark:bg-white/10 rounded-lg hover:bg-black/20 dark:hover:bg-white/20 transition-colors">
-            <File size={20} className="text-[#007AFF]" />
-            <span className="text-sm truncate max-w-[200px]">{fileData.name}</span>
-          </a>
-        );
-      } catch {
-        return <span>{msg.content}</span>;
+  const groupMessagesByDate = (msgs: any[]) => {
+    const groups: { [key: string]: any[] } = {};
+    msgs.forEach(msg => {
+      const dateKey = formatDate(msg.created_at);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
-    }
-    return <span>{msg.content}</span>;
+      groups[dateKey].push(msg);
+    });
+    return groups;
   };
+
+  if (!conversationId) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10]">
+        <p className="text-gray-500">请选择一个会话</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full bg-[#FAFAFC] dark:bg-[#0A0C10] relative">
-      <div className="absolute top-[20%] right-[-10%] w-[400px] h-[400px] bg-blue-100/30 dark:bg-blue-900/10 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="sticky top-0 z-40 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl pt-6 pb-4 px-8 border-b border-black/5 dark:border-white/5 flex items-center justify-between shadow-[0_4px_24px_rgba(0,0,0,0.01)]">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
-          >
-            <ArrowLeft size={20} className="text-black dark:text-white" />
+    <div className="h-full flex flex-col bg-[#FAFAFC] dark:bg-[#0A0C10]">
+      {/* Header */}
+      <div className="h-14 px-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
-          <div className="relative cursor-pointer">
-            {otherUser.avatar ? (
-              <img src={otherUser.avatar} alt={otherUser.nickname} className="w-11 h-11 rounded-full object-cover shadow-sm" />
-            ) : (
-              <div className="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold">
-                {otherUser.nickname.charAt(0).toUpperCase()}
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white text-sm">
+              {conversation?.name || conversation?.members?.map((m: any) => m.nickname).join(', ') || '聊天'}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {conversation?.members?.length || 0} 位成员
+            </p>
+          </div>
+        </div>
+        <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+          <Info size={20} className="text-gray-600 dark:text-gray-300" />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
+            <p>暂无消息</p>
+            <p className="text-xs mt-1">开始聊天吧</p>
+          </div>
+        ) : (
+          Object.entries(groupMessagesByDate(messages)).map(([date, msgs]) => (
+            <div key={date}>
+              <div className="flex items-center gap-2 my-4">
+                <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
+                <span className="text-xs text-gray-400 dark:text-gray-500 px-2">{date}</span>
+                <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
               </div>
-            )}
-            {otherUser.status === 1 && (
-              <div className="absolute bottom-0 right-0 w-[12px] h-[12px] bg-[#34C759] border-2 border-white dark:border-[#13161A] rounded-full" />
-            )}
-          </div>
-          <div className="flex flex-col cursor-pointer">
-            <span className="text-[17px] font-semibold text-black dark:text-white leading-tight">{otherUser.nickname}</span>
-            <span className="text-[13px] text-black/40 dark:text-white/40 mt-0.5">
-              {otherUser.status === 1 ? 'Online' : 'Offline'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button className="p-2.5 text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <Phone size={20} strokeWidth={2} />
-          </button>
-          <button className="p-2.5 text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <Video size={20} strokeWidth={2} />
-          </button>
-          <div className="w-[1px] h-6 bg-black/10 dark:bg-white/10 mx-1" />
-          <button className="p-2.5 text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <Info size={20} strokeWidth={2} />
-          </button>
-        </div>
+              {msgs.map((message) => {
+                const isOwnMessage = message.sender_id === user?.id;
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
+                  >
+                    {!isOwnMessage && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                        {(message.sender_nickname || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className={clsx("max-w-[70%] rounded-2xl px-4 py-2", isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white")}>
+                      {message.type === 'text' && <p className="text-sm">{message.content}</p>}
+                      {message.type === 'image' && <img src={message.content} alt="图片" className="rounded-lg max-w-full" />}
+                      {message.type === 'file' && (() => {
+                        try {
+                          const fileData = JSON.parse(message.content);
+                          return <div className="flex items-center gap-2"><File size={16} /><span className="text-sm">{fileData.name}</span></div>;
+                        } catch { return <p className="text-sm">{message.content}</p>; }
+                      })()}
+                      <p className={clsx("text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400")}>
+                        {formatTime(message.created_at)}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleImageSelect}
-        accept="image/*"
-        className="hidden"
-      />
-
-      <div className="flex-1 overflow-y-auto px-8 py-8 flex flex-col gap-6 relative z-10 scrollbar-hide">
-        <div className="max-w-4xl mx-auto w-full flex flex-col gap-5">
-          {isLoading && (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {!isLoading && messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-32 text-black/40 dark:text-white/40 text-sm">
-              <p>No messages yet</p>
-              <p className="text-xs mt-1">Send a message to start the conversation!</p>
-            </div>
-          )}
-
-          {messages.map((msg) => {
-            const isMe = msg.sender_id === user?.id;
-            return (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={clsx(
-                  "flex flex-col max-w-[65%]",
-                  isMe ? "self-end items-end" : "self-start items-start"
-                )}
-              >
-                <div
-                  className={clsx(
-                    "px-4 py-2.5 rounded-[20px] text-[15px] leading-[1.5] shadow-[0_2px_8px_rgba(0,0,0,0.02)] backdrop-blur-md",
-                    isMe
-                      ? "bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] text-white rounded-tr-sm border border-white/20 dark:border-white/5"
-                      : "bg-white/90 dark:bg-[#23272D]/90 text-black dark:text-white rounded-tl-sm border border-black/5 dark:border-white/5"
-                  )}
-                >
-                  {renderMessageContent(msg)}
-                </div>
-                <span className="text-[12px] text-black/30 dark:text-white/30 mt-1.5 px-1 font-medium">
-                  {formatTime(msg.created_at)}
-                </span>
-              </motion.div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
+      {/* Preview */}
       <AnimatePresence>
-        {showAttachMenu && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-[90px] left-1/2 -translate-x-1/2 w-[280px] bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-2xl rounded-[24px] p-4 flex justify-around shadow-[0_16px_48px_rgba(0,0,0,0.1)] border border-white/40 dark:border-white/10 z-30"
-          >
-            <button
-              onClick={() => {
-                fileInputRef.current?.click();
-              }}
-              className="flex flex-col items-center gap-2 group"
-            >
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 rounded-full flex items-center justify-center text-[#007AFF] group-hover:scale-110 transition-transform shadow-sm">
-                <Image size={22} />
-              </div>
-              <span className="text-[11px] font-medium text-black/60 dark:text-white/60">Image</span>
-            </button>
-            <button
-              onClick={() => {
-                fileInputRef.current?.click();
-              }}
-              className="flex flex-col items-center gap-2 group"
-            >
-              <div className="w-12 h-12 bg-purple-50 dark:bg-purple-500/10 rounded-full flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform shadow-sm">
-                <File size={22} />
-              </div>
-              <span className="text-[11px] font-medium text-black/60 dark:text-white/60">File</span>
-            </button>
+        {previewImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 py-2 bg-gray-100 dark:bg-[#1A1D21]">
+            <div className="relative inline-block">
+              <img src={previewImage} alt="Preview" className="h-20 rounded-lg" />
+              <button onClick={() => setPreviewImage(null)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full">
+                <X size={12} />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="pb-8 pt-4 px-8 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl border-t border-black/5 dark:border-white/5 flex justify-center z-40">
-        <div className="max-w-4xl w-full flex items-end gap-3">
-          <button
-            onClick={() => setShowAttachMenu(!showAttachMenu)}
-            className={clsx(
-              "p-3 rounded-full transition-colors flex-shrink-0",
-              showAttachMenu ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] hover:bg-black/5 dark:hover:bg-white/5"
+      {/* Input */}
+      <div className="p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
+        <div className="flex items-end gap-2">
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative">
+            <Plus size={20} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
+            {showAttachMenu && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-12 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px]">
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
+                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                  <Image size={16} /> 图片
+                </label>
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+                <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-sm">
+                  <File size={16} /> 文件
+                </button>
+              </motion.div>
             )}
-          >
-            <Plus size={24} strokeWidth={2.5} className={showAttachMenu ? "rotate-45 transition-transform" : "transition-transform"} />
           </button>
-
-          <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-[24px] min-h-[46px] max-h-[140px] flex items-center px-4 border border-transparent focus-within:border-black/5 dark:focus-within:border-white/5 focus-within:shadow-[0_4px_16px_rgba(0,0,0,0.04)] focus-within:bg-white dark:focus-within:bg-[#1A1D21] transition-all">
+          <div className="flex-1 relative">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Write a message..."
-              className="flex-1 bg-transparent border-none outline-none py-3 text-[15px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40"
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="输入消息..."
+              className="w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
             />
-            <button className="p-2 text-black/40 dark:text-white/40 hover:text-[#007AFF] transition-colors ml-1">
-              <Smile size={20} strokeWidth={2} />
-            </button>
           </div>
-
-          {input.trim() ? (
-            <motion.button
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={handleSend}
-              className="w-[46px] h-[46px] bg-[#007AFF] hover:bg-[#006ce0] rounded-full flex items-center justify-center text-white shadow-md active:scale-95 transition-all flex-shrink-0"
-            >
-              <Send size={18} strokeWidth={2.5} className="ml-0.5" />
-            </motion.button>
-          ) : (
-            <button className="p-3 text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors flex-shrink-0">
-              <Mic size={24} strokeWidth={2} />
-            </button>
-          )}
+          <button onClick={handleSend} disabled={!input.trim()} className="p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors">
+            <Send size={18} className="text-white" />
+          </button>
         </div>
       </div>
       <ToastContainer />
