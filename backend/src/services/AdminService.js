@@ -3,10 +3,10 @@ import { query } from '../utils/db.js';
 export const AdminService = {
   async getDashboard() {
     try {
-      const usersCount = await query('SELECT COUNT(*) as count FROM user');
-      const messagesCount = await query('SELECT COUNT(*) as count FROM message');
-      const momentsCount = await query('SELECT COUNT(*) as count FROM moments WHERE deleted_at IS NULL');
-      const conversationsCount = await query('SELECT COUNT(*) as count FROM conversation');
+      const usersCount = await query('SELECT COUNT(*) as count FROM user').catch(e => { console.error('[Dashboard] usersCount error:', e); return [{count: 0}]; });
+      const messagesCount = await query('SELECT COUNT(*) as count FROM message').catch(e => { console.error('[Dashboard] messagesCount error:', e); return [{count: 0}]; });
+      const momentsCount = await query('SELECT COUNT(*) as count FROM moments WHERE deleted_at IS NULL').catch(e => { console.error('[Dashboard] momentsCount error:', e); return [{count: 0}]; });
+      const conversationsCount = await query('SELECT COUNT(*) as count FROM conversation').catch(e => { console.error('[Dashboard] conversationsCount error:', e); return [{count: 0}]; });
 
       return {
         code: 200,
@@ -19,8 +19,8 @@ export const AdminService = {
         msg: '成功'
       };
     } catch (err) {
-      console.error('getDashboard error:', err);
-      return { code: 200, data: null, msg: '获取失败' };
+      console.error('[Dashboard] Error:', err);
+      return { code: 200, data: { totalUsers: 0, totalMessages: 0, totalMoments: 0, totalConversations: 0 }, msg: '部分获取失败' };
     }
   },
 
