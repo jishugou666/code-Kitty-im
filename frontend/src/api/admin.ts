@@ -1,47 +1,47 @@
-import { client } from './client';
+import apiClient from './client';
 
 export const adminApi = {
   getDashboard() {
-    return client.get('/admin/dashboard');
+    return apiClient.get('/admin/dashboard');
   },
 
   getUsers(params) {
-    return client.get('/admin/users', { params });
+    return apiClient.get('/admin/users', { params });
   },
 
   updateUserStatus(data) {
-    return client.put('/admin/users/status', data);
+    return apiClient.put('/admin/users/status', data);
   },
 
   deleteUser(userId) {
-    return client.delete(`/admin/users/${userId}`);
+    return apiClient.delete(`/admin/users/${userId}`);
   },
 
   getConversations(params) {
-    return client.get('/admin/conversations', { params });
+    return apiClient.get('/admin/conversations', { params });
   },
 
   getMessages(conversationId, params) {
-    return client.get(`/admin/conversations/${conversationId}/messages`, { params });
+    return apiClient.get(`/admin/conversations/${conversationId}/messages`, { params });
   },
 
   getMoments(params) {
-    return client.get('/admin/moments', { params });
+    return apiClient.get('/admin/moments', { params });
   },
 
   deleteMoment(momentId) {
-    return client.delete(`/admin/moments/${momentId}`);
+    return apiClient.delete(`/admin/moments/${momentId}`);
   },
 
   getTables() {
-    return client.get('/admin/tables');
+    return apiClient.get('/admin/tables');
   },
 
   getTableData(tableName, params) {
-    return client.get(`/admin/tables/${tableName}`, { params });
+    return apiClient.get(`/admin/tables/${tableName}`, { params });
   },
 
   executeQuery(sql) {
-    return client.post('/admin/query', { sql });
+    return apiClient.post('/admin/query', { sql });
   }
 };

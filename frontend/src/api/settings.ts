@@ -1,19 +1,19 @@
-import { client } from './client';
+import apiClient from './client';
 
 export const settingsApi = {
   get() {
-    return client.get('/settings');
+    return apiClient.get('/settings');
   },
 
   update(data) {
-    return client.put('/settings', data);
+    return apiClient.put('/settings', data);
   },
 
   updateProfile(data) {
-    return client.put('/settings/profile', data);
+    return apiClient.put('/settings/profile', data);
   },
 
   changePassword(data) {
-    return client.put('/settings/password', data);
+    return apiClient.put('/settings/password', data);
   }
 };

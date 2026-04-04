@@ -1,35 +1,35 @@
-import { client } from './client';
+import apiClient from './client';
 
 export const momentsApi = {
   create(data) {
-    return client.post('/moments', data);
+    return apiClient.post('/moments', data);
   },
 
   getList(params) {
-    return client.get('/moments/list', { params });
+    return apiClient.get('/moments/list', { params });
   },
 
   delete(id) {
-    return client.delete(`/moments/${id}`);
+    return apiClient.delete(`/moments/${id}`);
   },
 
   like(id) {
-    return client.post(`/moments/${id}/like`);
+    return apiClient.post(`/moments/${id}/like`);
   },
 
   getComments(id) {
-    return client.get(`/moments/${id}/comments`);
+    return apiClient.get(`/moments/${id}/comments`);
   },
 
   addComment(id, data) {
-    return client.post(`/moments/${id}/comments`, data);
+    return apiClient.post(`/moments/${id}/comments`, data);
   },
 
   deleteComment(commentId) {
-    return client.delete(`/moments/comments/${commentId}`);
+    return apiClient.delete(`/moments/comments/${commentId}`);
   },
 
   getUserMoments(userId, params) {
-    return client.get(`/moments/user/${userId}`, { params });
+    return apiClient.get(`/moments/user/${userId}`, { params });
   }
 };
