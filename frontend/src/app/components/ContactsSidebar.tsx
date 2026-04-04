@@ -198,7 +198,7 @@ export function ContactsSidebar() {
                   </div>
                 </motion.div>
               ))
-            )}))}
+            )}
           </div>
         </div>
 
