@@ -118,7 +118,7 @@ export function Moments() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#13161A]">
+    <div className="h-full flex flex-col bg-white dark:bg-[#13161A]">
       <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5">
         <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-4">
@@ -136,7 +136,8 @@ export function Moments() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto p-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />

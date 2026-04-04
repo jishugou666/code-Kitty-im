@@ -183,7 +183,7 @@ export function Admin() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#13161A] flex">
+    <div className="h-full flex bg-white dark:bg-[#13161A]">
       <div className="w-64 border-r border-black/5 dark:border-white/5 p-4">
         <div className="flex items-center gap-3 mb-6 px-2">
           <Shield size={24} className="text-[#007AFF]" />
@@ -207,7 +207,7 @@ export function Admin() {
         </nav>
       </div>
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         <div className="flex items-center gap-4 mb-6">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full">
             <ArrowLeft size={20} className="text-black dark:text-white" />
