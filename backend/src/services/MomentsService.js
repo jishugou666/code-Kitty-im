@@ -7,9 +7,11 @@ export const MomentsService = {
         return { code: 400, data: null, msg: '内容或图片不能为空' };
       }
 
+      const imagesJson = JSON.stringify(Array.isArray(images) ? images : []);
+
       const result = await query(
         'INSERT INTO moments (user_id, content, images) VALUES (?, ?, ?)',
-        [userId, content || '', JSON.stringify(images)]
+        [userId, content || '', imagesJson]
       );
 
       if (!result || !result.insertId) {
@@ -25,6 +27,14 @@ export const MomentsService = {
          WHERE m.id = ?`,
         [result.insertId]
       );
+
+      if (moments[0] && moments[0].images) {
+        try {
+          moments[0].images = JSON.parse(moments[0].images);
+        } catch {
+          moments[0].images = [];
+        }
+      }
 
       return { code: 200, data: moments[0], msg: '发布成功' };
     } catch (err) {
@@ -48,7 +58,7 @@ export const MomentsService = {
          WHERE m.deleted_at IS NULL
          AND (
            m.user_id = ?
-           OR EXISTS(SELECT 1 FROM contact c WHERE c.user_id = ? AND c.contact_user_id = m.user_id AND c.status = 'accepted' AND c.is_friend = 1)
+           OR EXISTS(SELECT 1 FROM contact c WHERE c.user_id = ? AND c.contact_user_id = m.user_id AND c.status = 'accepted')
            OR m.user_id = ?
          )
          ORDER BY m.created_at DESC
@@ -217,7 +227,7 @@ export const MomentsService = {
 
       const isFriend = await query(
         `SELECT id FROM contact
-         WHERE user_id = ? AND contact_user_id = ? AND status = 'accepted' AND is_friend = 1`,
+         WHERE user_id = ? AND contact_user_id = ? AND status = 'accepted'`,
         [currentUserId, userId]
       );
 
