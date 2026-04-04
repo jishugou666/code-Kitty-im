@@ -33,11 +33,19 @@ export function Chat() {
   }, [conversationId, token]);
 
   const loadMessages = async () => {
-    if (!conversationId || !token) return;
+    console.log('=== [前端] loadMessages 被调用 ===');
+    console.log('conversationId:', conversationId, 'token:', token ? '有token' : '无token');
+    if (!conversationId || !token) {
+      console.log('缺少 conversationId 或 token，返回');
+      return;
+    }
     setIsLoading(true);
     try {
       const timestamp = Date.now();
-      const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}&t=${timestamp}`, {
+      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&t=${timestamp}`;
+      console.log('请求URL:', url);
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -45,15 +53,23 @@ export function Chat() {
           'Expires': '0'
         }
       });
+      
+      console.log('响应状态:', response.status);
       const data = await response.json();
+      console.log('响应数据:', data);
+      console.log('响应 data.data:', data.data);
+      console.log('data.data 是否为数组:', Array.isArray(data.data));
+      console.log('data.data 长度:', data.data?.length || 0);
 
       if (data.code === 200 && Array.isArray(data.data)) {
+        console.log('设置 messages:', data.data || []);
         setMessages(data.data || []);
       } else {
+        console.log('条件不满足，设置空数组');
         setMessages([]);
       }
     } catch (error) {
-      console.error('Failed to load messages:', error);
+      console.error('=== [前端] loadMessages 错误 ===', error);
       setMessages([]);
     } finally {
       setIsLoading(false);

@@ -93,17 +93,23 @@ export const ConversationService = {
   },
 
   async getConversation(conversationId, userId) {
+    console.log('=== [Service] getConversation 被调用');
+    console.log('conversationId:', conversationId, 'userId:', userId);
     const conversations = await query(
       `SELECT c.*, cm.role FROM conversation c
        JOIN conversation_member cm ON c.id = cm.conversation_id AND cm.user_id = ?
        WHERE c.id = ?`,
       [userId, conversationId]
     );
+    console.log('查询结果:', conversations);
+    console.log('查询结果数量:', conversations.length);
 
     if (conversations.length === 0) {
+      console.log('会话未找到，抛出错误');
       throw new Error('Conversation not found');
     }
 
+    console.log('返回会话信息:', conversations[0]);
     return conversations[0];
   },
 

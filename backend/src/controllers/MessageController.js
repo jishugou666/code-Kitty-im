@@ -26,28 +26,40 @@ export const MessageController = {
   },
 
   async getMessageList(req, res, next) {
+    console.log('=== [Controller] getMessageList 被调用 ===');
+    console.log('req.query:', req.query);
+    console.log('req.user:', req.user);
     try {
       const { conversationId } = req.query;
       const { limit } = req.query;
 
+      console.log('conversationId:', conversationId, 'limit:', limit);
       if (!conversationId) {
+        console.log('缺少 conversationId 参数');
         return res.status(400).json(error('Conversation ID is required', 400));
       }
 
+      console.log('准备验证会话权限...');
       try {
-        await ConversationService.getConversation(parseInt(conversationId), req.user.id);
+        const conv = await ConversationService.getConversation(parseInt(conversationId), req.user.id);
+        console.log('会话权限验证通过，会话信息:', conv);
       } catch (err) {
+        console.log('会话权限验证失败:', err.message);
         return res.status(404).json(notFound('Conversation not found'));
       }
 
+      console.log('准备调用 MessageService.getMessageList...');
       const result = await MessageService.getMessageList(
         parseInt(conversationId),
         parseInt(limit) || 50
       );
+      console.log('MessageService 返回结果:', result);
+      console.log('返回消息数量:', result.data?.length || 0);
 
+      console.log('准备返回响应:', { code: 200, data: result.data || [], msg: result.msg || '成功' });
       res.json({ code: 200, data: result.data || [], msg: result.msg || '成功' });
     } catch (err) {
-      console.error('getMessageList error:', err);
+      console.error('=== [Controller] getMessageList 错误 ===', err);
       res.json({ code: 200, data: [], msg: '暂无消息' });
     }
   },

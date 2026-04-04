@@ -2,9 +2,19 @@ import { query } from '../utils/db.js';
 
 export const MessageService = {
   async getMessageList(conversationId, limit = 50) {
-    console.log('getMessageList called with conversationId:', conversationId, 'limit:', limit);
+    console.log('=== [Service] getMessageList 开始 ===');
+    console.log('conversationId:', conversationId, 'limit:', limit);
     try {
       const safeLimit = parseInt(limit) || 50;
+      
+      console.log('1. 先查询该会话的所有消息（无 JOIN）...');
+      const simpleRows = await query(
+        'SELECT * FROM message WHERE conversation_id = ?',
+        [conversationId]
+      );
+      console.log('简单查询结果（无 JOIN）:', simpleRows);
+      console.log('简单查询结果数量:', simpleRows?.length || 0);
+      
       const sql = `
         SELECT
           m.id,
@@ -21,20 +31,24 @@ export const MessageService = {
         ORDER BY m.created_at ASC
         LIMIT ?
       `;
-      console.log('Executing SQL:', sql);
-      console.log('With params:', [conversationId, safeLimit]);
+      console.log('2. 执行带 JOIN 的 SQL...');
+      console.log('SQL:', sql);
+      console.log('Params:', [conversationId, safeLimit]);
       
       const rows = await query(sql, [conversationId, safeLimit]);
-      console.log('Query result:', rows);
+      console.log('带 JOIN 的查询结果:', rows);
+      console.log('带 JOIN 的查询结果数量:', rows?.length || 0);
 
       if (!Array.isArray(rows)) {
-        console.error('Query result is not an array:', rows);
+        console.error('查询结果不是数组:', rows);
         return { code: 200, data: [], msg: '成功' };
       }
 
+      console.log('=== [Service] getMessageList 完成，返回', rows.length, '条消息 ===');
       return { code: 200, data: rows, msg: '成功' };
     } catch (err) {
-      console.error('getMessageList error:', err);
+      console.error('=== [Service] getMessageList 错误 ===', err);
+      console.error('错误堆栈:', err.stack);
       return { code: 200, data: [], msg: '成功' };
     }
   },
