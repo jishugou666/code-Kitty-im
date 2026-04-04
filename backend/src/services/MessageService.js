@@ -1,6 +1,26 @@
 import { query } from '../utils/db.js';
 
 export const MessageService = {
+  async getMessageList(conversationId, limit = 50) {
+    try {
+      const sql = `
+        SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.created_at, m.is_read,
+               COALESCE(u.nickname, 'Unknown') AS sender_nickname,
+               COALESCE(u.avatar, '') AS sender_avatar
+        FROM message m
+        LEFT JOIN user u ON m.sender_id = u.id
+        WHERE m.conversation_id = ?
+        ORDER BY m.created_at ASC
+        LIMIT ?
+      `;
+      const rows = await query(sql, [conversationId, parseInt(limit)]);
+      return { code: 200, data: rows };
+    } catch (err) {
+      console.error('获取消息失败:', err);
+      return { code: 500, data: null, msg: '获取消息失败' };
+    }
+  },
+
   async sendMessage(conversationId, senderId, content, type = 'text') {
     try {
       const result = await query(
@@ -10,8 +30,8 @@ export const MessageService = {
 
       const messages = await query(
         `SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.created_at,
-                COALESCE(u.nickname, 'Unknown') as sender_nickname,
-                COALESCE(u.avatar, '') as sender_avatar
+                COALESCE(u.nickname, 'Unknown') AS sender_nickname,
+                COALESCE(u.avatar, '') AS sender_avatar
          FROM message m
          LEFT JOIN user u ON m.sender_id = u.id
          WHERE m.id = ?`,
@@ -22,50 +42,8 @@ export const MessageService = {
 
       return messages[0] || null;
     } catch (err) {
-      console.error('sendMessage error:', err);
+      console.error('发送消息失败:', err);
       throw err;
-    }
-  },
-
-  async getMessageList(conversationId, userId, limit = 50, beforeId = null) {
-    try {
-      let sql = `
-        SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.created_at, m.is_read,
-               COALESCE(u.nickname, 'Unknown') as sender_nickname,
-               COALESCE(u.avatar, '') as sender_avatar
-        FROM message m
-        LEFT JOIN user u ON m.sender_id = u.id
-        WHERE m.conversation_id = ?
-      `;
-      const params = [conversationId];
-
-      if (beforeId) {
-        sql += ' AND m.id < ?';
-        params.push(beforeId);
-      }
-
-      sql += ' ORDER BY m.created_at DESC LIMIT ?';
-      params.push(parseInt(limit));
-
-      const messages = await query(sql, params);
-      return messages.reverse();
-    } catch (err) {
-      console.error('getMessageList error:', err);
-      throw err;
-    }
-  },
-
-  async getUnreadCount(conversationId, userId) {
-    try {
-      const result = await query(
-        `SELECT COUNT(*) as count FROM message
-         WHERE conversation_id = ? AND sender_id != ?`,
-        [conversationId, userId]
-      );
-      return result[0]?.count || 0;
-    } catch (err) {
-      console.error('getUnreadCount error:', err);
-      return 0;
     }
   },
 
@@ -78,7 +56,7 @@ export const MessageService = {
         [conversationId, userId]
       );
     } catch (err) {
-      console.error('markAsRead error:', err);
+      console.error('标记已读失败:', err);
     }
   },
 
@@ -86,21 +64,20 @@ export const MessageService = {
     try {
       const messages = await query(
         `SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.created_at,
-                COALESCE(u.nickname, 'Unknown') as sender_nickname,
-                COALESCE(u.avatar, '') as sender_avatar,
-                c.type as conversation_type, c.name as conversation_name
+                COALESCE(u.nickname, 'Unknown') AS sender_nickname,
+                COALESCE(u.avatar, '') AS sender_avatar,
+                c.type AS conversation_type, c.name AS conversation_name
          FROM message m
          LEFT JOIN user u ON m.sender_id = u.id
          LEFT JOIN conversation c ON m.conversation_id = c.id
-         LEFT JOIN conversation_member cm ON c.id = cm.conversation_id AND cm.user_id = ?
          WHERE m.content LIKE ? AND m.type = 'text'
          ORDER BY m.created_at DESC
          LIMIT ?`,
-        [userId, `%${keyword}%`, parseInt(limit)]
+        [`%${keyword}%`, parseInt(limit)]
       );
       return messages;
     } catch (err) {
-      console.error('searchMessages error:', err);
+      console.error('搜索消息失败:', err);
       throw err;
     }
   }
