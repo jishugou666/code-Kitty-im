@@ -48,13 +48,13 @@ export function Admin() {
   const loadDashboard = async () => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getDashboard();
-      if (response.data.code === 200) {
-        setDashboard(response.data.data);
+      const res = await adminApi.getDashboard();
+      if (res.code === 200) {
+        setDashboard(res.data);
       }
-      const statsResponse = await adminApi.getUsers({ page: 1, limit: 100 });
-      if (statsResponse.data.code === 200) {
-        const allUsers = statsResponse.data.data?.list || [];
+      const statsRes = await adminApi.getUsers({ page: 1, limit: 100 });
+      if (statsRes.code === 200) {
+        const allUsers = statsRes.data?.list || [];
         const onlineUsers = allUsers.filter((u: any) => u.status === 1).length;
         const adminUsers = allUsers.filter((u: any) => u.role === 'admin' || u.role === 'tech_god').length;
         setUserStats({
@@ -64,9 +64,9 @@ export function Admin() {
           normal: allUsers.length - adminUsers
         });
       }
-      const convResponse = await adminApi.getConversations({ page: 1, limit: 100 });
-      if (convResponse.data.code === 200) {
-        const convs = convResponse.data.data?.list || [];
+      const convRes = await adminApi.getConversations({ page: 1, limit: 100 });
+      if (convRes.code === 200) {
+        const convs = convRes.data?.list || [];
         setConversations(convs);
         setMessageStats([
           { name: '私聊', value: convs.filter((c: any) => c.type === 'single').length },
@@ -83,9 +83,9 @@ export function Admin() {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getUsers({ page: 1, limit: 100 });
-      if (response.data.code === 200) {
-        setUsers(response.data.data?.list || []);
+      const res = await adminApi.getUsers({ page: 1, limit: 100 });
+      if (res.code === 200) {
+        setUsers(res.data?.list || []);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
@@ -97,9 +97,9 @@ export function Admin() {
   const loadConversations = async () => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getConversations({ page: 1, limit: 100 });
-      if (response.data.code === 200) {
-        setConversations(response.data.data?.list || []);
+      const res = await adminApi.getConversations({ page: 1, limit: 100 });
+      if (res.code === 200) {
+        setConversations(res.data?.list || []);
       }
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -111,9 +111,9 @@ export function Admin() {
   const loadMoments = async () => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getMoments({ page: 1, limit: 100 });
-      if (response.data.code === 200) {
-        setMoments(response.data.data?.list || []);
+      const res = await adminApi.getMoments({ page: 1, limit: 100 });
+      if (res.code === 200) {
+        setMoments(res.data?.list || []);
       }
     } catch (error) {
       console.error('Failed to load moments:', error);
@@ -125,9 +125,9 @@ export function Admin() {
   const loadTables = async () => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getTables();
-      if (response.data.code === 200) {
-        setTables(response.data.data || []);
+      const res = await adminApi.getTables();
+      if (res.code === 200) {
+        setTables(res.data || []);
       }
     } catch (error) {
       console.error('Failed to load tables:', error);
@@ -140,9 +140,9 @@ export function Admin() {
     setIsLoading(true);
     setSelectedTable(tableName);
     try {
-      const response = await adminApi.getTableData(tableName, { page: 1, limit: 50 });
-      if (response.data.code === 200) {
-        setTableData(response.data.data?.list || []);
+      const res = await adminApi.getTableData(tableName, { page: 1, limit: 50 });
+      if (res.code === 200) {
+        setTableData(res.data?.list || []);
       }
     } catch (error) {
       console.error('Failed to load table data:', error);
@@ -154,9 +154,9 @@ export function Admin() {
   const loadMessages = async (conversationId: number) => {
     setIsLoading(true);
     try {
-      const response = await adminApi.getMessages(conversationId);
-      if (response.data.code === 200) {
-        setMessages(response.data.data?.list || []);
+      const res = await adminApi.getMessages(conversationId);
+      if (res.code === 200) {
+        setMessages(res.data?.list || []);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -203,8 +203,8 @@ export function Admin() {
 
   const handleSetRole = async (userId: number, role: string) => {
     try {
-      const response = await adminApi.updateUserRole({ userId, role });
-      if (response.data.code === 200) {
+      const res = await adminApi.updateUserRole({ userId, role });
+      if (res.code === 200) {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
         toast(role === 'admin' ? '已设为管理员' : '已设为普通用户', 'success');
       }
@@ -218,8 +218,8 @@ export function Admin() {
     if (!banModal) return;
     try {
       const newStatus = banModal.isBanned ? 1 : 0;
-      const response = await adminApi.updateUserStatus({ userId: banModal.userId, status: newStatus });
-      if (response.data.code === 200) {
+      const res = await adminApi.updateUserStatus({ userId: banModal.userId, status: newStatus });
+      if (res.code === 200) {
         setUsers(prev => prev.map(u => u.id === banModal.userId ? { ...u, status: newStatus } : u));
         toast(banModal.isBanned ? '已解封' : `已封禁 ${banDuration} 天`, 'success');
         setBanModal(null);
@@ -232,8 +232,8 @@ export function Admin() {
   const handleDeleteUser = async (userId: number) => {
     if (!confirm('确定要删除该用户吗？此操作不可恢复！')) return;
     try {
-      const response = await adminApi.deleteUser(userId);
-      if (response.data.code === 200) {
+      const res = await adminApi.deleteUser(userId);
+      if (res.code === 200) {
         setUsers(prev => prev.filter(u => u.id !== userId));
         toast(t('common.success'), 'success');
       }
@@ -245,8 +245,8 @@ export function Admin() {
   const handleDeleteMoment = async (momentId: number) => {
     if (!confirm('确定要删除该动态吗？')) return;
     try {
-      const response = await adminApi.deleteMoment(momentId);
-      if (response.data.code === 200) {
+      const res = await adminApi.deleteMoment(momentId);
+      if (res.code === 200) {
         setMoments(prev => prev.filter(m => m.id !== momentId));
         toast(t('common.success'), 'success');
       }

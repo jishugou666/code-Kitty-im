@@ -55,6 +55,7 @@
 3. **所有 SQL 避免 SELECT *，使用明确字段**
 4. **所有跨域支持线上域名，不写死 localhost**
 5. **所有前端地址从 `import.meta.env` 读取**
+6. **MySQL2 分页必须用 `LIMIT ${num} OFFSET ${num}` 拼接，禁止占位符 `?`**
 
 ### ⚠️ 核心逻辑保护声明（绝对禁止修改）
 
@@ -471,6 +472,15 @@ CREATE TABLE contact (
 - **涉及文件**:
   - `AdminService.js` - 7处已修复
   - `MomentsService.js` - 2处已修复
+- **状态**: ✅ 已修复
+
+### 问题8: 前端响应拦截器解析错误 ⚠️ 已解决
+- **描述**: API 返回数据正确但页面不显示
+- **根本原因**: `client.ts` 拦截器返回 `{ code, data, msg }`，但前端代码使用 `response.data.code`（多了一层 data）
+- **修复方案**: 统一使用 `response.code` 和 `response.data`
+- **涉及文件**:
+  - `Moments.tsx` - loadMoments, handlePublish, handleLike, handleAddComment, handleDelete
+  - `Admin.tsx` - loadDashboard, loadUsers, loadConversations, loadMoments, loadTables, loadTableData, loadMessages, handleSetRole, handleBanUser, handleDeleteUser, handleDeleteMoment
 - **状态**: ✅ 已修复
 
 ---

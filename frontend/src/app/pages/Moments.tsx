@@ -28,9 +28,9 @@ export function Moments() {
   const loadMoments = async () => {
     setIsLoading(true);
     try {
-      const response = await momentsApi.getList({ page: 1, limit: 20 });
-      if (response.data.code === 200) {
-        setMoments(response.data.data || []);
+      const res = await momentsApi.getList({ page: 1, limit: 20 });
+      if (res.code === 200) {
+        setMoments(res.data || []);
       }
     } catch (error) {
       console.error('Failed to load moments:', error);
@@ -46,8 +46,8 @@ export function Moments() {
     }
     setIsPublishing(true);
     try {
-      const response = await momentsApi.create({ content: publishContent });
-      if (response.data.code === 200) {
+      const res = await momentsApi.create({ content: publishContent });
+      if (res.code === 200) {
         setPublishContent('');
         setShowPublishModal(false);
         loadMoments();
@@ -62,11 +62,11 @@ export function Moments() {
 
   const handleLike = async (momentId: number) => {
     try {
-      const response = await momentsApi.like(momentId);
-      if (response.data.code === 200) {
+      const res = await momentsApi.like(momentId);
+      if (res.code === 200) {
         setMoments(prev => prev.map(m =>
           m.id === momentId
-            ? { ...m, is_liked: response.data.data.liked, likes_count: response.data.data.liked ? m.likes_count + 1 : m.likes_count - 1 }
+            ? { ...m, is_liked: res.data.liked, likes_count: res.data.liked ? m.likes_count + 1 : m.likes_count - 1 }
             : m
         ));
       }
@@ -80,8 +80,8 @@ export function Moments() {
     if (!content?.trim()) return;
 
     try {
-      const response = await momentsApi.addComment(momentId, { content });
-      if (response.data.code === 200) {
+      const res = await momentsApi.addComment(momentId, { content });
+      if (res.code === 200) {
         setCommentInputs({ ...commentInputs, [momentId]: '' });
         loadMoments();
       }
@@ -92,8 +92,8 @@ export function Moments() {
 
   const handleDelete = async (momentId: number) => {
     try {
-      const response = await momentsApi.delete(momentId);
-      if (response.data.code === 200) {
+      const res = await momentsApi.delete(momentId);
+      if (res.code === 200) {
         setMoments(prev => prev.filter(m => m.id !== momentId));
         toast(t('common.success'), 'success');
       }
