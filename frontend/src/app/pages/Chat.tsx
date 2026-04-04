@@ -22,7 +22,7 @@ export function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
-  const { conversations, messages, fetchConversations, addMessage: storeAddMessage, fetchMessages: storeFetchMessages } = useChatStore();
+  const { conversations, messages: storeMessages, fetchConversations, addMessage: storeAddMessage, fetchMessages: storeFetchMessages } = useChatStore();
   const { toast, ToastContainer } = useToast();
 
   const conversation = conversations.find(c => c.id === conversationId);
@@ -45,10 +45,10 @@ export function Chat() {
   }, [conversationId, token]);
 
   useEffect(() => {
-    if (conversationId && messages[conversationId]) {
-      setMessages(messages[conversationId]);
+    if (conversationId && storeMessages[conversationId]) {
+      setMessages(storeMessages[conversationId]);
     }
-  }, [messages, conversationId]);
+  }, [storeMessages, conversationId]);
 
   const markAsRead = async () => {
     if (!conversationId || !token) return;
