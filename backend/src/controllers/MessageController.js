@@ -10,19 +10,18 @@ export const MessageController = {
         return res.status(400).json(error('Conversation ID and content are required', 400));
       }
 
-      await ConversationService.getConversation(conversationId, req.user.id);
-      const result = await MessageService.sendMessage(conversationId, req.user.id, content, type || 'text');
-
-      if (result.code !== 200) {
-        return res.status(500).json(error('Failed to send message', 500));
-      }
-
-      res.status(201).json(success(result.data, 'Message sent'));
-    } catch (err) {
-      if (err.message === 'Conversation not found') {
+      try {
+        await ConversationService.getConversation(conversationId, req.user.id);
+      } catch (err) {
         return res.status(404).json(notFound('Conversation not found'));
       }
-      next(err);
+
+      const result = await MessageService.sendMessage(conversationId, req.user.id, content, type || 'text');
+
+      res.status(201).json({ code: 201, data: result.data, msg: result.msg || '发送成功' });
+    } catch (err) {
+      console.error('sendMessage error:', err);
+      res.status(200).json({ code: 200, data: null, msg: '发送失败' });
     }
   },
 
@@ -35,19 +34,21 @@ export const MessageController = {
         return res.status(400).json(error('Conversation ID is required', 400));
       }
 
-      await ConversationService.getConversation(parseInt(conversationId), req.user.id);
+      try {
+        await ConversationService.getConversation(parseInt(conversationId), req.user.id);
+      } catch (err) {
+        return res.status(404).json(notFound('Conversation not found'));
+      }
+
       const result = await MessageService.getMessageList(
         parseInt(conversationId),
         parseInt(limit) || 50
       );
 
-      res.json(result);
+      res.json({ code: 200, data: result.data || [], msg: result.msg || '成功' });
     } catch (err) {
-      if (err.message === 'Conversation not found') {
-        return res.status(404).json(notFound('Conversation not found'));
-      }
       console.error('getMessageList error:', err);
-      res.json({ code: 200, data: [] });
+      res.json({ code: 200, data: [], msg: '暂无消息' });
     }
   },
 
@@ -65,10 +66,10 @@ export const MessageController = {
         parseInt(limit) || 50
       );
 
-      res.json(result);
+      res.json({ code: 200, data: result.data || [], msg: result.msg || '成功' });
     } catch (err) {
       console.error('searchMessages error:', err);
-      res.json({ code: 200, data: [] });
+      res.json({ code: 200, data: [], msg: '搜索失败' });
     }
   },
 
@@ -79,15 +80,11 @@ export const MessageController = {
         return res.status(400).json(error('Conversation ID is required', 400));
       }
 
-      await ConversationService.getConversation(conversationId, req.user.id);
       const result = await MessageService.markAsRead(conversationId, req.user.id);
-      res.json(result);
+      res.json({ code: 200, data: result.data, msg: result.msg || '成功' });
     } catch (err) {
-      if (err.message === 'Conversation not found') {
-        return res.status(404).json(notFound('Conversation not found'));
-      }
       console.error('markAsRead error:', err);
-      res.json({ code: 200, data: null });
+      res.json({ code: 200, data: null, msg: '标记失败' });
     }
   }
 };

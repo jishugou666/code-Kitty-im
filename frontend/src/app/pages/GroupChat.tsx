@@ -52,8 +52,14 @@ export function GroupChat() {
     if (!conversationId || !token) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const timestamp = Date.now();
+      const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}&t=${timestamp}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       const data = await response.json();
       if (data.code === 200 && Array.isArray(data.data)) {

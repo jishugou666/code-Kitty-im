@@ -13,12 +13,21 @@ import contactRoutes from './routes/contact.js';
 
 const app = express();
 
+app.disable('etag');
+
 app.use(cors({
   origin: config.cors.origin,
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, data: { status: 'ok', timestamp: new Date().toISOString() }, msg: 'OK' });
