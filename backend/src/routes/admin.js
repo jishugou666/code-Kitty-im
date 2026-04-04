@@ -5,6 +5,8 @@ import { AdminController } from '../controllers/AdminController.js';
 const router = Router();
 
 const adminMiddleware = (req, res, next) => {
+  console.log('[Admin Debug] req.user:', JSON.stringify(req.user));
+  console.log('[Admin Debug] req.user.role:', req.user?.role);
   if (req.user.role !== 'admin' && req.user.role !== 'tech_god') {
     return res.status(403).json({ code: 403, data: null, msg: '无权限访问' });
   }

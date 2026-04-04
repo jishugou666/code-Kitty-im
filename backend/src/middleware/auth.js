@@ -15,12 +15,13 @@ export async function authMiddleware(req, res, next) {
       return res.status(401).json(unauthorized('Invalid or expired token'));
     }
 
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, status FROM user WHERE id = ?', [decoded.id]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, status, role FROM user WHERE id = ?', [decoded.id]);
     if (users.length === 0) {
       return res.status(401).json(unauthorized('User not found'));
     }
 
     req.user = users[0];
+    console.log('[Auth Debug] req.user set:', JSON.stringify(req.user));
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
