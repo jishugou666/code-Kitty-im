@@ -56,6 +56,7 @@
 4. **所有跨域支持线上域名，不写死 localhost**
 5. **所有前端地址从 `import.meta.env` 读取**
 6. **MySQL2 分页必须用 `LIMIT ${num} OFFSET ${num}` 拼接，禁止占位符 `?`**
+7. **前端调用 API 后，响应拦截器已返回 `{ code, data, msg }`，直接用 `response.code` 判断，不要再加 `.data`**
 
 ### ⚠️ 核心逻辑保护声明（绝对禁止修改）
 
@@ -481,7 +482,35 @@ CREATE TABLE contact (
 - **涉及文件**:
   - `Moments.tsx` - loadMoments, handlePublish, handleLike, handleAddComment, handleDelete
   - `Admin.tsx` - loadDashboard, loadUsers, loadConversations, loadMoments, loadTables, loadTableData, loadMessages, handleSetRole, handleBanUser, handleDeleteUser, handleDeleteMoment
-- **状态**: ✅ 已修复
+- **状态**: ✅ 已解决
+
+### 问题9: Admin页面应隐藏消息列表 ⚠️ 已解决
+- **描述**: 进入管理中心时左侧消息列表仍然显示
+- **修复方案**: 在 `MainLayout.tsx` 中添加条件判断 `{!location.pathname.startsWith('/admin') && (...)}`
+- **状态**: ✅ 已解决
+
+### AI智能调度系统 ⚠️ 已实现
+- **描述**: 实现网站智能化数据处理系统
+- **前端实现**:
+  - `frontend/src/lib/aiScheduler.ts` - AI智能调度核心算法
+    - 智能缓存管理（LRU + 优先级）
+    - 用户行为预测
+    - 预取机制
+    - 自动清理
+  - `frontend/src/hooks/useSmartData.ts` - 智能数据Hook
+    - `useSmartData` - 智能数据加载
+    - `useSmartCache` - 智能缓存管理
+    - `usePredictivePrefetch` - 预测性预取
+    - `useAIRecommendations` - AI推荐
+- **后端实现**:
+  - `backend/src/services/AIService.js` - AI服务
+    - `IntelligentCache` - 智能缓存（命中率统计、自动淘汰）
+    - `LoadBalancer` - 负载均衡
+    - `QueryOptimizer` - 查询优化（慢查询分析）
+    - `DataPrefetcher` - 数据预取
+  - `backend/src/controllers/AdminController.js` - 添加 `getAIStats` 接口
+  - `backend/src/routes/admin.js` - 添加 `/ai-stats` 路由
+- **状态**: ✅ 已实现
 
 ---
 

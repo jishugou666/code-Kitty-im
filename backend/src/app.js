@@ -14,6 +14,7 @@ import momentsRoutes from './routes/moments.js';
 import settingsRoutes from './routes/settings.js';
 import adminRoutes from './routes/admin.js';
 import tempConversationRoutes from './routes/tempConversation.js';
+import groupRoutes from './routes/group.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/moments', momentsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/temp-conversation', tempConversationRoutes);
+app.use('/api/group', groupRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

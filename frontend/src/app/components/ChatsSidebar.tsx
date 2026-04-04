@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle } from "lucide-react";
+import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
 import { tempConversationApi } from '../../api/tempConversation';
+import { CreateGroupModal } from './CreateGroupModal';
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export function ChatsSidebar() {
   const [tempConversations, setTempConversations] = useState<Set<number>>(new Set());
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
 
   useEffect(() => {
     fetchConversations();
@@ -102,9 +104,18 @@ export function ChatsSidebar() {
       <div className="sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4">
         <div className="flex items-center justify-between px-1">
           <h1 className="text-xl font-semibold text-black dark:text-white tracking-tight">Messages</h1>
-          <button className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full">
-            <Edit size={18} strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full"
+              title="创建群组"
+            >
+              <Users size={18} strokeWidth={2} />
+            </button>
+            <button className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full">
+              <Edit size={18} strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         <div className="relative group">
@@ -260,6 +271,12 @@ export function ChatsSidebar() {
           })}
         </div>
       )}
+
+      <CreateGroupModal
+        isOpen={showCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        onSuccess={() => fetchConversations()}
+      />
     </div>
   );
 }

@@ -26,5 +26,9 @@ router.delete('/moments/:momentId', AdminController.deleteMoment);
 router.get('/tables', AdminController.getTables);
 router.get('/tables/:tableName', AdminController.getTableData);
 router.post('/query', AdminController.executeQuery);
+router.get('/ai-stats', AdminController.getAIStats);
+router.get('/groups', AdminController.getGroups);
+router.get('/groups/:groupId/members', AdminController.getGroupMembers);
+router.delete('/groups/:groupId', AdminController.deleteGroup);
 
 export default router;

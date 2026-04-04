@@ -148,6 +148,66 @@ export const AdminService = {
     }
   },
 
+  async getGroups(page = 1, limit = 20) {
+    try {
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
+      const groups = await query(
+        `SELECT g.*, u.nickname as owner_name, u.username as owner_username,
+         (SELECT COUNT(*) FROM group_member WHERE group_id = g.id) as member_count,
+         (SELECT COUNT(*) FROM group_join_request WHERE group_id = g.id AND status = 'pending') as pending_requests
+         FROM \`group\` g
+         LEFT JOIN user u ON g.owner_id = u.id
+         ORDER BY g.created_at DESC
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`
+      );
+
+      const total = await query('SELECT COUNT(*) as count FROM `group`');
+
+      return {
+        code: 200,
+        data: {
+          list: groups,
+          total: total[0]?.count || 0,
+          page: parseInt(page),
+          limit: safeLimit
+        },
+        msg: '成功'
+      };
+    } catch (err) {
+      console.error('getGroups error:', err);
+      return { code: 200, data: { list: [], total: 0 }, msg: '获取失败' };
+    }
+  },
+
+  async getGroupMembers(groupId) {
+    try {
+      const members = await query(
+        `SELECT gm.*, u.nickname, u.username, u.avatar, u.email
+         FROM group_member gm
+         JOIN user u ON gm.user_id = u.id
+         WHERE gm.group_id = ?`,
+        [groupId]
+      );
+      return { code: 200, data: members, msg: '成功' };
+    } catch (err) {
+      console.error('getGroupMembers error:', err);
+      return { code: 200, data: [], msg: '获取失败' };
+    }
+  },
+
+  async deleteGroup(groupId) {
+    try {
+      await query('DELETE FROM group_join_request WHERE group_id = ?', [groupId]);
+      await query('DELETE FROM group_member WHERE group_id = ?', [groupId]);
+      await query('DELETE FROM `group` WHERE id = ?', [groupId]);
+      return { code: 200, data: null, msg: '删除成功' };
+    } catch (err) {
+      console.error('deleteGroup error:', err);
+      return { code: 200, data: null, msg: '删除失败' };
+    }
+  },
+
   async getMoments(page = 1, limit = 20) {
     try {
       const safeLimit = Math.max(1, parseInt(limit) || 20);

@@ -47,5 +47,17 @@ export const adminApi = {
 
   executeQuery(sql) {
     return apiClient.post('/admin/query', { sql });
+  },
+
+  getGroups(params) {
+    return apiClient.get('/admin/groups', { params });
+  },
+
+  getGroupMembers(groupId) {
+    return apiClient.get(`/admin/groups/${groupId}/members`);
+  },
+
+  deleteGroup(groupId) {
+    return apiClient.delete(`/admin/groups/${groupId}`);
   }
 };

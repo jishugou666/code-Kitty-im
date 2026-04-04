@@ -1,4 +1,5 @@
 import { AdminService } from '../services/AdminService.js';
+import { getAIStats } from '../services/AIService.js';
 
 export const AdminController = {
   async getDashboard(req, res, next) {
@@ -130,6 +131,49 @@ export const AdminController = {
     } catch (err) {
       console.error('executeQuery error:', err);
       res.json({ code: 200, data: null, msg: '执行失败' });
+    }
+  },
+
+  async getAIStats(req, res, next) {
+    try {
+      const stats = getAIStats();
+      res.json({ code: 200, data: stats, msg: '成功' });
+    } catch (err) {
+      console.error('getAIStats error:', err);
+      res.json({ code: 200, data: null, msg: '获取失败' });
+    }
+  },
+
+  async getGroups(req, res, next) {
+    try {
+      const { page, limit } = req.query;
+      const result = await AdminService.getGroups(parseInt(page) || 1, parseInt(limit) || 20);
+      res.json(result);
+    } catch (err) {
+      console.error('getGroups error:', err);
+      res.json({ code: 200, data: { list: [], total: 0 }, msg: '获取失败' });
+    }
+  },
+
+  async getGroupMembers(req, res, next) {
+    try {
+      const { groupId } = req.params;
+      const result = await AdminService.getGroupMembers(parseInt(groupId));
+      res.json(result);
+    } catch (err) {
+      console.error('getGroupMembers error:', err);
+      res.json({ code: 200, data: [], msg: '获取失败' });
+    }
+  },
+
+  async deleteGroup(req, res, next) {
+    try {
+      const { groupId } = req.params;
+      const result = await AdminService.deleteGroup(parseInt(groupId));
+      res.json(result);
+    } catch (err) {
+      console.error('deleteGroup error:', err);
+      res.json({ code: 200, data: null, msg: '删除失败' });
     }
   }
 };

@@ -88,9 +88,11 @@ export function MainLayout() {
       </div>
 
       {/* Middle Sidebar Panel */}
-      <div className="w-[320px] lg:w-[360px] h-full flex-shrink-0 border-r border-black/5 dark:border-white/5 flex flex-col bg-white/40 dark:bg-[#13161A]/40 backdrop-blur-2xl relative z-40 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
-        {isContacts ? <ContactsSidebar /> : <ChatsSidebar />}
-      </div>
+      {!location.pathname.startsWith('/admin') && (
+        <div className="w-[320px] lg:w-[360px] h-full flex-shrink-0 border-r border-black/5 dark:border-white/5 flex flex-col bg-white/40 dark:bg-[#13161A]/40 backdrop-blur-2xl relative z-40 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
+          {isContacts ? <ContactsSidebar /> : <ChatsSidebar />}
+        </div>
+      )}
 
       {/* Detail Panel */}
       <div className="flex-1 h-full flex flex-col relative z-30 bg-[#FAFAFC] dark:bg-[#0A0C10] min-w-0">

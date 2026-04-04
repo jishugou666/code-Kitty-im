@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
@@ -8,7 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 
-type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables';
+type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5856D6'];
 
@@ -32,6 +32,9 @@ export function Admin() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [selectedMoment, setSelectedMoment] = useState<any>(null);
   const [momentComments, setMomentComments] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [actionMenu, setActionMenu] = useState<number | null>(null);
   const [banModal, setBanModal] = useState<{ userId: number; username: string; isBanned: boolean } | null>(null);
@@ -136,6 +139,31 @@ export function Admin() {
     }
   };
 
+  const loadGroups = async () => {
+    setIsLoading(true);
+    try {
+      const res = await adminApi.getGroups({ page: 1, limit: 100 });
+      if (res.code === 200) {
+        setGroups(res.data?.list || []);
+      }
+    } catch (error) {
+      console.error('Failed to load groups:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadGroupMembers = async (groupId: number) => {
+    try {
+      const res = await adminApi.getGroupMembers(groupId);
+      if (res.code === 200) {
+        setGroupMembers(res.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load group members:', error);
+    }
+  };
+
   const loadTableData = async (tableName: string) => {
     setIsLoading(true);
     setSelectedTable(tableName);
@@ -185,6 +213,8 @@ export function Admin() {
     setSelectedTable(null);
     setTableData([]);
     setSelectedMoment(null);
+    setSelectedGroup(null);
+    setGroupMembers([]);
     switch (tab) {
       case 'users':
         await loadUsers();
@@ -197,6 +227,9 @@ export function Admin() {
         break;
       case 'tables':
         await loadTables();
+        break;
+      case 'groups':
+        await loadGroups();
         break;
     }
   };
@@ -272,12 +305,27 @@ export function Admin() {
     }
   };
 
+  const handleDeleteGroup = async (groupId: number) => {
+    if (!confirm('确定要删除该群组吗？此操作不可恢复！')) return;
+    try {
+      const res = await adminApi.deleteGroup(groupId);
+      if (res.code === 200) {
+        setGroups(prev => prev.filter(g => g.id !== groupId));
+        setSelectedGroup(null);
+        toast('群组已删除', 'success');
+      }
+    } catch (error) {
+      toast(t('common.error'), 'error');
+    }
+  };
+
   const menuItems = [
     { key: 'dashboard' as TabType, icon: Shield, label: '仪表盘' },
     { key: 'users' as TabType, icon: Users, label: '用户管理' },
     { key: 'conversations' as TabType, icon: MessageSquare, label: '消息管理' },
     { key: 'moments' as TabType, icon: Globe, label: '朋友圈' },
-    { key: 'tables' as TabType, icon: Database, label: '数据库' }
+    { key: 'tables' as TabType, icon: Database, label: '数据库' },
+    { key: 'groups' as TabType, icon: UserPlus, label: '群组管理' }
   ];
 
   return (
@@ -740,6 +788,96 @@ export function Admin() {
                   <div className="text-center text-black/40 dark:text-white/40 py-8">暂无数据</div>
                 ) : (
                   <div className="text-center text-black/40 dark:text-white/40 py-8">请选择左侧数据表</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'groups' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
+              <div className="p-4 border-b border-black/5 dark:border-white/10">
+                <h3 className="font-semibold text-black dark:text-white">群组列表</h3>
+              </div>
+              <div className="max-h-[500px] overflow-y-auto">
+                {groups.map((g) => (
+                  <div
+                    key={g.id}
+                    onClick={() => { setSelectedGroup(g); loadGroupMembers(g.id); }}
+                    className={`p-4 border-b border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors ${selectedGroup?.id === g.id ? 'bg-[#007AFF]/5' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#5856D6] to-[#007AFF] flex items-center justify-center">
+                          <Users size={18} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-black dark:text-white">{g.name}</p>
+                          <p className="text-xs text-black/40 dark:text-white/40">@{g.owner_name || g.owner_username || 'unknown'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-black/60 dark:text-white/60">{g.member_count || 0} 成员</p>
+                        {g.pending_requests > 0 && (
+                          <span className="text-xs text-orange-500">{g.pending_requests} 待审核</span>
+                        )}
+                      </div>
+                    </div>
+                    {g.description && (
+                      <p className="mt-2 text-xs text-black/40 dark:text-white/40 line-clamp-1">{g.description}</p>
+                    )}
+                  </div>
+                ))}
+                {groups.length === 0 && (
+                  <div className="text-center text-black/40 dark:text-white/40 py-8">暂无群组</div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
+              <div className="p-4 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
+                <h3 className="font-semibold text-black dark:text-white">
+                  群组成员 {selectedGroup && `(${selectedGroup.name})`}
+                </h3>
+                {selectedGroup && (
+                  <button
+                    onClick={() => handleDeleteGroup(selectedGroup.id)}
+                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[500px] overflow-y-auto">
+                {selectedGroup ? (
+                  groupMembers.length > 0 ? (
+                    groupMembers.map((m) => (
+                      <div key={m.id} className="flex items-center gap-3 p-4 border-b border-black/5 dark:border-white/10">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold">
+                          {m.nickname?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-black dark:text-white">{m.nickname || m.username}</span>
+                            {m.role === 'owner' && <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs rounded">群主</span>}
+                            {m.role === 'admin' && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 text-xs rounded">管理员</span>}
+                          </div>
+                          <p className="text-xs text-black/40 dark:text-white/40">{m.email}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          m.status === 'active' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                          'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'
+                        }`}>
+                          {m.status === 'active' ? '正常' : '已退出'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-black/40 dark:text-white/40 py-8">暂无成员</div>
+                  )
+                ) : (
+                  <div className="text-center text-black/40 dark:text-white/40 py-8">请选择左侧群组</div>
                 )}
               </div>
             </div>
