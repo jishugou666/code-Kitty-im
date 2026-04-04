@@ -29,8 +29,26 @@ export function Chat() {
   useEffect(() => {
     if (conversationId && token) {
       loadMessages();
+      markAsRead();
     }
   }, [conversationId, token]);
+
+  const markAsRead = async () => {
+    if (!conversationId || !token) return;
+    try {
+      await fetch(`${API_BASE_URL}/message/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ conversationId })
+      });
+      fetchConversations();
+    } catch (error) {
+      console.error('标记已读失败:', error);
+    }
+  };
 
   const loadMessages = async () => {
     console.log('=== [前端] loadMessages 被调用 ===');

@@ -68,9 +68,10 @@ export const UserService = {
   },
 
   async searchUsers(keyword) {
+    const trimmedKeyword = keyword.trim();
     const users = await query(
-      'SELECT id, username, nickname, avatar, status FROM user WHERE username LIKE ? OR nickname LIKE ? LIMIT 20',
-      [`%${keyword}%`, `%${keyword}%`]
+      'SELECT id, username, nickname, avatar, status, role FROM user WHERE (username LIKE ? OR nickname LIKE ? OR email LIKE ?) LIMIT 20',
+      [`%${trimmedKeyword}%`, `%${trimmedKeyword}%`, `%${trimmedKeyword}%`]
     );
     return users.map(u => this.sanitizeUser(u, true));
   },
