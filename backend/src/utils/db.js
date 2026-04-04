@@ -5,7 +5,13 @@ let pool = null;
 
 export async function getPool() {
   if (!pool) {
-    pool = mysql.createPool(config.db);
+    const poolConfig = {
+      ...config.db,
+      ssl: {
+        rejectUnauthorized: true
+      }
+    };
+    pool = mysql.createPool(poolConfig);
   }
   return pool;
 }
