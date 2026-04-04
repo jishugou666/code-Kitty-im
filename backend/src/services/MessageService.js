@@ -29,13 +29,13 @@ export const MessageService = {
         LEFT JOIN user u ON m.sender_id = u.id
         WHERE m.conversation_id = ?
         ORDER BY m.created_at ASC
-        LIMIT ?
+        LIMIT ${safeLimit}
       `;
       console.log('2. 执行带 JOIN 的 SQL...');
       console.log('SQL:', sql);
-      console.log('Params:', [conversationId, safeLimit]);
+      console.log('Params:', [conversationId]);
       
-      const rows = await query(sql, [conversationId, safeLimit]);
+      const rows = await query(sql, [conversationId]);
       console.log('带 JOIN 的查询结果:', rows);
       console.log('带 JOIN 的查询结果数量:', rows?.length || 0);
 
@@ -135,8 +135,8 @@ export const MessageService = {
          LEFT JOIN conversation c ON m.conversation_id = c.id
          WHERE m.content LIKE ? AND m.type = 'text'
          ORDER BY m.created_at DESC
-         LIMIT ?`,
-        [`%${keyword}%`, safeLimit]
+         LIMIT ${safeLimit}`,
+        [`%${keyword}%`]
       );
 
       if (!Array.isArray(messages)) {
