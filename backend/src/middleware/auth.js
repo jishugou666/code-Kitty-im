@@ -21,7 +21,6 @@ export async function authMiddleware(req, res, next) {
     }
 
     req.user = users[0];
-    console.log('[Auth Debug] req.user set:', JSON.stringify(req.user));
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

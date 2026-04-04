@@ -21,7 +21,7 @@ export const MomentsService = {
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar,
          (SELECT COUNT(*) FROM moments_like WHERE moment_id = m.id) AS likes_count,
-         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id AND deleted_at IS NULL) AS comments_count
+         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id) AS comments_count
          FROM moments m
          LEFT JOIN user u ON m.user_id = u.id
          WHERE m.id = ?`,
@@ -51,12 +51,11 @@ export const MomentsService = {
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar,
          (SELECT COUNT(*) FROM moments_like WHERE moment_id = m.id) AS likes_count,
-         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id AND deleted_at IS NULL) AS comments_count,
+         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id) AS comments_count,
          EXISTS(SELECT 1 FROM moments_like WHERE moment_id = m.id AND user_id = ?) AS is_liked
          FROM moments m
          LEFT JOIN user u ON m.user_id = u.id
-         WHERE m.deleted_at IS NULL
-         AND (
+         WHERE (
            m.user_id = ?
            OR EXISTS(SELECT 1 FROM contact c WHERE c.user_id = ? AND c.contact_user_id = m.user_id AND c.status = 'accepted')
            OR m.user_id = ?
@@ -87,7 +86,7 @@ export const MomentsService = {
   async deleteMoment(momentId, userId) {
     try {
       const result = await query(
-        'UPDATE moments SET deleted_at = NOW() WHERE id = ? AND user_id = ?',
+        'DELETE FROM moments WHERE id = ? AND user_id = ?',
         [momentId, userId]
       );
 
@@ -142,7 +141,7 @@ export const MomentsService = {
         `SELECT c.*, u.nickname, u.avatar
          FROM moments_comment c
          LEFT JOIN user u ON c.user_id = u.id
-         WHERE c.moment_id = ? AND c.deleted_at IS NULL
+         WHERE c.moment_id = ?
          ORDER BY c.created_at ASC`,
         [momentId]
       );
@@ -205,7 +204,7 @@ export const MomentsService = {
   async deleteComment(commentId, userId) {
     try {
       const result = await query(
-        'UPDATE moments_comment SET deleted_at = NOW() WHERE id = ? AND user_id = ?',
+        'DELETE FROM moments_comment WHERE id = ? AND user_id = ?',
         [commentId, userId]
       );
 
@@ -238,11 +237,11 @@ export const MomentsService = {
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar,
          (SELECT COUNT(*) FROM moments_like WHERE moment_id = m.id) AS likes_count,
-         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id AND deleted_at IS NULL) AS comments_count,
+         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id) AS comments_count,
          EXISTS(SELECT 1 FROM moments_like WHERE moment_id = m.id AND user_id = ?) AS is_liked
          FROM moments m
          LEFT JOIN user u ON m.user_id = u.id
-         WHERE m.user_id = ? AND m.deleted_at IS NULL
+         WHERE m.user_id = ?
          ORDER BY m.created_at DESC
          LIMIT ? OFFSET ?`,
         [currentUserId, userId, safeLimit, offset]

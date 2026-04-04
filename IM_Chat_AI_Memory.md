@@ -444,6 +444,26 @@ CREATE TABLE contact (
 - **解决方案**: 手动执行 npm audit 并根据提示修复
 - **状态**: ⚠️ 待处理
 
+### 问题5: Admin 后台接口全部返回 403 或获取失败 ⚠️ 已解决
+- **描述**:
+  - authMiddleware 查询用户信息时缺少 `role` 字段
+  - moments/moments_comment 表没有 `deleted_at` 软删除字段，导致查询报错
+- **根本原因**:
+  1. `authMiddleware` SQL: `SELECT ... status FROM user` 缺少 `role` 字段
+  2. `MomentsService.js` 和 `AdminService.js` 中使用 `WHERE deleted_at IS NULL` 但表无此字段
+- **修复方案**:
+  1. 修改 `backend/src/middleware/auth.js` - 添加 `role` 到查询字段
+  2. 修改 `MomentsService.js` - 移除所有 `deleted_at` 条件，改用直接 DELETE
+  3. 修改 `AdminService.js` - 移除所有 `deleted_at` 条件，改用直接 DELETE
+  4. 朋友圈删除改用 `DELETE FROM moments WHERE id = ?` 而非 `UPDATE SET deleted_at`
+- **状态**: ✅ 已修复
+
+### 问题6: 朋友圈发布失败 ⚠️ 已解决
+- **描述**: 发布朋友圈返回 "发布失败"
+- **根本原因**: moments 表没有 `deleted_at` 字段，`getMoments` 查询报错
+- **修复方案**: 同问题5，移除所有 `deleted_at` 相关查询
+- **状态**: ✅ 已修复
+
 ---
 
 ## 项目目录结构

@@ -3,10 +3,10 @@ import { query } from '../utils/db.js';
 export const AdminService = {
   async getDashboard() {
     try {
-      const usersCount = await query('SELECT COUNT(*) as count FROM user').catch(e => { console.error('[Dashboard] usersCount error:', e); return [{count: 0}]; });
-      const messagesCount = await query('SELECT COUNT(*) as count FROM message').catch(e => { console.error('[Dashboard] messagesCount error:', e); return [{count: 0}]; });
-      const momentsCount = await query('SELECT COUNT(*) as count FROM moments WHERE deleted_at IS NULL').catch(e => { console.error('[Dashboard] momentsCount error:', e); return [{count: 0}]; });
-      const conversationsCount = await query('SELECT COUNT(*) as count FROM conversation').catch(e => { console.error('[Dashboard] conversationsCount error:', e); return [{count: 0}]; });
+      const usersCount = await query('SELECT COUNT(*) as count FROM user').catch(() => [{count: 0}]);
+      const messagesCount = await query('SELECT COUNT(*) as count FROM message').catch(() => [{count: 0}]);
+      const momentsCount = await query('SELECT COUNT(*) as count FROM moments').catch(() => [{count: 0}]);
+      const conversationsCount = await query('SELECT COUNT(*) as count FROM conversation').catch(() => [{count: 0}]);
 
       return {
         code: 200,
@@ -30,7 +30,7 @@ export const AdminService = {
       const users = await query(
         `SELECT id, username, nickname, avatar, email, role, status, created_at,
          (SELECT COUNT(*) FROM message WHERE sender_id = user.id) as message_count,
-         (SELECT COUNT(*) FROM moments WHERE user_id = user.id AND deleted_at IS NULL) as moments_count
+         (SELECT COUNT(*) FROM moments WHERE user_id = user.id) as moments_count
          FROM user
          ORDER BY created_at DESC
          LIMIT ? OFFSET ?`,
@@ -153,16 +153,15 @@ export const AdminService = {
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar, u.username,
          (SELECT COUNT(*) FROM moments_like WHERE moment_id = m.id) as likes_count,
-         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id AND deleted_at IS NULL) as comments_count
+         (SELECT COUNT(*) FROM moments_comment WHERE moment_id = m.id) as comments_count
          FROM moments m
          LEFT JOIN user u ON m.user_id = u.id
-         WHERE m.deleted_at IS NULL
          ORDER BY m.created_at DESC
          LIMIT ? OFFSET ?`,
         [parseInt(limit), offset]
       );
 
-      const total = await query('SELECT COUNT(*) as count FROM moments WHERE deleted_at IS NULL');
+      const total = await query('SELECT COUNT(*) as count FROM moments');
 
       return {
         code: 200,
@@ -182,7 +181,7 @@ export const AdminService = {
 
   async deleteMoment(momentId) {
     try {
-      await query('UPDATE moments SET deleted_at = NOW() WHERE id = ?', [momentId]);
+      await query('DELETE FROM moments WHERE id = ?', [momentId]);
       return { code: 200, data: null, msg: '删除成功' };
     } catch (err) {
       console.error('deleteMoment error:', err);
@@ -215,7 +214,7 @@ export const AdminService = {
       const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const allowedTables = ['user', 'conversation', 'message', 'contact', 'moments', 'moments_like', 'moments_comment', 'user_settings'];
+      const allowedTables = ['user', 'conversation', 'message', 'contact', 'moments', 'moments_like', 'moments_comment', 'user_settings', 'temp_conversation'];
       if (!allowedTables.includes(safeTableName)) {
         return { code: 403, data: null, msg: '不允许访问该表' };
       }
