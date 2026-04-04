@@ -112,19 +112,21 @@ export function Login() {
                 </>
               )}
 
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                  <AtSign size={22} strokeWidth={2} />
+              {isLogin && (
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                    <AtSign size={22} strokeWidth={2} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Email or Username"
+                    value={loginField}
+                    onChange={(e) => setLoginField(e.target.value)}
+                    className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                    required
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder={isLogin ? "Email or Username" : "Email (for login)"}
-                  value={isLogin ? loginField : ''}
-                  onChange={(e) => setLoginField(e.target.value)}
-                  className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
-                  required
-                />
-              </div>
+              )}
 
               <div className="relative group">
                 <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
