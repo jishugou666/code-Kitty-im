@@ -7,6 +7,8 @@ import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export function Chat() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export function Chat() {
     if (!conversationId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3000/api/message/list?conversationId=${conversationId}`, {
+      const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -71,7 +73,7 @@ export function Chat() {
     setInput("");
 
     try {
-          const response = await fetch('http://localhost:3000/api/message/send', {
+          const response = await fetch(`${API_BASE_URL}/message/send`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -104,7 +106,7 @@ export function Chat() {
         setPreviewImage(base64);
 
         try {
-          const response = await fetch('http://localhost:3000/api/message/send', {
+          const response = await fetch(`${API_BASE_URL}/message/send`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ export function Chat() {
       const fileName = file.name;
 
       try {
-        const response = await fetch('http://localhost:3000/api/message/send', {
+        const response = await fetch(`${API_BASE_URL}/message/send`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

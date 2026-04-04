@@ -8,6 +8,8 @@ import { useAuthStore } from '../../store/authStore';
 import { conversationApi } from '../../api/conversation';
 import { userApi } from '../../api/user';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 export function GroupChat() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -48,7 +50,7 @@ export function GroupChat() {
     if (!conversationId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3000/api/message/list?conversationId=${conversationId}`, {
+      const response = await fetch(`${API_BASE_URL}/message/list?conversationId=${conversationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -79,7 +81,7 @@ export function GroupChat() {
     setInput("");
 
     try {
-      const response = await fetch('http://localhost:3000/api/message/send', {
+      const response = await fetch(`${API_BASE_URL}/message/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
