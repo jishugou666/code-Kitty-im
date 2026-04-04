@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Info, Plus, Send, Image, File, X } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { ArrowLeft, Info, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { tempConversationApi } from '../../api/tempConversation';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -19,6 +20,8 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isTempConversation, setIsTempConversation] = useState(false);
+  const [showAntiFraudTip, setShowAntiFraudTip] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
@@ -41,8 +44,27 @@ export function Chat() {
     if (conversationId && token) {
       loadMessages();
       markAsRead();
+      checkTempConversation();
     }
   }, [conversationId, token]);
+
+  const checkTempConversation = async () => {
+    if (!conversationId || !token) return;
+    try {
+      const result = await tempConversationApi.check(conversationId);
+      setIsTempConversation(result.isTemp);
+      if (result.isTemp) {
+        setShowAntiFraudTip(true);
+        setTimeout(() => setShowAntiFraudTip(false), 5000);
+        const otherUser = conversation?.members?.find((m: any) => m.id !== user?.id);
+        if (otherUser) {
+          await tempConversationApi.record(conversationId, otherUser.id);
+        }
+      }
+    } catch (e) {
+      console.error('检查临时会话失败:', e);
+    }
+  };
 
   useEffect(() => {
     if (conversationId && storeMessages[conversationId]) {
@@ -307,8 +329,9 @@ export function Chat() {
             <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white text-sm">
+            <h2 className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
               {conversation?.name || '聊天'}
+              {isTempConversation && <AlertTriangle size={14} className="text-yellow-500" />}
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {(conversation?.members?.length || 0)} 位成员
@@ -319,6 +342,43 @@ export function Chat() {
           <Info size={20} className="text-gray-600 dark:text-gray-300" />
         </button>
       </div>
+
+      {/* Temp Conversation Warning Banner */}
+      {isTempConversation && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700/30 px-4 py-2">
+          <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 text-xs">
+            <ShieldAlert size={14} />
+            <span>临时会话，请注意保护个人信息和财产安全，谨防诈骗！</span>
+          </div>
+        </div>
+      )}
+
+      {/* Anti-Fraud Tip Modal */}
+      <AnimatePresence>
+        {showAntiFraudTip && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mx-4 mt-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 border border-yellow-200 dark:border-yellow-700/50 rounded-xl p-4 shadow-lg"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center flex-shrink-0">
+                <ShieldAlert size={20} className="text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">安全提示</h4>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
+                  这是一个临时会话对象，双方不是好友关系。请务必保护好您的个人信息，不要向陌生人透露手机号、银行卡、密码等敏感信息。如遇诈骗行为，请及时举报。
+                </p>
+              </div>
+              <button onClick={() => setShowAntiFraudTip(false)} className="text-yellow-500 hover:text-yellow-600">
+                <X size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">

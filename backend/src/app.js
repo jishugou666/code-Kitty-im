@@ -10,6 +10,10 @@ import userRoutes from './routes/user.js';
 import conversationRoutes from './routes/conversation.js';
 import messageRoutes from './routes/message.js';
 import contactRoutes from './routes/contact.js';
+import momentsRoutes from './routes/moments.js';
+import settingsRoutes from './routes/settings.js';
+import adminRoutes from './routes/admin.js';
+import tempConversationRoutes from './routes/tempConversation.js';
 
 const app = express();
 
@@ -37,6 +41,10 @@ app.use('/api/user', userRoutes);
 app.use('/api/conversation', conversationRoutes);
 app.use('/api/message', messageRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/moments', momentsRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/temp-conversation', tempConversationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

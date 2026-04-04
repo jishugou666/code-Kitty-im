@@ -1,0 +1,290 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, User, Lock, Globe, Moon, Bell, Shield, Info, LogOut } from 'lucide-react';
+import { motion } from 'motion/react';
+import { useNavigate } from 'react-router';
+import { settingsApi } from '../../api/settings';
+import { useAuthStore } from '../../store/authStore';
+import { useToast } from '../../hooks/useToast';
+
+export function Settings() {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { user, setUser, logout } = useAuthStore();
+  const { toast, ToastContainer } = useToast();
+
+  const [settings, setSettings] = useState<any>({
+    language: 'zh-CN',
+    theme: 'light',
+    notification_sound: true,
+    notification_push: true,
+    show_online_status: true,
+    allow_stranger_msg: true
+  });
+
+  const [profile, setProfile] = useState({
+    nickname: user?.nickname || '',
+    email: user?.email || '',
+    avatar: user?.avatar || ''
+  });
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwords, setPasswords] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const response = await settingsApi.get();
+      if (response.data.code === 200 && response.data.data) {
+        setSettings(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
+  const handleSettingChange = async (key: string, value: any) => {
+    try {
+      const newSettings = { ...settings, [key]: value };
+      setSettings(newSettings);
+
+      await settingsApi.update({ [key]: value });
+
+      if (key === 'language') {
+        i18n.changeLanguage(value);
+      }
+    } catch (error) {
+      console.error('Failed to update setting:', error);
+    }
+  };
+
+  const handleProfileUpdate = async () => {
+    try {
+      const response = await settingsApi.updateProfile(profile);
+      if (response.data.code === 200) {
+        setUser(response.data.data);
+        toast(t('common.success'), 'success');
+      } else {
+        toast(response.data.msg || t('common.error'), 'error');
+      }
+    } catch (error) {
+      toast(t('common.error'), 'error');
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast(t('auth.confirmPassword') + ' ' + t('common.error'), 'error');
+      return;
+    }
+    if (passwords.newPassword.length < 6) {
+      toast('密码长度不能少于6位', 'error');
+      return;
+    }
+
+    try {
+      const response = await settingsApi.changePassword({
+        oldPassword: passwords.oldPassword,
+        newPassword: passwords.newPassword
+      });
+      if (response.data.code === 200) {
+        toast(t('common.success'), 'success');
+        setShowPasswordModal(false);
+        setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        toast(response.data.msg || t('common.error'), 'error');
+      }
+    } catch (error) {
+      toast(t('common.error'), 'error');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const menuItems = [
+    { icon: User, label: t('settings.profile'), action: () => {} },
+    { icon: Lock, label: t('settings.account'), action: () => setShowPasswordModal(true) },
+    { icon: Globe, label: t('settings.language'), action: () => {} },
+    { icon: Moon, label: t('settings.theme'), action: () => {} },
+    { icon: Bell, label: t('settings.privacy'), action: () => {} },
+    { icon: Shield, label: t('common.confirm') + ' ' + t('common.delete'), action: () => {} },
+    { icon: Info, label: t('settings.about'), action: () => {} }
+  ];
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#13161A]">
+      <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5">
+        <div className="flex items-center gap-4 px-4 py-4">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full">
+            <ArrowLeft size={20} className="text-black dark:text-white" />
+          </button>
+          <h1 className="text-lg font-semibold text-black dark:text-white">{t('settings.title')}</h1>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto p-4 space-y-6">
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-black dark:text-white mb-4">{t('settings.profile')}</h2>
+
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-xl font-semibold">
+              {profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div>
+              <p className="text-sm text-black/60 dark:text-white/60">@{user?.username}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('auth.nickname')}</label>
+              <input
+                type="text"
+                value={profile.nickname}
+                onChange={(e) => setProfile({ ...profile, nickname: e.target.value })}
+                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('auth.email')}</label>
+              <input
+                type="email"
+                value={profile.email}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+              />
+            </div>
+            <button
+              onClick={handleProfileUpdate}
+              className="w-full h-11 bg-[#007AFF] hover:bg-[#006CE0] text-white font-medium rounded-xl transition-colors"
+            >
+              {t('common.save')}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-sm">
+          {menuItems.map((item, index) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className={`w-full flex items-center gap-4 px-4 py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
+                index !== menuItems.length - 1 ? 'border-b border-black/5 dark:border-white/5' : ''
+              }`}
+            >
+              <item.icon size={20} className="text-[#007AFF]" />
+              <span className="flex-1 text-left text-black dark:text-white">{item.label}</span>
+              <span className="text-black/30 dark:text-white/30">›</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Globe size={20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white">{t('settings.language')}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleSettingChange('language', 'zh-CN')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+                settings.language === 'zh-CN'
+                  ? 'bg-[#007AFF] text-white'
+                  : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
+              }`}
+            >
+              中文
+            </button>
+            <button
+              onClick={() => handleSettingChange('language', 'en-US')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+                settings.language === 'en-US'
+                  ? 'bg-[#007AFF] text-white'
+                  : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
+              }`}
+            >
+              English
+            </button>
+          </div>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-medium rounded-2xl transition-colors"
+        >
+          <LogOut size={20} />
+          {t('settings.logout')}
+        </button>
+
+        <p className="text-center text-xs text-black/30 dark:text-white/30">
+          {t('settings.version')}: 1.0.0
+        </p>
+      </div>
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPasswordModal(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+          >
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">{t('settings.changePassword')}</h3>
+            <div className="space-y-4">
+              <input
+                type="password"
+                placeholder={t('auth.password')}
+                value={passwords.oldPassword}
+                onChange={(e) => setPasswords({ ...passwords, oldPassword: e.target.value })}
+                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+              />
+              <input
+                type="password"
+                placeholder={t('auth.password')}
+                value={passwords.newPassword}
+                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+              />
+              <input
+                type="password"
+                placeholder={t('auth.confirmPassword')}
+                value={passwords.confirmPassword}
+                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 h-11 bg-black/5 dark:bg-white/5 text-black dark:text-white font-medium rounded-xl"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handlePasswordChange}
+                  className="flex-1 h-11 bg-[#007AFF] text-white font-medium rounded-xl"
+                >
+                  {t('common.confirm')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <ToastContainer />
+    </div>
+  );
+}

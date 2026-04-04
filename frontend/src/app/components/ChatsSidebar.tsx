@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare } from "lucide-react";
+import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle } from "lucide-react";
 import { motion } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
+import { tempConversationApi } from '../../api/tempConversation';
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -13,14 +14,36 @@ export function ChatsSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [tempConversations, setTempConversations] = useState<Set<number>>(new Set());
   const { conversations, fetchConversations, isLoading } = useChatStore();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
 
   useEffect(() => {
     fetchConversations();
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  useEffect(() => {
+    const checkTempConversations = async () => {
+      if (!token || conversations.length === 0) return;
+      const tempSet = new Set<number>();
+      for (const chat of conversations) {
+        if (chat.type === 'single') {
+          try {
+            const result = await tempConversationApi.check(chat.id);
+            if (result.isTemp) {
+              tempSet.add(chat.id);
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+      setTempConversations(tempSet);
+    };
+    checkTempConversations();
+  }, [conversations, token]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -200,8 +223,11 @@ export function ChatsSidebar() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-0.5">
-                    <h2 className={clsx("text-[15px] font-semibold truncate pr-2", isActive ? "text-white" : "text-black dark:text-white")}>
+                    <h2 className={clsx("text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
                       {displayName}
+                      {tempConversations.has(chat.id) && (
+                        <AlertTriangle size={12} className="text-yellow-500 flex-shrink-0" />
+                      )}
                     </h2>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {chat.unread_count === 0 && (

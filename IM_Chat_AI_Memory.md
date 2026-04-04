@@ -56,6 +56,22 @@
 4. **所有跨域支持线上域名，不写死 localhost**
 5. **所有前端地址从 `import.meta.env` 读取**
 
+### ⚠️ 核心逻辑保护声明（绝对禁止修改）
+
+以下文件和代码是即时通讯核心逻辑，**禁止修改**：
+1. `frontend/src/hooks/useWebSocket.ts` - Pusher WebSocket 实时通信核心
+2. `frontend/src/store/chatStore.ts` - 聊天状态管理核心
+3. `frontend/src/app/pages/Chat.tsx` - 即时通讯页面核心逻辑
+4. `backend/src/services/MessageService.js` - 消息服务核心
+5. `backend/src/services/ConversationService.js` - 会话服务核心
+6. `backend/src/utils/pusher.js` - Pusher 广播工具
+
+**如需修改即时通讯相关功能，必须：**
+- 先备份原文件
+- 通知团队成员
+- 修改后进行全面测试
+- 确保不影响 Pusher 实时推送功能
+
 ---
 
 ## 历史任务日志
@@ -227,6 +243,44 @@
 - **修复内容**:
   - 修改 backend/src/services/MessageService.js - sendMessage 改为返回错误格式而非抛出异常
   - 所有方法确保返回 `{ code, data, msg }` 格式
+- **执行结果**: ✅ 完成
+
+### 任务13: 完整功能更新 v2
+- **执行时间**: 2026-04-04
+- **任务内容**:
+  - i18n 国际化（中英文切换）
+  - 联系人页面优化（好友申请显示、搜索弹窗化）
+  - 朋友圈功能开发（动态发布、点赞、评论）
+  - 设置页面功能完善
+  - Admin 后台开发（用户管理、聊天管理、数据表管理）
+  - 左侧菜单栏添加朋友圈和 Admin 按钮
+- **新增文件**:
+  - frontend/src/i18n/index.ts - i18n 配置
+  - frontend/src/i18n/locales/zh-CN.json - 中文翻译
+  - frontend/src/i18n/locales/en-US.json - 英文翻译
+  - frontend/src/api/moments.ts - 朋友圈 API
+  - frontend/src/api/settings.ts - 设置 API
+  - frontend/src/api/admin.ts - Admin API
+  - frontend/src/app/pages/Moments.tsx - 朋友圈页面
+  - frontend/src/app/pages/Settings.tsx - 设置页面
+  - frontend/src/app/pages/Admin.tsx - Admin 页面
+  - frontend/src/app/components/SearchModal.tsx - 搜索弹窗组件
+  - backend/src/services/MomentsService.js - 朋友圈服务
+  - backend/src/services/SettingsService.js - 设置服务
+  - backend/src/services/AdminService.js - Admin 服务
+  - backend/src/controllers/MomentsController.js
+  - backend/src/controllers/SettingsController.js
+  - backend/src/controllers/AdminController.js
+  - backend/src/routes/moments.js
+  - backend/src/routes/settings.js
+  - backend/src/routes/admin.js
+  - database/migrate_v2_features.sql - 新功能数据库迁移
+- **修改文件**:
+  - frontend/src/app/components/MainLayout.tsx - 添加朋友圈和 Admin 按钮
+  - frontend/src/app/routes.tsx - 添加新路由
+  - frontend/src/app/components/ContactsSidebar.tsx - 优化好友申请显示
+  - backend/src/app.js - 注册新路由
+- **数据库变更**: 执行 database/migrate_v2_features.sql
 - **执行结果**: ✅ 完成
 
 ---

@@ -5,6 +5,9 @@ import { Chat } from "./pages/Chat";
 import { GroupChat } from "./pages/GroupChat";
 import { Profile } from "./pages/Profile";
 import { EmptyState } from "./pages/EmptyState";
+import { Moments } from "./pages/Moments";
+import { Settings } from "./pages/Settings";
+import { Admin } from "./pages/Admin";
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +23,9 @@ export const router = createBrowserRouter([
       { path: "group/:id", Component: GroupChat },
       { path: "contacts", Component: EmptyState },
       { path: "profile", Component: Profile },
+      { path: "settings", Component: Settings },
+      { path: "moments", Component: Moments },
+      { path: "admin", Component: Admin },
     ],
   },
 ]);

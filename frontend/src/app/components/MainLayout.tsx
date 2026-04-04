@@ -1,20 +1,23 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { MessageCircle, Users, Settings } from "lucide-react";
+import { MessageCircle, Users, Settings, Globe, Shield } from "lucide-react";
 import { clsx } from "clsx";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { ChatsSidebar } from "./ChatsSidebar";
 import { ContactsSidebar } from "./ContactsSidebar";
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from "react-i18next";
 
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
 
   const navItems = [
-    { path: "/", icon: MessageCircle, label: "Chats", isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
-    { path: "/contacts", icon: Users, label: "Contacts", isMatch: (p: string) => p.startsWith("/contacts") },
-    { path: "/profile", icon: Settings, label: "Settings", isMatch: (p: string) => p.startsWith("/profile") },
+    { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
+    { path: "/contacts", icon: Users, label: t('chat.contacts'), isMatch: (p: string) => p.startsWith("/contacts") },
+    { path: "/moments", icon: Globe, label: t('moments.title'), isMatch: (p: string) => p.startsWith("/moments") },
+    { path: "/profile", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/profile") },
   ];
 
   const isContacts = location.pathname.startsWith('/contacts');
@@ -39,6 +42,7 @@ export function MainLayout() {
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className="flex flex-col items-center justify-center gap-1.5 group relative"
+                title={item.label}
               >
                 <div className={clsx(
                   "p-2.5 rounded-[14px] transition-all duration-300 relative z-10",
@@ -51,6 +55,23 @@ export function MainLayout() {
               </button>
             );
           })}
+
+          {user?.email === '3121601311@qq.com' && (
+            <button
+              onClick={() => navigate("/admin")}
+              className="flex flex-col items-center justify-center gap-1.5 group relative"
+              title={t('admin.title')}
+            >
+              <div className={clsx(
+                "p-2.5 rounded-[14px] transition-all duration-300 relative z-10",
+                location.pathname.startsWith("/admin")
+                  ? "text-[#FF3B30] bg-red-50 dark:bg-red-500/10 shadow-sm"
+                  : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 group-hover:bg-black/5 dark:group-hover:bg-white/5"
+              )}>
+                <Shield strokeWidth={location.pathname.startsWith("/admin") ? 2.5 : 2} size={22} className={clsx(location.pathname.startsWith("/admin") && "drop-shadow-sm")} />
+              </div>
+            </button>
+          )}
         </div>
         
         <div className="mt-auto">
