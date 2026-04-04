@@ -118,6 +118,55 @@
   - 创建 security/fix-records.md 漏洞修复记录
 - **执行结果**: ✅ 完成
 
+### 任务7: UI优化与问题修复
+- **执行时间**: 2026-04-04
+- **任务内容**:
+  - 修复左侧菜单栏底部用户头像显示真实头像（使用useAuthStore中的user数据）
+  - 添加页面切换过渡动画（使用framer-motion的AnimatePresence）
+  - 将系统alert/confirm弹窗替换为自定义毛玻璃模态框
+- **代码改动关键点**:
+  - 修改 frontend/src/app/components/MainLayout.tsx - 用户头像和过渡动画
+  - 创建 frontend/src/hooks/useConfirmDialog.tsx - 确认对话框Hook
+  - 创建 frontend/src/hooks/useToast.tsx - Toast通知Hook
+  - 修改 frontend/src/app/pages/Profile.tsx - 使用自定义对话框和Toast
+  - 修改 frontend/src/app/pages/Chat.tsx - 使用Toast通知
+  - 修改 frontend/src/app/components/ContactsSidebar.tsx - 使用Toast通知
+- **执行结果**: ✅ 完成
+
+### 任务8: 项目配置与部署
+- **执行时间**: 2026-04-04
+- **任务内容**:
+  - 添加 SSL 配置到数据库连接（TiDB 等云数据库需要）
+  - 修改 frontend/src/api/client.ts 使用环境变量 VITE_API_BASE_URL
+  - 创建 frontend/.env.example 环境变量示例
+  - 创建 frontend/vercel.json Vercel 部署配置
+  - 创建 .gitignore 文件
+  - 初始化 Git 仓库
+- **代码改动关键点**:
+  - 修改 backend/src/utils/db.js - 添加 SSL 配置
+  - 修改 frontend/src/api/client.ts - baseURL 使用环境变量
+  - 创建 frontend/.env.example
+  - 创建 frontend/vercel.json
+  - 创建 .gitignore
+- **执行结果**: ✅ 完成
+
+### 任务9: UI问题修复与功能增强
+- **执行时间**: 2026-04-04
+- **任务内容**:
+  - 修复联系人添加按钮弹窗功能
+  - 修改注册功能：昵称+邮箱+密码
+  - 修改登录功能：支持昵称/邮箱+密码双要素
+  - 添加用户权限管理（user/admin/tech_god）
+- **代码改动关键点**:
+  - 修改 frontend/src/app/components/ContactsSidebar.tsx - 修复添加联系人按钮
+  - 修改 frontend/src/app/pages/Login.tsx - 更新注册/登录表单
+  - 修改 frontend/src/api/user.ts - 更新类型定义
+  - 修改 backend/src/controllers/UserController.js - 更新注册/登录接口
+  - 修改 backend/src/services/UserService.js - 更新业务逻辑
+  - 修改 database/init.sql - 更新表结构
+  - 创建 database/migrate_add_role.sql - 权限管理迁移脚本
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 全局依赖映射

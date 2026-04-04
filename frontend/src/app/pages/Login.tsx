@@ -8,18 +8,19 @@ export function Login() {
   const navigate = useNavigate();
   const { login, register, isLoading, error, clearError } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
+  const [loginField, setLoginField] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [email, setEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     try {
       if (isLogin) {
-        await login({ username, password });
+        await login({ loginField, password });
       } else {
-        await register({ username, password, nickname });
+        await register({ password, nickname, email });
       }
       navigate('/');
     } catch (err) {
@@ -80,18 +81,35 @@ export function Login() {
 
             <div className="space-y-5">
               {!isLogin && (
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                    <User size={22} strokeWidth={2} />
+                <>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                      <User size={22} strokeWidth={2} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Nickname (required)"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                      required
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Nickname (optional)"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
-                  />
-                </div>
+
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                      <Mail size={22} strokeWidth={2} />
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="Email (required)"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                      required
+                    />
+                  </div>
+                </>
               )}
 
               <div className="relative group">
@@ -100,9 +118,9 @@ export function Login() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Account"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder={isLogin ? "Email or Username" : "Email (for login)"}
+                  value={isLogin ? loginField : ''}
+                  onChange={(e) => setLoginField(e.target.value)}
                   className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
                   required
                 />

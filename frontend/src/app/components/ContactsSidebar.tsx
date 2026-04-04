@@ -101,7 +101,7 @@ export function ContactsSidebar() {
       <div className="sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4">
         <div className="flex items-center justify-between px-1">
           <h1 className="text-xl font-semibold text-black dark:text-white tracking-tight">Contacts</h1>
-          <button className="text-[#007AFF] hover:bg-[#007AFF]/10 p-2 rounded-full transition-colors">
+          <button onClick={() => setShowSearch(!showSearch)} className="text-[#007AFF] hover:bg-[#007AFF]/10 p-2 rounded-full transition-colors">
             <UserPlus size={18} strokeWidth={2} />
           </button>
         </div>

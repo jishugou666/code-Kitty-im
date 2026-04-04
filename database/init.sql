@@ -8,16 +8,18 @@ USE im_chat;
 -- ============================================
 CREATE TABLE IF NOT EXISTS user (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(50) UNIQUE NOT NULL,
+  username VARCHAR(50) UNIQUE,
   password VARCHAR(255) NOT NULL,
-  nickname VARCHAR(100),
+  nickname VARCHAR(100) NOT NULL,
   avatar VARCHAR(500),
-  email VARCHAR(100),
+  email VARCHAR(100) UNIQUE NOT NULL,
   phone VARCHAR(20),
+  role ENUM('user', 'admin', 'tech_god') DEFAULT 'user' COMMENT 'user普通用户, admin管理员, tech_god技术狗',
   status TINYINT DEFAULT 1 COMMENT '1在线 0离线',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_username (username),
+  INDEX idx_email (email),
   INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -104,9 +106,9 @@ CREATE TABLE IF NOT EXISTS contact (
 -- 插入测试用户（密码为 123456 的 bcrypt 哈希）
 -- ============================================
 -- 哈希值对应: 123456
-INSERT IGNORE INTO user (username, password, nickname, avatar, email, status) VALUES
-('user1', '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User One', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user1', 'user1@example.com', 1),
-('user2', '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User Two', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2', 'user2@example.com', 1),
-('user3', '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User Three', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user3', 'user3@example.com', 1);
+INSERT IGNORE INTO user (username, password, nickname, avatar, email, status, role) VALUES
+(NULL, '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User One', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user1', 'user1@example.com', 1, 'user'),
+(NULL, '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User Two', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2', 'user2@example.com', 1, 'user'),
+(NULL, '$2b$10$rQZ8K7WV5YzG5tX5tX5tXeO6rO7rO7rO7rO7rO7rO7rO7rO7rO7r', 'User Three', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user3', 'user3@example.com', 1, 'user');
 
 SELECT 'Database initialization completed successfully!' AS message;

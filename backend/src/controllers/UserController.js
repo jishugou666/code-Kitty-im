@@ -4,21 +4,21 @@ import { success, error, validationError } from '../utils/response.js';
 export const UserController = {
   async register(req, res, next) {
     try {
-      const { username, password, nickname, email, phone } = req.body;
+      const { password, nickname, email } = req.body;
 
-      if (!username || !password) {
-        return res.status(400).json(validationError('Username and password are required'));
+      if (!email || !password || !nickname) {
+        return res.status(400).json(validationError('Nickname, email and password are required'));
       }
 
       if (password.length < 6) {
         return res.status(400).json(validationError('Password must be at least 6 characters'));
       }
 
-      const result = await UserService.register(username, password, nickname, email, phone);
+      const result = await UserService.register(password, nickname, email);
       res.status(201).json(success(result, 'Registration successful'));
     } catch (err) {
-      if (err.message === 'Username already exists') {
-        return res.status(409).json(error('Username already exists', 409));
+      if (err.message === 'Email already exists') {
+        return res.status(409).json(error('Email already exists', 409));
       }
       next(err);
     }
@@ -26,17 +26,17 @@ export const UserController = {
 
   async login(req, res, next) {
     try {
-      const { username, password } = req.body;
+      const { loginField, password } = req.body;
 
-      if (!username || !password) {
-        return res.status(400).json(validationError('Username and password are required'));
+      if (!loginField || !password) {
+        return res.status(400).json(validationError('Email/username and password are required'));
       }
 
-      const result = await UserService.login(username, password);
+      const result = await UserService.login(loginField, password);
       res.json(success(result, 'Login successful'));
     } catch (err) {
-      if (err.message === 'Invalid username or password') {
-        return res.status(401).json(error('Invalid username or password', 401));
+      if (err.message === 'Invalid email/username or password') {
+        return res.status(401).json(error('Invalid email/username or password', 401));
       }
       next(err);
     }

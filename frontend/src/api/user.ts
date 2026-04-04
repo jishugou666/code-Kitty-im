@@ -1,25 +1,24 @@
 import apiClient from './client';
 
 export interface LoginRequest {
-  username: string;
+  loginField: string;
   password: string;
 }
 
 export interface RegisterRequest {
-  username: string;
   password: string;
-  nickname?: string;
-  email?: string;
-  phone?: string;
+  nickname: string;
+  email: string;
 }
 
 export interface UserProfile {
   id: number;
-  username: string;
+  username: string | null;
   nickname: string;
   avatar: string;
   email: string;
   phone: string;
+  role: 'user' | 'admin' | 'tech_god';
   status: number;
   created_at: string;
 }

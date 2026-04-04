@@ -2,22 +2,22 @@ import { query } from '../utils/db.js';
 import { hashPassword, comparePassword, generateToken, maskPhone, maskEmail } from '../utils/crypto.js';
 
 export const UserService = {
-  async register(username, password, nickname, email, phone) {
-    const existing = await query('SELECT id FROM user WHERE username = ?', [username]);
+  async register(password, nickname, email) {
+    const existing = await query('SELECT id FROM user WHERE email = ?', [email]);
     if (existing.length > 0) {
-      throw new Error('Username already exists');
+      throw new Error('Email already exists');
     }
 
     const hashedPassword = await hashPassword(password);
     const result = await query(
-      'INSERT INTO user (username, password, nickname, email, phone) VALUES (?, ?, ?, ?, ?)',
-      [username, hashedPassword, nickname || username, email || null, phone || null]
+      'INSERT INTO user (password, nickname, email, role) VALUES (?, ?, ?, ?)',
+      [hashedPassword, nickname, email, 'user']
     );
 
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, status, created_at FROM user WHERE id = ?', [result.insertId]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?', [result.insertId]);
     const user = users[0];
 
-    const token = generateToken({ id: user.id, username: user.username });
+    const token = generateToken({ id: user.id, email: user.email });
 
     return {
       user: this.sanitizeUser(user),
@@ -25,21 +25,24 @@ export const UserService = {
     };
   },
 
-  async login(username, password) {
-    const users = await query('SELECT * FROM user WHERE username = ?', [username]);
+  async login(loginField, password) {
+    const users = await query(
+      'SELECT * FROM user WHERE email = ? OR username = ?',
+      [loginField, loginField]
+    );
     if (users.length === 0) {
-      throw new Error('Invalid username or password');
+      throw new Error('Invalid email/username or password');
     }
 
     const user = users[0];
     const isValid = await comparePassword(password, user.password);
     if (!isValid) {
-      throw new Error('Invalid username or password');
+      throw new Error('Invalid email/username or password');
     }
 
     await query('UPDATE user SET status = 1 WHERE id = ?', [user.id]);
 
-    const token = generateToken({ id: user.id, username: user.username });
+    const token = generateToken({ id: user.id, email: user.email });
 
     return {
       user: this.sanitizeUser(user),
@@ -48,7 +51,7 @@ export const UserService = {
   },
 
   async getProfile(userId) {
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, status, created_at FROM user WHERE id = ?', [userId]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?', [userId]);
     if (users.length === 0) {
       throw new Error('User not found');
     }
