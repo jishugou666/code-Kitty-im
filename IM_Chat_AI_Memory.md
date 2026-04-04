@@ -464,6 +464,15 @@ CREATE TABLE contact (
 - **修复方案**: 同问题5，移除所有 `deleted_at` 相关查询
 - **状态**: ✅ 已修复
 
+### 问题7: MySQL2 LIMIT 占位符报错 ⚠️ 已解决
+- **描述**: 所有分页查询报错 `Incorrect arguments to LIMIT`
+- **根本原因**: MySQL2 的 `execute()` 方法对 `LIMIT ? OFFSET ?` 占位符支持有问题
+- **修复方案**: 将 `LIMIT ? OFFSET ?` 改为直接拼接数字 `LIMIT ${safeLimit} OFFSET ${safeOffset}`
+- **涉及文件**:
+  - `AdminService.js` - 7处已修复
+  - `MomentsService.js` - 2处已修复
+- **状态**: ✅ 已修复
+
 ---
 
 ## 项目目录结构

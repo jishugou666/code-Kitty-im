@@ -45,8 +45,8 @@ export const MomentsService = {
 
   async getMoments(userId, page = 1, limit = 20) {
     try {
-      const safeLimit = parseInt(limit) || 20;
-      const offset = (parseInt(page) - 1) * safeLimit;
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
 
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar,
@@ -61,8 +61,8 @@ export const MomentsService = {
            OR m.user_id = ?
          )
          ORDER BY m.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [userId, userId, userId, userId, safeLimit, offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [userId, userId, userId, userId]
       );
 
       for (let moment of moments) {
@@ -221,8 +221,8 @@ export const MomentsService = {
 
   async getUserMoments(userId, currentUserId, page = 1, limit = 20) {
     try {
-      const safeLimit = parseInt(limit) || 20;
-      const offset = (parseInt(page) - 1) * safeLimit;
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
 
       const isFriend = await query(
         `SELECT id FROM contact
@@ -243,8 +243,8 @@ export const MomentsService = {
          LEFT JOIN user u ON m.user_id = u.id
          WHERE m.user_id = ?
          ORDER BY m.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [currentUserId, userId, safeLimit, offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [currentUserId, userId]
       );
 
       for (let moment of moments) {

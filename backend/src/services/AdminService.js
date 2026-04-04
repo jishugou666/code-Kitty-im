@@ -26,15 +26,15 @@ export const AdminService = {
 
   async getUsers(page = 1, limit = 20) {
     try {
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const users = await query(
         `SELECT id, username, nickname, avatar, email, role, status, created_at,
          (SELECT COUNT(*) FROM message WHERE sender_id = user.id) as message_count,
          (SELECT COUNT(*) FROM moments WHERE user_id = user.id) as moments_count
          FROM user
          ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`,
-        [parseInt(limit), offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`
       );
 
       const total = await query('SELECT COUNT(*) as count FROM user');
@@ -45,7 +45,7 @@ export const AdminService = {
           list: users,
           total: total[0]?.count || 0,
           page: parseInt(page),
-          limit: parseInt(limit)
+          limit: safeLimit
         },
         msg: '成功'
       };
@@ -87,15 +87,16 @@ export const AdminService = {
 
   async getMessages(conversationId, page = 1, limit = 50) {
     try {
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const safeLimit = Math.max(1, parseInt(limit) || 50);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const messages = await query(
         `SELECT m.*, u.nickname as sender_nickname, u.avatar as sender_avatar
          FROM message m
          LEFT JOIN user u ON m.sender_id = u.id
          WHERE m.conversation_id = ?
          ORDER BY m.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [conversationId, parseInt(limit), offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+        [conversationId]
       );
 
       const total = await query('SELECT COUNT(*) as count FROM message WHERE conversation_id = ?', [conversationId]);
@@ -106,7 +107,7 @@ export const AdminService = {
           list: messages,
           total: total[0]?.count || 0,
           page: parseInt(page),
-          limit: parseInt(limit)
+          limit: safeLimit
         },
         msg: '成功'
       };
@@ -118,15 +119,15 @@ export const AdminService = {
 
   async getConversations(page = 1, limit = 20) {
     try {
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const conversations = await query(
         `SELECT c.*,
          (SELECT COUNT(*) FROM message WHERE conversation_id = c.id) as message_count,
          (SELECT MAX(created_at) FROM message WHERE conversation_id = c.id) as last_message_time
          FROM conversation c
          ORDER BY last_message_time DESC
-         LIMIT ? OFFSET ?`,
-        [parseInt(limit), offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`
       );
 
       const total = await query('SELECT COUNT(*) as count FROM conversation');
@@ -137,7 +138,7 @@ export const AdminService = {
           list: conversations,
           total: total[0]?.count || 0,
           page: parseInt(page),
-          limit: parseInt(limit)
+          limit: safeLimit
         },
         msg: '成功'
       };
@@ -149,7 +150,8 @@ export const AdminService = {
 
   async getMoments(page = 1, limit = 20) {
     try {
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const moments = await query(
         `SELECT m.*, u.nickname, u.avatar, u.username,
          (SELECT COUNT(*) FROM moments_like WHERE moment_id = m.id) as likes_count,
@@ -157,8 +159,7 @@ export const AdminService = {
          FROM moments m
          LEFT JOIN user u ON m.user_id = u.id
          ORDER BY m.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [parseInt(limit), offset]
+         LIMIT ${safeLimit} OFFSET ${safeOffset}`
       );
 
       const total = await query('SELECT COUNT(*) as count FROM moments');
@@ -169,7 +170,7 @@ export const AdminService = {
           list: moments,
           total: total[0]?.count || 0,
           page: parseInt(page),
-          limit: parseInt(limit)
+          limit: safeLimit
         },
         msg: '成功'
       };
@@ -212,7 +213,8 @@ export const AdminService = {
   async getTableData(tableName, page = 1, limit = 50) {
     try {
       const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const safeLimit = Math.max(1, parseInt(limit) || 50);
+      const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
 
       const allowedTables = ['user', 'conversation', 'message', 'contact', 'moments', 'moments_like', 'moments_comment', 'user_settings', 'temp_conversation'];
       if (!allowedTables.includes(safeTableName)) {
@@ -220,8 +222,7 @@ export const AdminService = {
       }
 
       const data = await query(
-        `SELECT * FROM ${safeTableName} ORDER BY 1 DESC LIMIT ? OFFSET ?`,
-        [parseInt(limit), offset]
+        `SELECT * FROM ${safeTableName} ORDER BY 1 DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`
       );
 
       const total = await query(`SELECT COUNT(*) as count FROM ${safeTableName}`);
@@ -232,7 +233,7 @@ export const AdminService = {
           list: data,
           total: total[0]?.count || 0,
           page: parseInt(page),
-          limit: parseInt(limit)
+          limit: safeLimit
         },
         msg: '成功'
       };
