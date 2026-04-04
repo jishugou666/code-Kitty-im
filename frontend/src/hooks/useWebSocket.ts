@@ -17,7 +17,7 @@ export function getPusher(): Pusher {
   return globalPusher;
 }
 
-export function useWebSocket(conversationId?: number) {
+export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) => void) {
   const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
   const { token, isAuthenticated, user } = useAuthStore();
   const { addMessage, fetchConversations, fetchMessages } = useChatStore();
@@ -26,12 +26,12 @@ export function useWebSocket(conversationId?: number) {
     console.log('[Pusher] New message received:', data);
     if (data && data.id) {
       addMessage(data.conversation_id, data);
-      if (data.conversation_id === conversationId) {
-        fetchMessages(data.conversation_id);
+      if (data.conversation_id === conversationId && onNewMessage) {
+        onNewMessage(data);
       }
       fetchConversations();
     }
-  }, [addMessage, fetchConversations, fetchMessages, conversationId]);
+  }, [addMessage, fetchConversations, conversationId, onNewMessage]);
 
   const handleMessageRead = useCallback((data: any) => {
     console.log('[Pusher] Message read:', data);

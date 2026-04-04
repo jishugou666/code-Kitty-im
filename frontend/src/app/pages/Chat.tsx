@@ -27,7 +27,15 @@ export function Chat() {
 
   const conversation = conversations.find(c => c.id === conversationId);
 
-  useWebSocket(conversationId || undefined);
+  useWebSocket(conversationId || undefined, (newMessage) => {
+    console.log('[Chat] Received new message via Pusher:', newMessage);
+    setMessages(prev => {
+      if (prev.some(m => m.id === newMessage.id)) {
+        return prev;
+      }
+      return [...prev, newMessage];
+    });
+  });
 
   useEffect(() => {
     if (conversationId && token) {
