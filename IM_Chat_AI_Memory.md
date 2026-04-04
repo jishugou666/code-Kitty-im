@@ -167,6 +167,28 @@
   - 创建 database/migrate_add_role.sql - 权限管理迁移脚本
 - **执行结果**: ✅ 完成
 
+### 任务10: 云端部署配置
+- **执行时间**: 2026-04-04
+- **任务内容**:
+  - 更新 README.md 添加云端部署指南
+  - 配置 Vercel + Render + TiDB Cloud 部署架构
+- **部署架构**:
+  - 前端: Vercel (React/Vite)
+  - 后端: Render (Node.js/Express)
+  - 数据库: TiDB Cloud (MySQL)
+- **代码改动关键点**:
+  - 修改 README.md - 添加完整的云端部署文档
+- **执行结果**: ✅ 完成
+
+### 任务11: 修复注册500错误
+- **执行时间**: 2026-04-04
+- **问题描述**:
+  - 云端部署后注册接口返回 500 Internal Server Error
+  - 原因：数据库缺少 role 字段
+- **修复内容**:
+  - 修改 backend/src/services/UserService.js - 移除 INSERT 语句中的 role 字段（依赖数据库默认值）
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 全局依赖映射

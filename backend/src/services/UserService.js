@@ -10,8 +10,8 @@ export const UserService = {
 
     const hashedPassword = await hashPassword(password);
     const result = await query(
-      'INSERT INTO user (password, nickname, email, role) VALUES (?, ?, ?, ?)',
-      [hashedPassword, nickname, email, 'user']
+      'INSERT INTO user (password, nickname, email) VALUES (?, ?, ?)',
+      [hashedPassword, nickname, email]
     );
 
     const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?', [result.insertId]);

@@ -189,6 +189,94 @@ npm run dev
 - 后端API: http://localhost:3000
 - WebSocket: ws://localhost:3000/ws
 
+## 云端部署指南
+
+本项目支持云端部署，使用 Vercel（前端）+ Render（后端）+ TiDB Cloud（数据库）的架构。
+
+### 部署架构
+
+| 服务 | 平台 | 用途 |
+|------|------|------|
+| 前端 | Vercel | React 应用托管 |
+| 后端 | Render | Node.js API 服务 |
+| 数据库 | TiDB Cloud | MySQL 兼容数据库 |
+
+### 1. 部署后端到 Render
+
+1. 登录 [Render](https://render.com/) 并连接你的 GitHub 仓库
+2. 创建一个新的 Web Service
+3. 配置以下设置：
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+4. 添加环境变量：
+
+| 变量名 | 值 |
+|--------|-----|
+| `PORT` | 10000 |
+| `DB_HOST` | 你的 TiDB Cloud 主机 |
+| `DB_PORT` | 4000 |
+| `DB_USER` | 你的 TiDB Cloud 用户名 |
+| `DB_PASSWORD` | 你的 TiDB Cloud 密码 |
+| `DB_NAME` | im_chat |
+| `JWT_SECRET` | 你的 JWT 密钥（随机字符串） |
+| `JWT_EXPIRES_IN` | 7d |
+| `CORS_ORIGIN` | 你的 Vercel 前端地址 |
+
+5. 部署后记下后端 URL（如：`https://code-kitty-im-backend.onrender.com`）
+
+### 2. 部署前端到 Vercel
+
+1. 登录 [Vercel](https://vercel.com/) 并导入 GitHub 仓库
+2. 配置以下设置：
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend`
+3. 添加环境变量：
+
+| 变量名 | 值 |
+|--------|-----|
+| `VITE_API_BASE_URL` | 你的 Render 后端地址（如：`https://code-kitty-im-backend.onrender.com/api`） |
+
+4. 部署
+
+### 3. 配置 TiDB Cloud 数据库
+
+1. 登录 [TiDB Cloud](https://tidbcloud.com/)
+2. 创建一个 Serverless 集群
+3. 获取连接信息并填写到 Render 环境变量中
+4. 在 SQL Editor 中执行初始化脚本：
+
+```sql
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS im_chat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 使用数据库
+USE im_chat;
+
+-- 然后执行 database/init.sql 中的建表语句
+```
+
+### 4. 重要：执行数据库迁移
+
+如果部署后遇到 500 错误，可能需要执行以下 SQL 添加必要的字段：
+
+```sql
+-- 添加用户角色字段
+ALTER TABLE user ADD COLUMN role ENUM('user', 'admin', 'tech_god') DEFAULT 'user' COMMENT 'user普通用户, admin管理员, tech_god技术狗' AFTER phone;
+
+-- 将 email 字段改为 UNIQUE 且 NOT NULL（如果尚未修改）
+ALTER TABLE user MODIFY COLUMN email VARCHAR(100) UNIQUE NOT NULL;
+
+-- 将 nickname 字段改为 NOT NULL（如果尚未修改）
+ALTER TABLE user MODIFY COLUMN nickname VARCHAR(100) NOT NULL;
+```
+
+### Render 部署说明
+
+- Render 免费套餐会自动在 15 分钟无活动后休眠
+- 首次请求可能需要 30-60 秒唤醒服务
+- 生产环境建议升级到付费套餐避免休眠
+
 ## API 文档
 
 ### 用户接口
