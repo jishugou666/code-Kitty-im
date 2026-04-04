@@ -203,6 +203,16 @@
   - 修改 backend/src/services/UserService.js - 移除 INSERT 语句中的 role 字段（依赖数据库默认值）
 - **执行结果**: ✅ 完成
 
+### 任务12: 修复发送消息500错误
+- **执行时间**: 2026-04-04
+- **问题描述**:
+  - POST /api/message/send 返回 500
+  - 原因：sendMessage 捕获异常后 throw err 导致500
+- **修复内容**:
+  - 修改 backend/src/services/MessageService.js - sendMessage 改为返回错误格式而非抛出异常
+  - 所有方法确保返回 `{ code, data, msg }` 格式
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 全局依赖映射

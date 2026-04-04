@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChatsSidebar } from "./ChatsSidebar";
 import { ContactsSidebar } from "./ContactsSidebar";
 import { useAuthStore } from '../../store/authStore';
+import { useChatStore } from '../../store/chatStore';
 
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { conversations } = useChatStore();
 
   const navItems = [
     { path: "/", icon: MessageCircle, label: "Chats", isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
@@ -18,19 +20,22 @@ export function MainLayout() {
   ];
 
   const isContacts = location.pathname.startsWith('/contacts');
+  const isChatView = location.pathname.startsWith('/chat') || location.pathname.startsWith('/group');
+  const hasActiveChat = isChatView && location.pathname.includes('/');
+
+  const showSidebar = !isChatView || (isChatView && conversations.length > 0);
 
   return (
     <div className="flex w-full h-screen bg-[#F4F5F9] dark:bg-[#0A0C10] overflow-hidden">
-      {/* Nav Rail - macOS/Telegram Desktop style */}
-      <div className="w-[72px] h-full flex flex-col items-center py-6 bg-white/70 dark:bg-[#1A1D21]/70 backdrop-blur-3xl border-r border-black/5 dark:border-white/5 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        {/* Logo */}
+      {/* Desktop Nav Rail */}
+      <div className="hidden md:flex w-[72px] h-full flex-col items-center py-6 bg-white/70 dark:bg-[#1A1D21]/70 backdrop-blur-3xl border-r border-black/5 dark:border-white/5 z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div className="w-11 h-11 bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] rounded-[14px] flex items-center justify-center mb-10 shadow-md border border-white/20 dark:border-white/10 relative overflow-hidden">
            <div className="absolute inset-0 bg-white/20 backdrop-blur-sm" />
            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 relative z-10">
              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
            </svg>
         </div>
-        
+
         <div className="flex flex-col gap-6 w-full px-2">
           {navItems.map(item => {
             const active = item.isMatch(location.pathname);
@@ -52,27 +57,32 @@ export function MainLayout() {
             );
           })}
         </div>
-        
+
         <div className="mt-auto">
            <button onClick={() => navigate("/profile")} className="w-10 h-10 rounded-full border-2 border-transparent hover:border-[#007AFF] transition-all overflow-hidden shadow-sm">
              {user?.avatar ? (
                <img src={user.avatar} alt={user.nickname || user.username} className="w-full h-full object-cover" />
              ) : (
                <div className="w-full h-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-sm font-semibold">
-                 {(user?.nickname || user?.username || 'U')[0].toUpperCase()}
+                 {(user?.nickname || user?.username || 'U')[0]?.toUpperCase() || 'U'}
                </div>
              )}
            </button>
         </div>
       </div>
 
-      {/* Middle Sidebar Panel */}
-      <div className="w-[320px] lg:w-[360px] h-full flex-shrink-0 border-r border-black/5 dark:border-white/5 flex flex-col bg-white/40 dark:bg-[#13161A]/40 backdrop-blur-2xl relative z-40 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
-        {isContacts ? <ContactsSidebar /> : <ChatsSidebar />}
-      </div>
+      {/* Desktop Sidebar Panel */}
+      {(!isChatView || showSidebar) && (
+        <div className="hidden md:flex w-[320px] lg:w-[360px] h-full flex-shrink-0 border-r border-black/5 dark:border-white/5 flex flex-col bg-white/40 dark:bg-[#13161A]/40 backdrop-blur-2xl relative z-40 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
+          {isContacts ? <ContactsSidebar /> : <ChatsSidebar />}
+        </div>
+      )}
 
       {/* Detail Panel */}
-      <div className="flex-1 h-full flex flex-col relative z-30 bg-[#FAFAFC] dark:bg-[#0A0C10] min-w-0">
+      <div className={clsx(
+        "flex-1 h-full flex flex-col relative z-30 bg-[#FAFAFC] dark:bg-[#0A0C10] min-w-0",
+        "md:flex"
+      )}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -85,6 +95,30 @@ export function MainLayout() {
             <Outlet />
           </motion.div>
         </AnimatePresence>
+      </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[60px] bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl border-t border-black/5 dark:border-white/5 z-50 safe-area-inset-bottom">
+        <div className="flex items-center justify-around h-full px-2">
+          {navItems.map(item => {
+            const active = item.isMatch(location.pathname);
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={clsx(
+                  "flex flex-col items-center justify-center gap-1 py-2 px-4 rounded-xl transition-all",
+                  active
+                    ? "text-[#007AFF]"
+                    : "text-slate-400"
+                )}
+              >
+                <item.icon size={22} strokeWidth={active ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
