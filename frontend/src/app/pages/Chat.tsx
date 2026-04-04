@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
+import { useToast } from '../../hooks/useToast';
 
 export function Chat() {
   const { id } = useParams();
@@ -19,6 +20,7 @@ export function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
   const { conversations, fetchConversations } = useChatStore();
+  const { toast, ToastContainer } = useToast();
 
   const conversation = conversations.find(c => c.id === conversationId);
 
@@ -127,7 +129,7 @@ export function Chat() {
       };
       reader.readAsDataURL(file);
     } else {
-      alert('Only image files are supported in this demo');
+      toast('Only image files are supported in this demo', 'info');
     }
 
     if (fileInputRef.current) {
@@ -392,6 +394,7 @@ export function Chat() {
           )}
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 }

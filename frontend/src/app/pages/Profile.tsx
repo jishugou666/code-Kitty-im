@@ -3,10 +3,14 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from '../../store/authStore';
 import { userApi } from '../../api/user';
+import { useConfirmDialog } from '../../hooks/useConfirmDialog';
+import { useToast } from '../../hooks/useToast';
 
 export function Profile() {
   const navigate = useNavigate();
   const { user, logout, loadUser, updateUser } = useAuthStore();
+  const { confirm, ConfirmDialogComponent } = useConfirmDialog();
+  const { toast, ToastContainer } = useToast();
   const [notifications, setNotifications] = useState(true);
   const [privateAccount, setPrivateAccount] = useState(false);
   const [faceId, setFaceId] = useState(true);
@@ -34,7 +38,11 @@ export function Profile() {
   }, [user]);
 
   const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    const confirmed = await confirm({
+      title: 'Logout',
+      description: 'Are you sure you want to logout?'
+    });
+    if (confirmed) {
       await logout();
       navigate('/login');
     }
@@ -46,10 +54,11 @@ export function Profile() {
       if (response.data) {
         updateUser(response.data);
         setIsEditing(false);
+        toast('Profile updated successfully', 'success');
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert('Failed to update profile');
+      toast('Failed to update profile', 'error');
     }
   };
 
@@ -249,6 +258,8 @@ export function Profile() {
           </div>
         </div>
       </div>
+      <ToastContainer />
+      <ConfirmDialogComponent />
     </div>
   );
 }

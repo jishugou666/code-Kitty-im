@@ -1,12 +1,15 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { MessageCircle, Users, Settings } from "lucide-react";
 import { clsx } from "clsx";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChatsSidebar } from "./ChatsSidebar";
 import { ContactsSidebar } from "./ContactsSidebar";
+import { useAuthStore } from '../../store/authStore';
 
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   const navItems = [
     { path: "/", icon: MessageCircle, label: "Chats", isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
@@ -52,7 +55,13 @@ export function MainLayout() {
         
         <div className="mt-auto">
            <button onClick={() => navigate("/profile")} className="w-10 h-10 rounded-full border-2 border-transparent hover:border-[#007AFF] transition-all overflow-hidden shadow-sm">
-             <img src="https://images.unsplash.com/photo-1624303966826-260632059640?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGd1eSUyMGNhc3VhbCUyMHBvcnRyYWl0fGVufDF8fHx8MTc3NTI4MDEyMHww&ixlib=rb-4.1.0&q=80&w=1080" alt="Me" className="w-full h-full object-cover" />
+             {user?.avatar ? (
+               <img src={user.avatar} alt={user.nickname || user.username} className="w-full h-full object-cover" />
+             ) : (
+               <div className="w-full h-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-sm font-semibold">
+                 {(user?.nickname || user?.username || 'U')[0].toUpperCase()}
+               </div>
+             )}
            </button>
         </div>
       </div>
@@ -64,7 +73,18 @@ export function MainLayout() {
 
       {/* Detail Panel */}
       <div className="flex-1 h-full flex flex-col relative z-30 bg-[#FAFAFC] dark:bg-[#0A0C10] min-w-0">
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="h-full"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

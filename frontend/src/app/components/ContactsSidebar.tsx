@@ -6,6 +6,7 @@ import { useContactStore } from '../../store/contactStore';
 import { useAuthStore } from '../../store/authStore';
 import { userApi } from '../../api/user';
 import { conversationApi } from '../../api/conversation';
+import { useToast } from '../../hooks/useToast';
 
 export function ContactsSidebar() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export function ContactsSidebar() {
   const [showSearch, setShowSearch] = useState(false);
   const { user } = useAuthStore();
   const { contacts, pendingRequests, fetchContacts, fetchPendingRequests, addContact, acceptContact, rejectContact } = useContactStore();
+  const { toast, ToastContainer } = useToast();
 
   useEffect(() => {
     fetchContacts();
@@ -49,9 +51,9 @@ export function ContactsSidebar() {
     try {
       await addContact(userId);
       setSearchResults(prev => prev.filter(u => u.id !== userId));
-      alert('Contact request sent!');
+      toast('Contact request sent!', 'success');
     } catch (error: any) {
-      alert(error.message || 'Failed to add contact');
+      toast(error.message || 'Failed to add contact', 'error');
     }
   };
 
@@ -280,6 +282,7 @@ export function ContactsSidebar() {
           </div>
         )}
       </div>
+      <ToastContainer />
     </div>
   );
 }
