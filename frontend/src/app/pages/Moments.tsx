@@ -231,6 +231,7 @@ export function Moments() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {showPublishModal && (
