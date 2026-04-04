@@ -38,12 +38,12 @@ export function ContactsSidebar() {
   const fetchGroupRequests = async () => {
     try {
       const res = await groupApi.getList();
-      if (res.data.code === 200) {
-        const ownedGroups = (res.data.data || []).filter((g: any) => g.my_role === 'owner' || g.my_role === 'admin');
+      if (res.code === 200) {
+        const ownedGroups = (res.data || []).filter((g: any) => g.my_role === 'owner' || g.my_role === 'admin');
         const requestsPromises = ownedGroups.map(async (g: any) => {
           const reqRes = await groupApi.getJoinRequests(g.id);
-          if (reqRes.data.code === 200) {
-            return (reqRes.data.data || []).map((r: any) => ({ ...r, groupName: g.name }));
+          if (reqRes.code === 200) {
+            return (reqRes.data || []).map((r: any) => ({ ...r, groupName: g.name }));
           }
           return [];
         });
@@ -58,8 +58,8 @@ export function ContactsSidebar() {
   const fetchMyGroups = async () => {
     try {
       const res = await groupApi.getList();
-      if (res.data.code === 200) {
-        setMyGroups(res.data.data || []);
+      if (res.code === 200) {
+        setMyGroups(res.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch my groups:', error);
@@ -69,7 +69,7 @@ export function ContactsSidebar() {
   const handleGroupJoinRequest = async (requestId: number, groupId: number, approved: boolean) => {
     try {
       const res = await groupApi.handleJoinRequest(groupId, requestId, approved);
-      if (res.data.code === 200) {
+      if (res.code === 200) {
         toast(approved ? '已通过' : '已拒绝', 'success');
         fetchGroupRequests();
       }

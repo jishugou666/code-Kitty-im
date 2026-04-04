@@ -40,8 +40,8 @@ export function GroupSearchModal({ isOpen, onClose }: GroupSearchModalProps) {
     setIsLoading(true);
     try {
       const response = await groupApi.search(searchQuery);
-      if (response.data.code === 200) {
-        setGroups(response.data.data || []);
+      if (response.code === 200) {
+        setGroups(response.data || []);
       }
     } catch (error) {
       console.error('Search failed:', error);
@@ -54,11 +54,11 @@ export function GroupSearchModal({ isOpen, onClose }: GroupSearchModalProps) {
     setJoining(groupId);
     try {
       const response = await groupApi.join(groupId);
-      if (response.data.code === 200) {
-        toast(response.data.msg, 'success');
+      if (response.code === 200) {
+        toast(response.msg, 'success');
         handleSearch();
       } else {
-        toast(response.data.msg, 'error');
+        toast(response.msg, 'error');
       }
     } catch (error) {
       toast('加入失败', 'error');

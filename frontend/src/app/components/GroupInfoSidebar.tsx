@@ -28,8 +28,8 @@ export function GroupInfoSidebar({ groupId, isOpen, onClose }: GroupInfoSidebarP
     setIsLoading(true);
     try {
       const res = await groupApi.getInfo(groupId);
-      if (res.data.code === 200) {
-        setGroupInfo(res.data.data);
+      if (res.code === 200) {
+        setGroupInfo(res.data);
       }
     } catch (error) {
       console.error('Failed to load group info:', error);
@@ -42,8 +42,8 @@ export function GroupInfoSidebar({ groupId, isOpen, onClose }: GroupInfoSidebarP
     try {
       const isAdmin = currentRole !== 'admin';
       const res = await groupApi.setAdmin(groupId, memberId, isAdmin);
-      if (res.data.code === 200) {
-        toast(res.data.msg, 'success');
+      if (res.code === 200) {
+        toast(res.msg, 'success');
         loadGroupInfo();
       }
     } catch (error) {
@@ -55,7 +55,7 @@ export function GroupInfoSidebar({ groupId, isOpen, onClose }: GroupInfoSidebarP
     if (!confirm('确定要移除该成员吗？')) return;
     try {
       const res = await groupApi.removeMember(groupId, memberId);
-      if (res.data.code === 200) {
+      if (res.code === 200) {
         toast('已移除', 'success');
         loadGroupInfo();
       }
@@ -68,7 +68,7 @@ export function GroupInfoSidebar({ groupId, isOpen, onClose }: GroupInfoSidebarP
     if (!confirm('确定要退出群聊吗？')) return;
     try {
       const res = await groupApi.leave(groupId);
-      if (res.data.code === 200) {
+      if (res.code === 200) {
         toast('已退出群聊', 'success');
         onClose();
         window.location.reload();

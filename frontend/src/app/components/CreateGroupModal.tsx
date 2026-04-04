@@ -41,8 +41,8 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
     setIsSearching(true);
     try {
       const response = await groupApi.search(searchQuery);
-      if (response.data.code === 200) {
-        setSearchResults(response.data.data || []);
+      if (response.code === 200) {
+        setSearchResults(response.data || []);
       }
     } catch (error) {
       console.error('Search failed:', error);
@@ -88,12 +88,12 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
         needApproval: needApproval ? 1 : 0
       });
 
-      if (response.data.code === 200) {
+      if (response.code === 200) {
         toast('创建成功', 'success');
-        onSuccess?.(response.data.data);
+        onSuccess?.(response.data);
         onClose();
       } else {
-        toast(response.data.msg || '创建失败', 'error');
+        toast(response.msg || '创建失败', 'error');
       }
     } catch (error) {
       toast('创建失败', 'error');
