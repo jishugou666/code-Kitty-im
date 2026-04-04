@@ -65,6 +65,16 @@ export const AdminService = {
     }
   },
 
+  async updateUserRole(userId, role) {
+    try {
+      await query('UPDATE user SET role = ? WHERE id = ?', [role, userId]);
+      return { code: 200, data: null, msg: '更新成功' };
+    } catch (err) {
+      console.error('updateUserRole error:', err);
+      return { code: 200, data: null, msg: '更新失败' };
+    }
+  },
+
   async deleteUser(userId) {
     try {
       await query('DELETE FROM user WHERE id = ?', [userId]);

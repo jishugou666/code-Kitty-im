@@ -17,6 +17,7 @@ router.use(adminMiddleware);
 router.get('/dashboard', AdminController.getDashboard);
 router.get('/users', AdminController.getUsers);
 router.put('/users/status', AdminController.updateUserStatus);
+router.put('/users/role', AdminController.updateUserRole);
 router.delete('/users/:userId', AdminController.deleteUser);
 router.get('/conversations', AdminController.getConversations);
 router.get('/conversations/:conversationId/messages', AdminController.getMessages);

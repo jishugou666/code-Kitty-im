@@ -33,6 +33,17 @@ export const AdminController = {
     }
   },
 
+  async updateUserRole(req, res, next) {
+    try {
+      const { userId, role } = req.body;
+      const result = await AdminService.updateUserRole(userId, role);
+      res.json(result);
+    } catch (err) {
+      console.error('updateUserRole error:', err);
+      res.json({ code: 200, data: null, msg: '更新失败' });
+    }
+  },
+
   async deleteUser(req, res, next) {
     try {
       const { userId } = req.params;

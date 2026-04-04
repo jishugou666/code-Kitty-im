@@ -13,6 +13,10 @@ export const adminApi = {
     return apiClient.put('/admin/users/status', data);
   },
 
+  updateUserRole(data) {
+    return apiClient.put('/admin/users/role', data);
+  },
+
   deleteUser(userId) {
     return apiClient.delete(`/admin/users/${userId}`);
   },
