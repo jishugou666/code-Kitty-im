@@ -81,14 +81,20 @@ export const ConversationService = {
   },
 
   async getConversationMembers(conversationId) {
-    const members = await query(
-      `SELECT u.id, u.username, u.nickname, u.avatar, u.status, cm.role
-       FROM conversation_member cm
-       JOIN user u ON cm.user_id = u.id
-       WHERE cm.conversation_id = ?`,
-      [conversationId]
-    );
-    return members;
+    try {
+      const members = await query(
+        `SELECT u.id, COALESCE(u.username, '') as username, COALESCE(u.nickname, 'Unknown') as nickname,
+                COALESCE(u.avatar, '') as avatar, u.status, cm.role
+         FROM conversation_member cm
+         LEFT JOIN user u ON cm.user_id = u.id
+         WHERE cm.conversation_id = ?`,
+        [conversationId]
+      );
+      return members;
+    } catch (err) {
+      console.error('getConversationMembers error:', err);
+      return [];
+    }
   },
 
   async addMembers(conversationId, userId, memberIds) {
