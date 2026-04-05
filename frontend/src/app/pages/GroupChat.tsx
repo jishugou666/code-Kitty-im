@@ -306,69 +306,125 @@ export function GroupChat() {
       <AnimatePresence>
         {showMemberMenu && selectedMember && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed z-50 bg-white dark:bg-[#1A1D21] rounded-xl shadow-xl border border-black/5 dark:border-white/10 overflow-hidden"
-            style={{ top: memberMenuPos.y, left: memberMenuPos.x }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowMemberMenu(false)}
           >
-            {myRole === 'owner' && selectedMember.role !== 'owner' && (
-              <button
-                onClick={async () => {
-                  try {
-                    const isAdmin = selectedMember.role === 'admin';
-                    const res = await groupApi.setAdmin(conversationId, selectedMember.user_id, !isAdmin);
-                    if (res.code === 200) {
-                      toast(isAdmin ? '已取消管理员' : '已设为管理员', 'success');
-                      loadGroupInfo();
-                    }
-                  } catch {
-                    toast('操作失败', 'error');
-                  }
-                  setShowMemberMenu(false);
-                }}
-                className="w-full px-6 py-3 text-left text-sm text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-              >
-                {selectedMember.role === 'admin' ? '取消管理员' : '设为管理员'}
-              </button>
-            )}
-            {(myRole === 'owner' || (myRole === 'admin' && selectedMember.role !== 'admin')) && selectedMember.role !== 'owner' && (
-              <>
-                <button
-                  onClick={() => {
-                    setShowMemberMenu(false);
-                    setShowMuteModal(true);
-                  }}
-                  className="w-full px-6 py-3 text-left text-sm text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors border-t border-black/5 dark:border-white/10"
-                >
-                  {selectedMember.is_muted ? '解除禁言' : '禁言'}
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!confirm('确定要移除该成员吗？')) return;
-                    try {
-                      const res = await groupApi.removeMember(conversationId, selectedMember.user_id);
-                      if (res.code === 200) {
-                        toast('已移除', 'success');
-                        loadGroupInfo();
-                      }
-                    } catch {
-                      toast('移除失败', 'error');
-                    }
-                    setShowMemberMenu(false);
-                  }}
-                  className="w-full px-6 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border-t border-black/5 dark:border-white/10"
-                >
-                  移除成员
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setShowMemberMenu(false)}
-              className="w-full px-6 py-3 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl rounded-2xl shadow-2xl w-80 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              取消
-            </button>
+              <div className="p-6 flex flex-col items-center border-b border-black/5 dark:border-white/10">
+                <div className="relative mb-3">
+                  {selectedMember?.avatar ? (
+                    <img src={selectedMember.avatar} alt={selectedMember?.nickname || 'User'} className="w-16 h-16 rounded-full object-cover ring-4 ring-[#007AFF]/20" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-bold text-2xl ring-4 ring-[#007AFF]/20">
+                      {(selectedMember?.nickname || selectedMember?.username || 'U')[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  {selectedMember?.status === 1 && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#34C759] border-2 border-white dark:border-[#1A1D21] rounded-full" />
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-black dark:text-white">{selectedMember?.nickname || selectedMember?.username || 'Unknown'}</h3>
+                <p className="text-sm text-black/40 dark:text-white/40">@{selectedMember?.username || 'unknown'}</p>
+                {selectedMember.my_role === 'owner' && (
+                  <span className="mt-2 text-xs font-bold uppercase tracking-wider text-[#007AFF] bg-[#007AFF]/10 px-3 py-1 rounded-full">群主</span>
+                )}
+                {selectedMember.my_role === 'admin' && (
+                  <span className="mt-2 text-xs font-bold uppercase tracking-wider text-purple-500 bg-purple-500/10 px-3 py-1 rounded-full">管理员</span>
+                )}
+                {selectedMember.is_muted === 1 && (
+                  <span className="mt-2 text-xs font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-3 py-1 rounded-full">已禁言</span>
+                )}
+              </div>
+
+              <div className="p-2">
+                {myRole === 'owner' && selectedMember.my_role !== 'owner' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const isAdmin = selectedMember.my_role === 'admin';
+                        const res = await groupApi.setAdmin(conversationId, selectedMember.user_id, !isAdmin);
+                        if (res.code === 200) {
+                          toast(isAdmin ? '已取消管理员' : '已设为管理员', 'success');
+                          setGroupInfo((prev: any) => ({
+                            ...prev,
+                            members: prev.members.map((m: any) =>
+                              m.user_id === selectedMember.user_id || m.id === selectedMember.user_id
+                                ? { ...m, my_role: !isAdmin ? 'admin' : 'member' }
+                                : m
+                            )
+                          }));
+                        }
+                      } catch {
+                        toast('操作失败', 'error');
+                      }
+                      setShowMemberMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl transition-colors"
+                  >
+                    <span className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    </span>
+                    {selectedMember.my_role === 'admin' ? '取消管理员' : '设为管理员'}
+                  </button>
+                )}
+                {(myRole === 'owner' || (myRole === 'admin' && selectedMember.my_role !== 'admin')) && selectedMember.my_role !== 'owner' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowMemberMenu(false);
+                        setShowMuteModal(true);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                      </span>
+                      {selectedMember.is_muted ? '解除禁言' : '禁言'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await groupApi.removeMember(conversationId, selectedMember.user_id);
+                          if (res.code === 200) {
+                            toast('已移除', 'success');
+                            setGroupInfo((prev: any) => ({
+                              ...prev,
+                              members: prev.members.filter((m: any) =>
+                                m.user_id !== selectedMember.user_id && m.id !== selectedMember.user_id
+                              )
+                            }));
+                          }
+                        } catch {
+                          toast('移除失败', 'error');
+                        }
+                        setShowMemberMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9.89 19.38l1.324-8.278a1 1 0 00-.304-1.132 1 1 0 00-1.132-.304l-8.278 1.324A1 1 0 001 10.89l8.278-1.324a1 1 0 00.304-1.132 1 1 0 00-.304-1.132L.304 6.954a1 1 0 00-.304 1.132 1 1 0 001.132.304L9.89 8.39" /></svg>
+                      </span>
+                      移除成员
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setShowMemberMenu(false)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 mt-2 text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -398,7 +454,14 @@ export function GroupChat() {
                       const res = await groupApi.muteMember(conversationId, selectedMember.user_id, 0);
                       if (res.code === 200) {
                         toast('已解除禁言', 'success');
-                        loadGroupInfo();
+                        setGroupInfo((prev: any) => ({
+                          ...prev,
+                          members: prev.members.map((m: any) =>
+                            m.user_id === selectedMember.user_id || m.id === selectedMember.user_id
+                              ? { ...m, is_muted: 0 }
+                              : m
+                          )
+                        }));
                       }
                     } catch {
                       toast('操作失败', 'error');
@@ -415,7 +478,14 @@ export function GroupChat() {
                       const res = await groupApi.muteMember(conversationId, selectedMember.user_id, 10);
                       if (res.code === 200) {
                         toast('已禁言10分钟', 'success');
-                        loadGroupInfo();
+                        setGroupInfo((prev: any) => ({
+                          ...prev,
+                          members: prev.members.map((m: any) =>
+                            m.user_id === selectedMember.user_id || m.id === selectedMember.user_id
+                              ? { ...m, is_muted: 1 }
+                              : m
+                          )
+                        }));
                       }
                     } catch {
                       toast('操作失败', 'error');
@@ -432,7 +502,14 @@ export function GroupChat() {
                       const res = await groupApi.muteMember(conversationId, selectedMember.user_id, 60);
                       if (res.code === 200) {
                         toast('已禁言1小时', 'success');
-                        loadGroupInfo();
+                        setGroupInfo((prev: any) => ({
+                          ...prev,
+                          members: prev.members.map((m: any) =>
+                            m.user_id === selectedMember.user_id || m.id === selectedMember.user_id
+                              ? { ...m, is_muted: 1 }
+                              : m
+                          )
+                        }));
                       }
                     } catch {
                       toast('操作失败', 'error');
@@ -449,7 +526,14 @@ export function GroupChat() {
                       const res = await groupApi.muteMember(conversationId, selectedMember.user_id, 1440);
                       if (res.code === 200) {
                         toast('已禁言24小时', 'success');
-                        loadGroupInfo();
+                        setGroupInfo((prev: any) => ({
+                          ...prev,
+                          members: prev.members.map((m: any) =>
+                            m.user_id === selectedMember.user_id || m.id === selectedMember.user_id
+                              ? { ...m, is_muted: 1 }
+                              : m
+                          )
+                        }));
                       }
                     } catch {
                       toast('操作失败', 'error');
