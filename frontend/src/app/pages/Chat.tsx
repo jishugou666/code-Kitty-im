@@ -472,82 +472,91 @@ export function Chat() {
       {/* Message Menu */}
       <AnimatePresence>
         {showMessageMenu && selectedMessage && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed z-50 bg-white dark:bg-[#1A1D21] rounded-xl shadow-xl border border-black/5 dark:border-white/10 overflow-hidden"
-            style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
-          >
-            <button
-              onClick={async () => {
-                try {
-                  const res = await messageApi.recallMessage(selectedMessage.id);
-                  if (res.code === 200) {
-                    setMessages(prev => prev.map(m =>
-                      m.id === selectedMessage.id
-                        ? { ...m, type: 'recalled', content: '此消息已撤回' }
-                        : m
-                    ));
-                    fetchConversations();
-                    toast('已撤回', 'success');
-                  } else {
-                    toast(res.msg || '撤回失败', 'error');
-                  }
-                } catch {
-                  toast('撤回失败', 'error');
-                }
-                setShowMessageMenu(false);
-              }}
-              className="w-full px-6 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            >
-              撤回消息
-            </button>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(selectedMessage.content);
-                toast('已复制', 'success');
-                setShowMessageMenu(false);
-              }}
-              className="w-full px-6 py-3 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
-            >
-              复制
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
-                  if (conversations.code === 200) {
-                    const targets = conversations.data.filter((c: any) => c.id !== conversationId);
-                    if (targets.length === 0) {
-                      toast('没有其他会话可转发', 'warning');
-                      setShowMessageMenu(false);
-                      return;
-                    }
-                    const target = targets[0];
-                    await messageApi.sendMessage({
-                      conversationId: target.id,
-                      content: selectedMessage.content,
-                      type: selectedMessage.type
-                    });
-                    toast('已转发', 'success');
-                  }
-                } catch {
-                  toast('转发失败', 'error');
-                }
-                setShowMessageMenu(false);
-              }}
-              className="w-full px-6 py-3 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
-            >
-              转发
-            </button>
-            <button
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
               onClick={() => setShowMessageMenu(false)}
-              className="w-full px-6 py-3 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed z-50 bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden"
+              style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: isMobile ? '80%' : 'auto', maxWidth: '280px' }}
             >
-              取消
-            </button>
-          </motion.div>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await messageApi.recallMessage(selectedMessage.id);
+                    if (res.code === 200) {
+                      setMessages(prev => prev.map(m =>
+                        m.id === selectedMessage.id
+                          ? { ...m, type: 'recalled', content: '此消息已撤回' }
+                          : m
+                      ));
+                      fetchConversations();
+                      toast('已撤回', 'success');
+                    } else {
+                      toast(res.msg || '撤回失败', 'error');
+                    }
+                  } catch {
+                    toast('撤回失败', 'error');
+                  }
+                  setShowMessageMenu(false);
+                }}
+                className="w-full px-5 py-3.5 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                撤回消息
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedMessage.content);
+                  toast('已复制', 'success');
+                  setShowMessageMenu(false);
+                }}
+                className="w-full px-5 py-3.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
+              >
+                复制
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
+                    if (conversations.code === 200) {
+                      const targets = conversations.data.filter((c: any) => c.id !== conversationId);
+                      if (targets.length === 0) {
+                        toast('没有其他会话可转发', 'warning');
+                        setShowMessageMenu(false);
+                        return;
+                      }
+                      const target = targets[0];
+                      await messageApi.sendMessage({
+                        conversationId: target.id,
+                        content: selectedMessage.content,
+                        type: selectedMessage.type
+                      });
+                      toast('已转发', 'success');
+                    }
+                  } catch {
+                    toast('转发失败', 'error');
+                  }
+                  setShowMessageMenu(false);
+                }}
+                className="w-full px-5 py-3.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
+              >
+                转发
+              </button>
+              <button
+                onClick={() => setShowMessageMenu(false)}
+                className="w-full px-5 py-3.5 text-left text-sm text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
+              >
+                取消
+              </button>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

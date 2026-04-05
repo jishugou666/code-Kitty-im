@@ -55,6 +55,13 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
     fetchConversations();
   }, [fetchConversations]);
 
+  const handleMessageRecalled = useCallback((data: any) => {
+    if (data && data.messageId) {
+      fetchMessages(data.conversationId);
+      fetchConversations();
+    }
+  }, [fetchMessages, fetchConversations]);
+
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
@@ -67,17 +74,19 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 
       channelRef.current.bind('new-message', handleNewMessage);
       channelRef.current.bind('message-read', handleMessageRead);
+      channelRef.current.bind('message-recalled', handleMessageRecalled);
 
       return () => {
         if (channelRef.current) {
           channelRef.current.unbind('new-message', handleNewMessage);
           channelRef.current.unbind('message-read', handleMessageRead);
+          channelRef.current.unbind('message-recalled', handleMessageRecalled);
           pusher.unsubscribe(channelName);
           channelRef.current = null;
         }
       };
     }
-  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead]);
+  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead, handleMessageRecalled]);
 
   return {
     isConnected: true

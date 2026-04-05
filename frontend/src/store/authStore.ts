@@ -14,6 +14,7 @@ interface AuthState {
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
   updateUser: (user: UserProfile) => void;
+  setError: (error: string) => void;
   clearError: () => void;
 }
 
@@ -139,9 +140,13 @@ export const useAuthStore = create<AuthState>()(
         set({ user });
       },
 
+      setError: (error: string) => {
+        set({ error });
+      },
+
       clearError: () => {
         set({ error: null });
-      }
+      },
     }),
     {
       name: 'auth-storage',

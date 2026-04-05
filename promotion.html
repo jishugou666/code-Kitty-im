@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Kitty - 全新即时通讯体验</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --blue: #007AFF;
+      --blue-light: #5AC8FA;
+      --purple: #5856D6;
+      --pink: #AF52DE;
+      --green: #34C759;
+      --orange: #FF9500;
+      --red: #FF3B30;
+      --gray: #8E8E93;
+      --gray-dark: #48484A;
+      --dark: #1C1C1E;
+      --dark-2: #2C2C2E;
+      --dark-3: #3A3A3C;
+      --light: #F2F2F7;
+      --bg-dark: #000;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: #fff;
+      color: #000;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .poster {
+      width: 100%;
+      max-width: 390px;
+      margin: 0 auto;
+      background: #000;
+      overflow: hidden;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 40px;
+      position: relative;
+      background: linear-gradient(180deg, #000 0%, #0A0A0F 100%);
+    }
+
+    .hero-bg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0,122,255,0.15) 0%, rgba(88,86,214,0.05) 40%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-logo {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 36px;
+      box-shadow: 0 20px 60px rgba(0,122,255,0.4);
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-logo svg {
+      width: 50px;
+      height: 50px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hero h1 {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-tagline {
+      font-size: 21px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-primary {
+      padding: 16px 36px;
+      background: var(--blue);
+      color: white;
+      border-radius: 980px;
+      font-size: 17px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-secondary {
+      padding: 16px 36px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-radius: 980px;
+      font-size: 17px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.3s;
+    }
+
+    /* Stats */
+    .stats-section {
+      padding: 100px 40px;
+      background: #000;
+      text-align: center;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 56px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 15px;
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
+    }
+
+    /* iPhone Frame */
+    .iphone-frame {
+      width: 100%;
+      max-width: 350px;
+      margin: 0 auto;
+      aspect-ratio: 390/846;
+      background: #000;
+      border-radius: 50px;
+      padding: 12px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    .iphone-notch {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 34px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 10;
+    }
+
+    .iphone-screen {
+      width: 100%;
+      height: 100%;
+      background: var(--dark);
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 54px;
+      padding: 14px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .status-bar-left {
+      font-weight: 600;
+    }
+
+    .status-bar-right {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    /* App Header */
+    .app-header {
+      height: 56px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(28,28,30,0.95);
+      backdrop-filter: blur(20px);
+    }
+
+    .app-header-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Chat List */
+    .chat-list-container {
+      height: calc(100% - 110px);
+      overflow-y: auto;
+      padding: 8px 16px 90px;
+    }
+
+    .chat-list-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chat-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 0.5px solid rgba(255,255,255,0.1);
+    }
+
+    .chat-list-item:last-child {
+      border-bottom: none;
+    }
+
+    .chat-list-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .chat-list-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-list-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 4px;
+    }
+
+    .chat-list-msg {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-list-meta {
+      align-items: flex-end;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-list-time {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .chat-list-unread {
+      width: 8px;
+      height: 8px;
+      background: var(--blue);
+      border-radius: 4px;
+    }
+
+    /* Bottom Navigation - Dynamic Island Style */
+    .bottom-nav {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 50px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 0 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+
+    .nav-item {
+      width: 60px;
+      height: 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border-radius: 18px;
+      transition: all 0.2s;
+      color: var(--gray);
+    }
+
+    .nav-item.active {
+      background: rgba(0,122,255,0.12);
+      color: var(--blue);
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Feature Section */
+    .feature-section {
+      padding: 100px 40px;
+      background: #000;
+    }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--blue);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 32px;
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 17px;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 14px;
+    }
+
+    .feature-list li svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--green);
+      stroke-width: 2.5;
+      flex-shrink: 0;
+    }
+
+    .check-icon {
+      width: 18px;
+      height: 18px;
+      stroke: var(--green);
+      stroke-width: 2.5;
+      flex-shrink: 0;
+    }
+
+    /* Chat Preview */
+    .chat-preview-container {
+      padding: 60px 40px;
+      background: linear-gradient(180deg, #0A0A0F 0%, #000 100%);
+    }
+
+    .chat-preview-card {
+      background: var(--dark);
+      border-radius: 30px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    }
+
+    .chat-preview-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(28,28,30,0.95);
+      backdrop-filter: blur(20px);
+    }
+
+    .preview-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .preview-info h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .preview-info p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .messages-area {
+      padding: 20px;
+      min-height: 280px;
+    }
+
+    .message-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .message-row.incoming {
+      justify-content: flex-start;
+    }
+
+    .message-row.outgoing {
+      justify-content: flex-end;
+    }
+
+    .message-avatar-small {
+      width: 28px;
+      height: 28px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+
+    .message-bubble {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 20px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .message-row.incoming .message-bubble {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-bottom-left-radius: 6px;
+    }
+
+    .message-row.outgoing .message-bubble {
+      background: var(--blue);
+      color: white;
+      border-bottom-right-radius: 6px;
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      margin: 8px 0;
+    }
+
+    .chat-input-area {
+      padding: 12px 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--dark);
+    }
+
+    .input-plus {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray);
+    }
+
+    .input-plus svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .input-field {
+      flex: 1;
+      height: 38px;
+      background: var(--dark-2);
+      border-radius: 19px;
+      padding: 0 16px;
+      font-size: 16px;
+      color: white;
+      border: none;
+      outline: none;
+    }
+
+    .input-field::placeholder {
+      color: rgba(255,255,255,0.35);
+    }
+
+    .input-send {
+      width: 36px;
+      height: 36px;
+      background: var(--blue);
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+    }
+
+    .input-send svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2;
+    }
+
+    /* Screen Section */
+    .screen-section {
+      padding: 80px 40px;
+      background: #000;
+      text-align: center;
+    }
+
+    .screen-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 60px;
+    }
+
+    .screens-row {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .screen-item {
+      text-align: center;
+    }
+
+    .screen-item-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      margin-top: 16px;
+    }
+
+    /* Feature Cards */
+    .feature-cards-section {
+      padding: 80px 40px;
+      background: linear-gradient(180deg, #000 0%, #0A0A0F 100%);
+    }
+
+    .feature-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 24px;
+      text-align: left;
+    }
+
+    .feature-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .feature-card-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.4;
+    }
+
+    /* Color Section */
+    .color-section {
+      padding: 80px 40px;
+      background: #000;
+      text-align: center;
+    }
+
+    .color-section .section-title {
+      margin-bottom: 48px;
+    }
+
+    .color-grid {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .color-chip {
+      text-align: center;
+    }
+
+    .color-circle {
+      width: 70px;
+      height: 70px;
+      border-radius: 35px;
+      margin-bottom: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .color-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .color-hex {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      font-family: monospace;
+    }
+
+    /* Tech Section */
+    .tech-section {
+      padding: 80px 40px;
+      background: #000;
+      text-align: center;
+    }
+
+    .tech-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    .tech-tag {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 980px;
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* CTA Section */
+    .cta-section {
+      padding: 120px 40px;
+      background: linear-gradient(180deg, #000 0%, #0A0A0F 100%);
+      text-align: center;
+    }
+
+    .cta-logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+    }
+
+    .cta-logo svg {
+      width: 40px;
+      height: 40px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2;
+    }
+
+    .cta-section h2 {
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 40px;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 60px 40px;
+      background: #000;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 30px;
+    }
+
+    .footer-links a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.3s;
+    }
+
+    .footer-copyright {
+      font-size: 13px;
+      color: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="poster">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <h1>Code Kitty</h1>
+      <p class="hero-tagline">全新即时通讯体验</p>
+      <div class="hero-cta">
+        <a href="#" class="btn-primary">立即体验</a>
+        <a href="#" class="btn-secondary">了解更多</a>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number">99.9%</div>
+          <div class="stat-label">消息送达率</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">&lt;100ms</div>
+          <div class="stat-label">平均延迟</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">7×24</div>
+          <div class="stat-label">稳定服务</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">500+</div>
+          <div class="stat-label">群组成员</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat List Screen -->
+    <section class="chat-preview-container">
+      <div class="iphone-frame">
+        <div class="iphone-notch"></div>
+        <div class="iphone-screen">
+          <div class="status-bar">
+            <span class="status-bar-left">9:41</span>
+            <span class="status-bar-right">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
+                <path d="M1 4.5C1 3.67 1.67 3 2.5 3H3.5C4.33 3 5 3.67 5 4.5V10.5C5 11.33 4.33 12 3.5 12H2.5C1.67 12 1 11.33 1 10.5V4.5Z"/>
+                <path d="M6 3C6 2.17 6.67 1.5 7.5 1.5H8.5C9.33 1.5 10 2.17 10 3V10.5C10 11.33 9.33 12 8.5 12H7.5C6.67 12 6 11.33 6 10.5V3Z"/>
+                <path d="M11 5C11 4.17 11.67 3.5 12.5 3.5H13.5C14.33 3.5 15 4.17 15 5V10.5C15 11.33 14.33 12 13.5 12H12.5C11.67 12 11 11.33 11 10.5V5Z"/>
+              </svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+                <path d="M8 2.4C10.5 2.4 12.5 3.2 14 4.6L15.5 3.1C13.7 1.1 11 0 8 0C5 0 2.3 1.1 0.5 3.1L2 4.6C3.5 3.2 5.5 2.4 8 2.4Z"/>
+                <path d="M8 5.1C10.5 5.1 12.5 5.9 14 7.3L15.5 5.8C13.7 3.8 11 2.7 8 2.7C5 2.7 2.3 3.8 0.5 5.8L2 7.3C3.5 5.9 5.5 5.1 8 5.1Z"/>
+                <circle cx="8" cy="9" r="2"/>
+              </svg>
+              <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor">
+                <rect x="0" y="3" width="21" height="8" rx="2"/>
+                <path d="M21 6H23L25 8V10L23 12H21V6Z"/>
+              </svg>
+            </span>
+          </div>
+          <div class="app-header">
+            <span class="app-header-title">消息</span>
+          </div>
+          <div class="chat-list-container">
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #007AFF, #5856D6);">张</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">张伟</div>
+                <div class="chat-list-msg">收到，明天会议室见！</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">刚刚</div>
+                <div class="chat-list-unread"></div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #34C759, #30D158);">周</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">周杰</div>
+                <div class="chat-list-msg">周末有空出来打球吗？</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">10分钟前</div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #FF9500, #FFD60A);">吴</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">吴静</div>
+                <div class="chat-list-msg">好的没问题</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">30分钟前</div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #FF3B30, #FF6B6B);">郑</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">郑强</div>
+                <div class="chat-list-msg">晚上吃什么？</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">1小时前</div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">王</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">王芳</div>
+                <div class="chat-list-msg">项目进度怎么样了？</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">2小时前</div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #007AFF, #5AC8FA);">陈</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">陈明</div>
+                <div class="chat-list-msg">文档已经更新了</div>
+              </div>
+              <div class="chat-list-meta">
+                <div class="chat-list-time">昨天</div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature: Messaging -->
+    <section class="feature-section">
+      <div class="section-label">即时通讯</div>
+      <h2 class="section-title">消息传递<br>从未如此流畅</h2>
+      <p class="section-desc">基于 Pusher 实时推送技术，实现毫秒级消息送达</p>
+      <ul class="feature-list">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          实时消息推送
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          消息已读未读状态
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          5分钟内消息撤回
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          支持图片和文件
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chat Preview -->
+    <section class="chat-preview-container" style="padding-top: 20px;">
+      <div class="chat-preview-card">
+        <div class="chat-preview-header">
+          <div class="preview-avatar" style="background: linear-gradient(135deg, #007AFF, #5856D6);">李</div>
+          <div class="preview-info">
+            <h4>李明</h4>
+            <p>在线</p>
+          </div>
+        </div>
+        <div class="messages-area">
+          <div class="message-row incoming">
+            <div class="message-avatar-small" style="background: linear-gradient(135deg, #007AFF, #5856D6);">李</div>
+            <div class="message-bubble">嗨，晚上一起吃饭吗？</div>
+          </div>
+          <div class="message-row outgoing">
+            <div class="message-bubble">好啊，去哪里？</div>
+          </div>
+          <div class="message-row incoming">
+            <div class="message-avatar-small" style="background: linear-gradient(135deg, #007AFF, #5856D6);">李</div>
+            <div class="message-bubble">公司旁边新开的日料店，听说评价很不错！</div>
+          </div>
+          <div class="message-row outgoing">
+            <div class="message-bubble">听起来不错，几点见？</div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <div class="input-plus">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <input type="text" class="input-field" placeholder="输入消息...">
+          <button class="input-send">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature: Group Chat -->
+    <section class="feature-section">
+      <div class="section-label">群组聊天</div>
+      <h2 class="section-title">轻松创建<br>高效沟通</h2>
+      <p class="section-desc">支持创建最多 500 人的群聊，让团队协作更加高效</p>
+      <ul class="feature-list">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          自由创建群组
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          灵活的成员管理
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          加群审批机制
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          群主身份标识
+        </li>
+      </ul>
+    </section>
+
+    <!-- Feature Cards -->
+    <section class="feature-cards-section">
+      <div class="section-label">核心特性</div>
+      <h2 class="section-title">每一个细节<br>都为更好的体验</h2>
+      <div class="feature-cards-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #007AFF, #5856D6);">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>安全隐私</h3>
+          <p>端到端加密保护，支持隐私设置</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #5856D6, #AF52DE);">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3>国际化</h3>
+          <p>支持简体中文和英文双语切换</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #34C759, #30D158);">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </div>
+          <h3>深色模式</h3>
+          <p>支持浅色和深色主题一键切换</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #FF9500, #FFD60A);">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <h3>响应式设计</h3>
+          <p>完美适配手机、平板、电脑设备</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mobile Navigation Preview -->
+    <section class="screen-section">
+      <h2 class="screen-title">灵动岛设计<br>未来感交互</h2>
+      <div class="iphone-frame" style="max-width: 300px;">
+        <div class="iphone-notch"></div>
+        <div class="iphone-screen">
+          <div class="status-bar">
+            <span class="status-bar-left">9:41</span>
+            <span class="status-bar-right">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
+                <path d="M1 4.5C1 3.67 1.67 3 2.5 3H3.5C4.33 3 5 3.67 5 4.5V10.5C5 11.33 4.33 12 3.5 12H2.5C1.67 12 1 11.33 1 10.5V4.5Z"/>
+                <path d="M6 3C6 2.17 6.67 1.5 7.5 1.5H8.5C9.33 1.5 10 2.17 10 3V10.5C10 11.33 9.33 12 8.5 12H7.5C6.67 12 6 11.33 6 10.5V3Z"/>
+                <path d="M11 5C11 4.17 11.67 3.5 12.5 3.5H13.5C14.33 3.5 15 4.17 15 5V10.5C15 11.33 14.33 12 13.5 12H12.5C11.67 12 11 11.33 11 10.5V5Z"/>
+              </svg>
+            </span>
+          </div>
+          <div class="app-header">
+            <span class="app-header-title">联系人</span>
+          </div>
+          <div class="chat-list-container" style="padding-top: 0;">
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #007AFF, #5856D6);">李</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">李娜</div>
+                <div class="chat-list-msg">在线</div>
+              </div>
+              <div style="width: 10px; height: 10px; background: #34C759; border-radius: 5px;"></div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #34C759, #30D158);">王</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">王芳</div>
+                <div class="chat-list-msg">离线</div>
+              </div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #FF3B30, #FF6B6B);">刘</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">刘洋</div>
+                <div class="chat-list-msg">在线</div>
+              </div>
+              <div style="width: 10px; height: 10px; background: #34C759; border-radius: 5px;"></div>
+            </div>
+            <div class="chat-list-item">
+              <div class="chat-list-avatar" style="background: linear-gradient(135deg, #FF9500, #FFD60A);">陈</div>
+              <div class="chat-list-info">
+                <div class="chat-list-name">陈明</div>
+                <div class="chat-list-msg">离线</div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="nav-item active">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <div class="nav-item">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-item-label" style="margin-top: 24px;">移动端精心优化的灵动岛导航</p>
+    </section>
+
+    <!-- Color System -->
+    <section class="color-section">
+      <div class="section-label">设计系统</div>
+      <h2 class="section-title">精心调配的色彩</h2>
+      <div class="color-grid">
+        <div class="color-chip">
+          <div class="color-circle" style="background: linear-gradient(135deg, #007AFF, #5856D6);"></div>
+          <div class="color-name">主色</div>
+          <div class="color-hex">#007AFF</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-circle" style="background: #5856D6;"></div>
+          <div class="color-name">辅助色</div>
+          <div class="color-hex">#5856D6</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-circle" style="background: #34C759;"></div>
+          <div class="color-name">成功色</div>
+          <div class="color-hex">#34C759</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-circle" style="background: #FF9500;"></div>
+          <div class="color-name">警告色</div>
+          <div class="color-hex">#FF9500</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-circle" style="background: #FF3B30;"></div>
+          <div class="color-name">错误色</div>
+          <div class="color-hex">#FF3B30</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="tech-section">
+      <div class="section-label">技术架构</div>
+      <h2 class="section-title" style="font-size: 28px;">现代技术栈 稳定可靠</h2>
+      <div class="tech-tags">
+        <span class="tech-tag">React</span>
+        <span class="tech-tag">TypeScript</span>
+        <span class="tech-tag">Node.js</span>
+        <span class="tech-tag">Express</span>
+        <span class="tech-tag">MySQL</span>
+        <span class="tech-tag">WebSocket</span>
+        <span class="tech-tag">Pusher</span>
+        <span class="tech-tag">Tailwind CSS</span>
+        <span class="tech-tag">Zustand</span>
+        <span class="tech-tag">Framer Motion</span>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <div class="cta-logo">
+        <svg viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <h2>开始使用 Code Kitty</h2>
+      <p>全新即时通讯体验 · 重新定义沟通方式</p>
+      <div class="hero-cta" style="justify-content: center;">
+        <a href="#" class="btn-primary">立即体验</a>
+        <a href="#" class="btn-secondary">GitHub</a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="#">隐私政策</a>
+        <a href="#">服务条款</a>
+        <a href="#">联系我们</a>
+        <a href="#">开发者</a>
+      </div>
+      <p class="footer-copyright">© 2026 Code Kitty. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -7,21 +7,37 @@ export const UserController = {
       const { password, nickname, email } = req.body;
 
       if (!email || !password || !nickname) {
-        return res.status(400).json(validationError('Nickname, email and password are required'));
+        return res.status(400).json(validationError('请填写昵称、邮箱和密码'));
       }
 
       if (password.length < 6) {
-        return res.status(400).json(validationError('Password must be at least 6 characters'));
+        return res.status(400).json(validationError('密码长度不能少于6位'));
+      }
+
+      if (nickname.length < 2) {
+        return res.status(400).json(validationError('昵称长度不能少于2位'));
+      }
+
+      if (nickname.length > 20) {
+        return res.status(400).json(validationError('昵称长度不能超过20位'));
+      }
+
+      if (/\s/.test(nickname)) {
+        return res.status(400).json(validationError('昵称不能包含空格'));
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json(validationError('请输入有效的邮箱地址'));
       }
 
       const result = await UserService.register(password, nickname, email);
-      res.status(201).json(success(result, 'Registration successful'));
+      res.status(201).json(success(result, '注册成功'));
     } catch (err) {
       if (err.message === 'Email already exists') {
-        return res.status(409).json(error('Email already exists', 409));
+        return res.status(409).json(error('该邮箱已被注册', 409));
       }
       if (err.message === 'Nickname already exists') {
-        return res.status(409).json(error('Nickname already exists', 409));
+        return res.status(409).json(error('该昵称已被使用', 409));
       }
       next(err);
     }
@@ -32,14 +48,14 @@ export const UserController = {
       const { loginField, password } = req.body;
 
       if (!loginField || !password) {
-        return res.status(400).json(validationError('Email/username and password are required'));
+        return res.status(400).json(validationError('请输入账号和密码'));
       }
 
       const result = await UserService.login(loginField, password);
-      res.json(success(result, 'Login successful'));
+      res.json(success(result, '登录成功'));
     } catch (err) {
       if (err.message === 'Invalid email/username or password') {
-        return res.status(401).json(error('Invalid email/username or password', 401));
+        return res.status(401).json(error('账号或密码错误', 401));
       }
       next(err);
     }

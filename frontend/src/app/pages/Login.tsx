@@ -7,7 +7,7 @@ import { useIsMobile } from '../components/ui/use-mobile';
 
 export function Login() {
   const navigate = useNavigate();
-  const { login, register, isLoading, error, clearError } = useAuthStore();
+  const { login, register, isLoading, error, clearError, setError } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
   const [loginField, setLoginField] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +18,38 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+
+    if (!isLogin) {
+      if (!nickname.trim()) {
+        setError('请输入昵称');
+        return;
+      }
+      if (nickname.length < 2) {
+        setError('昵称长度不能少于2位');
+        return;
+      }
+      if (nickname.length > 20) {
+        setError('昵称长度不能超过20位');
+        return;
+      }
+      if (/\s/.test(nickname)) {
+        setError('昵称不能包含空格');
+        return;
+      }
+      if (!email.trim()) {
+        setError('请输入邮箱');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('请输入有效的邮箱地址');
+        return;
+      }
+      if (password.length < 6) {
+        setError('密码长度不能少于6位');
+        return;
+      }
+    }
+
     try {
       if (isLogin) {
         await login({ loginField, password });
@@ -26,7 +58,7 @@ export function Login() {
       }
       navigate('/');
     } catch (err) {
-      console.error(isLogin ? 'Login failed:' : 'Registration failed:', err);
+      console.error(isLogin ? '登录失败:' : '注册失败:', err);
     }
   };
 
@@ -74,9 +106,19 @@ export function Login() {
             className={isMobile ? "w-full bg-white/80 dark:bg-[#1C1F26]/80 backdrop-blur-2xl rounded-2xl sm:rounded-[36px] p-5 sm:p-8 shadow-[0_16px_64px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/5" : "w-full bg-white/60 dark:bg-[#1C1F26]/60 backdrop-blur-2xl rounded-[36px] p-8 shadow-[0_16px_64px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/5"}
           >
             {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
-                {error}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="mb-4 p-3.5 bg-red-50 dark:bg-red-900/30 border border-red-200/50 dark:border-red-800/50 rounded-xl"
+              >
+                <p className="text-red-600 dark:text-red-400 text-sm font-medium flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {error}
+                </p>
+              </motion.div>
             )}
 
             <div className="space-y-4 sm:space-y-5">
