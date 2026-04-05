@@ -594,6 +594,7 @@ CREATE TABLE message_read (
 | GET /api/admin/groups | GET | Admin.tsx | 获取群组列表(后台) |
 | GET /api/admin/groups/:groupId/members | GET | Admin.tsx | 获取群组成员(后台) |
 | DELETE /api/admin/groups/:groupId | DELETE | Admin.tsx | 删除群组(后台) |
+| DELETE /api/message/:messageId | DELETE | Chat.tsx | 撤回消息 |
 
 ---
 
@@ -680,6 +681,26 @@ CREATE TABLE message_read (
   - `GroupSearchModal.tsx` - handleSearch, handleJoin
   - `GroupInfoSidebar.tsx` - loadGroupInfo, handleSetAdmin, handleRemoveMember, handleLeaveGroup
   - `ContactsSidebar.tsx` - fetchGroupRequests, fetchMyGroups, handleGroupJoinRequest
+- **状态**: ✅ 已解决
+
+### 问题12: Settings 页面 API 响应解析错误 ⚠️ 已解决
+- **描述**: 设置页面加载失败
+- **根本原因**: Settings.tsx 使用 `response.data.code` 而非 `response.code`
+- **修复方案**: 统一使用 `response.code` 和 `response.data`
+- **涉及文件**:
+  - `frontend/src/app/pages/Settings.tsx` - loadSettings, handleSettingChange, handleProfileUpdate, handlePasswordChange
+- **状态**: ✅ 已解决
+
+### 问题13: Pusher 密钥硬编码 ⚠️ 已解决
+- **描述**: Pusher API 密钥硬编码在源代码中，存在安全风险
+- **修复方案**: 
+  - 移除前端 `useWebSocket.ts` 中的硬编码 Pusher Key
+  - 改为从 `VITE_PUSHER_KEY` 环境变量读取
+  - `.env.example` 中的 Pusher 配置改为 placeholder 值
+- **涉及文件**:
+  - `frontend/src/hooks/useWebSocket.ts`
+  - `frontend/.env.example`
+  - `backend/.env.example`
 - **状态**: ✅ 已解决
 
 ### AI智能调度系统 ⚠️ 已实现

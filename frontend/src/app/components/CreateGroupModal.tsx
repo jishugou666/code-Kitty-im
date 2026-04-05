@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Users, Shield, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
+import { useChatStore } from '../../store/chatStore';
 import { groupApi } from '../../api/group';
 import { useToast } from '../../hooks/useToast';
 
@@ -13,6 +14,7 @@ interface CreateGroupModalProps {
 
 export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModalProps) {
   const { user } = useAuthStore();
+  const { conversations, fetchConversations } = useChatStore();
   const { toast, ToastContainer } = useToast();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
@@ -20,54 +22,37 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
   const [needApproval, setNeedApproval] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      fetchConversations();
       setStep(1);
       setName('');
       setDescription('');
       setNeedApproval(false);
       setSelectedMembers([]);
       setSearchQuery('');
-      setSearchResults([]);
     }
-  }, [isOpen]);
+  }, [isOpen, fetchConversations]);
 
-  const handleSearch = async () => {
-    if (searchQuery.trim().length < 2) return;
-    setIsSearching(true);
-    try {
-      const response = await groupApi.search(searchQuery);
-      if (response.code === 200) {
-        setSearchResults(response.data || []);
-      }
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  const contacts = conversations.filter(c => c.type === 'single');
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.trim().length >= 2) {
-        handleSearch();
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const filteredContacts = searchQuery
+    ? contacts.filter(c =>
+        c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.nickname?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : contacts;
 
-  const toggleMember = (member: any) => {
-    if (member.id === user?.id) return;
+  const toggleMember = (contact: any) => {
+    if (contact.user_id === user?.id) return;
     setSelectedMembers(prev => {
-      const isSelected = prev.some(m => m.id === member.id);
+      const isSelected = prev.some(m => m.user_id === contact.user_id);
       if (isSelected) {
-        return prev.filter(m => m.id !== member.id);
+        return prev.filter(m => m.user_id !== contact.user_id);
       } else {
-        return [...prev, member];
+        return [...prev, { id: contact.user_id, nickname: contact.nickname || contact.name, username: contact.name }];
       }
     });
   };
@@ -194,30 +179,42 @@ export function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModa
                 </div>
 
                 <div className="space-y-2">
-                  {searchResults.map(member => (
-                    <div
-                      key={member.id}
-                      onClick={() => toggleMember(member)}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
-                        selectedMembers.some(m => m.id === member.id)
-                          ? 'bg-[#007AFF]/10 border border-[#007AFF]/30'
-                          : 'hover:bg-black/5 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-medium">
-                        {member.nickname?.[0]?.toUpperCase() || 'U'}
+                  {filteredContacts.map(contact => {
+                    const contactId = contact.user_id || contact.id;
+                    const contactName = contact.nickname || contact.name || 'Unknown';
+                    const contactUsername = contact.name || 'unknown';
+                    const isSelected = selectedMembers.some(m => m.user_id === contactId);
+                    return (
+                      <div
+                        key={contactId}
+                        onClick={() => toggleMember(contact)}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-[#007AFF]/10 border border-[#007AFF]/30'
+                            : 'hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-medium">
+                          {contactName[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-black dark:text-white truncate">{contactName}</p>
+                          <p className="text-xs text-black/40 dark:text-white/40 truncate">@{contactUsername}</p>
+                        </div>
+                        {contactId === user?.id && (
+                          <span className="text-xs text-[#007AFF]">群主</span>
+                        )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-black dark:text-white truncate">{member.nickname || member.username}</p>
-                        <p className="text-xs text-black/40 dark:text-white/40 truncate">@{member.username}</p>
-                      </div>
-                      {member.id === user?.id && (
-                        <span className="text-xs text-[#007AFF]">群主</span>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
 
-                  {searchQuery && searchResults.length === 0 && !isSearching && (
+                  {!searchQuery && filteredContacts.length === 0 && (
+                    <div className="text-center py-8 text-black/40 dark:text-white/40">
+                      暂无联系人
+                    </div>
+                  )}
+
+                  {searchQuery && filteredContacts.length === 0 && (
                     <div className="text-center py-8 text-black/40 dark:text-white/40">
                       未找到用户
                     </div>

@@ -407,34 +407,41 @@ export function Chat() {
               {Array.isArray(msgs) && msgs.map((message) => {
                 if (!message) return null;
                 const isOwnMessage = message.sender_id === user?.id;
+                const isRecalled = message.type === 'recalled';
                 return (
                   <motion.div
                     key={message.id || Math.random()}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     onLongPress={() => {
-                      if (isOwnMessage) {
+                      if (isOwnMessage && !isRecalled) {
                         setSelectedMessage(message);
                         setShowMessageMenu(true);
                       }
                     }}
                     onClick={() => {
-                      if (isOwnMessage) {
+                      if (isOwnMessage && !isRecalled) {
                         setSelectedMessage(message);
                         setShowMessageMenu(true);
                       }
                     }}
                     className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
                   >
-                    {!isOwnMessage && (
+                    {!isOwnMessage && !isRecalled && (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
                         {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                    <div className={clsx("max-w-[70%] rounded-2xl px-4 py-2", isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white")}>
+                    <div className={clsx("max-w-[70%] rounded-2xl px-4 py-2",
+                      isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
+                      isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
+                    )}>
                       {message.type === 'text' && <p className="text-sm">{message.content}</p>}
-                      {message.type === 'image' && <img src={message.content} alt="图片" className="rounded-lg max-w-full" />}
-                      {message.type === 'file' && (
+                      {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className="rounded-lg max-w-full" />}
+                      {message.type === 'recalled' && (
+                        <p className="text-sm italic opacity-60">{message.content}</p>
+                      )}
+                      {message.type === 'file' && !isRecalled && (
                         (() => {
                           try {
                             const fileData = JSON.parse(message.content || '{}');
@@ -475,7 +482,12 @@ export function Chat() {
                 try {
                   const res = await messageApi.recallMessage(selectedMessage.id);
                   if (res.code === 200) {
-                    setMessages(prev => prev.filter(m => m.id !== selectedMessage.id));
+                    setMessages(prev => prev.map(m =>
+                      m.id === selectedMessage.id
+                        ? { ...m, type: 'recalled', content: '此消息已撤回' }
+                        : m
+                    ));
+                    fetchConversations();
                     toast('已撤回', 'success');
                   } else {
                     toast(res.msg || '撤回失败', 'error');
@@ -562,10 +574,6 @@ export function Chat() {
                 <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
                   <Image size={16} /> 图片
                 </label>
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                <button className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-sm">
-                  <File size={16} /> 文件
-                </button>
               </motion.div>
             )}
           </button>

@@ -3,19 +3,9 @@ import { triggerEvent } from '../utils/pusher.js';
 
 export const MessageService = {
   async getMessageList(conversationId, limit = 50) {
-    console.log('=== [Service] getMessageList 开始 ===');
-    console.log('conversationId:', conversationId, 'limit:', limit);
     try {
       const safeLimit = parseInt(limit) || 50;
-      
-      console.log('1. 先查询该会话的所有消息（无 JOIN）...');
-      const simpleRows = await query(
-        'SELECT * FROM message WHERE conversation_id = ?',
-        [conversationId]
-      );
-      console.log('简单查询结果（无 JOIN）:', simpleRows);
-      console.log('简单查询结果数量:', simpleRows?.length || 0);
-      
+
       const sql = `
         SELECT
           m.id,
@@ -32,38 +22,33 @@ export const MessageService = {
         ORDER BY m.created_at ASC
         LIMIT ${safeLimit}
       `;
-      console.log('2. 执行带 JOIN 的 SQL...');
-      console.log('SQL:', sql);
-      console.log('Params:', [conversationId]);
-      
+
       const rows = await query(sql, [conversationId]);
-      console.log('带 JOIN 的查询结果:', rows);
-      console.log('带 JOIN 的查询结果数量:', rows?.length || 0);
 
       if (!Array.isArray(rows)) {
-        console.error('查询结果不是数组:', rows);
         return { code: 200, data: [], msg: '成功' };
       }
 
-      console.log('=== [Service] getMessageList 完成，返回', rows.length, '条消息 ===');
       return { code: 200, data: rows, msg: '成功' };
     } catch (err) {
-      console.error('=== [Service] getMessageList 错误 ===', err);
-      console.error('错误堆栈:', err.stack);
+      console.error('getMessageList error:', err);
       return { code: 200, data: [], msg: '成功' };
     }
   },
 
   async sendMessage(conversationId, senderId, content, type = 'text') {
-    console.log('sendMessage called with:', { conversationId, senderId, content, type });
     try {
-      if (!conversationId || !senderId || !content) {
+      if (!conversationId || !senderId) {
         return { code: 400, data: null, msg: '缺少必要参数' };
+      }
+
+      if (!content && type !== 'image') {
+        return { code: 400, data: null, msg: '消息内容不能为空' };
       }
 
       const result = await query(
         'INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, ?)',
-        [conversationId, senderId, content, type || 'text']
+        [conversationId, senderId, content || '', type || 'text']
       );
 
       if (!result || !result.insertId) {
@@ -102,7 +87,6 @@ export const MessageService = {
   },
 
   async markAsRead(conversationId, userId) {
-    console.log('markAsRead called with:', { conversationId, userId });
     try {
       await query(
         `INSERT INTO message_read (conversation_id, user_id, seen_at)
@@ -121,7 +105,6 @@ export const MessageService = {
   },
 
   async searchMessages(userId, keyword, limit = 50) {
-    console.log('searchMessages called with:', { userId, keyword, limit });
     try {
       const safeLimit = parseInt(limit) || 50;
       const messages = await query(
@@ -173,12 +156,14 @@ export const MessageService = {
         return { code: 400, data: null, msg: '超过5分钟，无法撤回' };
       }
 
-      await query('DELETE FROM message WHERE id = ?', [messageId]);
-      await query('DELETE FROM message_read WHERE message_id = ?', [messageId]);
+      await query(
+        "UPDATE message SET type = 'recalled', content = '此消息已撤回' WHERE id = ?",
+        [messageId]
+      );
 
       triggerEvent(`chat-${message.conversation_id}`, 'message-recalled', { messageId, conversationId: message.conversation_id });
 
-      return { code: 200, data: null, msg: '已撤回' };
+      return { code: 200, data: { messageId, conversationId: message.conversation_id }, msg: '已撤回' };
     } catch (err) {
       console.error('recallMessage error:', err);
       return { code: 200, data: null, msg: '撤回失败' };

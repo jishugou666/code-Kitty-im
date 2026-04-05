@@ -116,7 +116,7 @@ export function Settings() {
     { icon: Globe, label: t('settings.language'), action: () => {} },
     { icon: Moon, label: t('settings.theme'), action: () => {} },
     { icon: Bell, label: t('settings.privacy'), action: () => {} },
-    { icon: Shield, label: t('common.confirm') + ' ' + t('common.delete'), action: () => {} },
+    { icon: Shield, label: t('settings.security'), action: () => {} },
     { icon: Info, label: t('settings.about'), action: () => {} }
   ];
 

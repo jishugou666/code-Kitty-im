@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { userApi } from '../../api/user';
 import { conversationApi } from '../../api/conversation';
+import { contactApi } from '../../api/contact';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
@@ -47,7 +48,7 @@ export function SearchModal({ isOpen, onClose, onAddSuccess }: SearchModalProps)
 
   const handleAddContact = async (userId: number) => {
     try {
-      await userApi.addContact(userId);
+      await contactApi.addContact(userId);
       toast(t('contacts.addSuccess'), 'success');
       onAddSuccess?.();
     } catch (error: any) {
