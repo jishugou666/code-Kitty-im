@@ -31,7 +31,7 @@ export function MobileNav() {
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex items-center gap-1 px-3 py-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)] backdrop-blur-3xl bg-white/90 dark:bg-[#1A1D21]/90 border border-white/20 dark:border-white/10"
+        className="flex items-center gap-1 px-4 py-2 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.1)] backdrop-blur-xl bg-white/70 dark:bg-[#1A1D21]/70 border border-white/30 dark:border-white/10"
       >
         {navItems.map((item, index) => {
           const active = item.isMatch(location.pathname);
