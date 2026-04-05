@@ -44,12 +44,9 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   const handleNewMessage = useCallback((data: any) => {
     if (data && data.id) {
       addMessage(data.conversation_id, data);
-      if (data.conversation_id === conversationId && onNewMessage) {
-        onNewMessage(data);
-      }
       fetchConversations();
     }
-  }, [addMessage, fetchConversations, conversationId, onNewMessage]);
+  }, [addMessage, fetchConversations]);
 
   const handleMessageRead = useCallback((data: any) => {
     fetchConversations();
