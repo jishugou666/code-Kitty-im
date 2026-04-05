@@ -62,9 +62,6 @@ export function usePredictivePrefetch(basePath: string, items: string[]) {
     const predictions = predictNextAccess(basePath);
     predictions.forEach(path => {
       const item = items.find(i => path.endsWith(i));
-      if (item) {
-        console.log(`[AI Prefetch] Predicting next: ${path}`);
-      }
     });
   }, [basePath, items, predictNextAccess]);
 }

@@ -10,5 +10,6 @@ router.post('/send', MessageController.sendMessage);
 router.get('/list', MessageController.getMessageList);
 router.get('/search', MessageController.searchMessages);
 router.post('/read', MessageController.markAsRead);
+router.delete('/:messageId', MessageController.recallMessage);
 
 export default router;

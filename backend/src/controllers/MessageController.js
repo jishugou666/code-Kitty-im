@@ -98,5 +98,16 @@ export const MessageController = {
       console.error('markAsRead error:', err);
       res.json({ code: 200, data: null, msg: '标记失败' });
     }
+  },
+
+  async recallMessage(req, res, next) {
+    try {
+      const { messageId } = req.params;
+      const result = await MessageService.recallMessage(parseInt(messageId), req.user.id);
+      res.json(result);
+    } catch (err) {
+      console.error('recallMessage error:', err);
+      res.json({ code: 200, data: null, msg: '撤回失败' });
+    }
   }
 };

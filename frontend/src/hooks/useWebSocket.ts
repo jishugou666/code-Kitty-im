@@ -3,14 +3,17 @@ import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 
-const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY || 'c83b4566e58d78c1dd50';
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
 const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'ap1';
 
 let globalPusher: Pusher | null = null;
 
 export function getPusher(): Pusher {
   if (!globalPusher) {
-    globalPusher = new Pusher(PUSHER_KEY, {
+    if (!PUSHER_KEY) {
+      console.error('Pusher key is not configured. Set VITE_PUSHER_KEY environment variable.');
+    }
+    globalPusher = new Pusher(PUSHER_KEY || 'demo-key', {
       cluster: PUSHER_CLUSTER
     });
   }
@@ -69,7 +72,7 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 }
 
 export function useGlobalWebSocket() {
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated, token, user } = useAuthStore();
   const { fetchConversations } = useChatStore();
 
   useEffect(() => {

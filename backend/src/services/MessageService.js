@@ -154,5 +154,34 @@ export const MessageService = {
       console.error('searchMessages error:', err);
       return { code: 200, data: [], msg: '搜索失败' };
     }
+  },
+
+  async recallMessage(messageId, userId) {
+    try {
+      const messages = await query(
+        'SELECT * FROM message WHERE id = ? AND sender_id = ?',
+        [messageId, userId]
+      );
+
+      if (!messages || messages.length === 0) {
+        return { code: 400, data: null, msg: '消息不存在或无权撤回' };
+      }
+
+      const message = messages[0];
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      if (new Date(message.created_at) < fiveMinutesAgo) {
+        return { code: 400, data: null, msg: '超过5分钟，无法撤回' };
+      }
+
+      await query('DELETE FROM message WHERE id = ?', [messageId]);
+      await query('DELETE FROM message_read WHERE message_id = ?', [messageId]);
+
+      triggerEvent(`chat-${message.conversation_id}`, 'message-recalled', { messageId, conversationId: message.conversation_id });
+
+      return { code: 200, data: null, msg: '已撤回' };
+    } catch (err) {
+      console.error('recallMessage error:', err);
+      return { code: 200, data: null, msg: '撤回失败' };
+    }
   }
 };

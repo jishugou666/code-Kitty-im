@@ -314,6 +314,32 @@
 - **重要修复**: `GroupService.createGroup` 先创建 conversation 获取 ID，然后用该 ID 作为 group.id，确保群组能显示在消息列表
 - **执行结果**: ✅ 完成
 
+### 任务15: BUG修复与功能完善
+- **执行时间**: 2026-04-05
+- **任务内容**:
+  - BUG-01: 修复 useGlobalWebSocket user 未定义（实时通知失效）
+  - BUG-02: Pusher 密钥硬编码改为环境变量
+  - OPT-01: 移除生产环境 console.log
+  - F-01: 主题切换功能
+  - F-02: 隐私设置功能
+  - F-03: 关于页面
+  - F-04: Moments 图片上传功能
+  - F-05: 消息撤回功能（5分钟内可撤回）
+  - F-06: 消息转发功能
+- **代码改动关键点**:
+  - frontend/src/hooks/useWebSocket.ts - 修复 user 引用，移除硬编码 Pusher Key
+  - frontend/src/app/pages/Settings.tsx - 添加主题切换、隐私设置、关于页面
+  - frontend/src/app/pages/Moments.tsx - 添加图片上传功能
+  - frontend/src/app/pages/Chat.tsx - 添加消息撤回/转发菜单
+  - backend/src/services/MessageService.js - 添加 recallMessage 方法
+  - backend/src/controllers/MessageController.js - 添加 recallMessage 端点
+  - backend/src/routes/message.js - 添加 DELETE /:messageId 路由
+- **API 变更**:
+  - DELETE /api/message/:messageId - 撤回消息
+- **环境变量更新**:
+  - .env.example 中 Pusher 配置改为 placeholder 值
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 全局依赖映射

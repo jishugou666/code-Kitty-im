@@ -17,6 +17,7 @@ export function Moments() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishContent, setPublishContent] = useState('');
+  const [publishImages, setPublishImages] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [expandedComments, setExpandedComments] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
@@ -40,15 +41,16 @@ export function Moments() {
   };
 
   const handlePublish = async () => {
-    if (!publishContent.trim()) {
+    if (!publishContent.trim() && publishImages.length === 0) {
       toast(t('moments.contentPlaceholder'), 'warning');
       return;
     }
     setIsPublishing(true);
     try {
-      const res = await momentsApi.create({ content: publishContent });
+      const res = await momentsApi.create({ content: publishContent, images: publishImages });
       if (res.code === 200) {
         setPublishContent('');
+        setPublishImages([]);
         setShowPublishModal(false);
         loadMoments();
         toast(t('common.success'), 'success');
@@ -115,6 +117,31 @@ export function Moments() {
     if (hours < 24) return `${hours}小时前`;
     if (days < 7) return `${days}天前`;
     return date.toLocaleDateString('zh-CN');
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast('图片大小不能超过5MB', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setPublishImages(prev => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const removeImage = (index: number) => {
+    setPublishImages(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -259,10 +286,32 @@ export function Moments() {
               placeholder={t('moments.contentPlaceholder')}
               className="w-full h-40 p-3 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white resize-none"
             />
+            {publishImages.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {publishImages.map((img, idx) => (
+                  <div key={idx} className="relative aspect-square">
+                    <img src={img} alt="" className="w-full h-full object-cover rounded-lg" />
+                    <button
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex items-center justify-between mt-4">
-              <button className="p-2 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full">
+              <label className="p-2 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full cursor-pointer">
                 <Image size={20} />
-              </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+              </label>
               <button
                 onClick={handlePublish}
                 disabled={isPublishing}

@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { tempConversationApi } from '../../api/tempConversation';
+import { messageApi } from '../../api/message';
 import { GroupInfoSidebar } from '../components/GroupInfoSidebar';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -25,6 +26,9 @@ export function Chat() {
   const [showAntiFraudTip, setShowAntiFraudTip] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [isGroupChat, setIsGroupChat] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [showMessageMenu, setShowMessageMenu] = useState(false);
+  const [messageMenuPos, setMessageMenuPos] = useState({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
@@ -34,7 +38,6 @@ export function Chat() {
   const conversation = conversations.find(c => c.id === conversationId);
 
   useWebSocket(conversationId || undefined, (newMessage) => {
-    console.log('[Chat] Received new message via Pusher:', newMessage);
     setMessages(prev => {
       if (prev.some(m => m.id === newMessage.id)) {
         return prev;
@@ -93,18 +96,14 @@ export function Chat() {
   };
 
   const loadMessages = async () => {
-    console.log('=== [前端] loadMessages 被调用 ===');
-    console.log('conversationId:', conversationId, 'token:', token ? '有token' : '无token');
     if (!conversationId || !token) {
-      console.log('缺少 conversationId 或 token，返回');
       return;
     }
     setIsLoading(true);
     try {
       const timestamp = Date.now();
       const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&t=${timestamp}`;
-      console.log('请求URL:', url);
-      
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -113,24 +112,17 @@ export function Chat() {
           'Expires': '0'
         }
       });
-      
-      console.log('响应状态:', response.status);
+
       const data = await response.json();
-      console.log('响应数据:', data);
-      console.log('响应 data.data:', data.data);
-      console.log('data.data 是否为数组:', Array.isArray(data.data));
-      console.log('data.data 长度:', data.data?.length || 0);
 
       if (data.code === 200 && Array.isArray(data.data)) {
-        console.log('设置 messages:', data.data || []);
         setMessages(data.data || []);
         storeFetchMessages(conversationId);
       } else {
-        console.log('条件不满足，设置空数组');
         setMessages([]);
       }
     } catch (error) {
-      console.error('=== [前端] loadMessages 错误 ===', error);
+      console.error('Failed to load messages:', error);
       setMessages([]);
     } finally {
       setIsLoading(false);
@@ -420,6 +412,18 @@ export function Chat() {
                     key={message.id || Math.random()}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    onLongPress={() => {
+                      if (isOwnMessage) {
+                        setSelectedMessage(message);
+                        setShowMessageMenu(true);
+                      }
+                    }}
+                    onClick={() => {
+                      if (isOwnMessage) {
+                        setSelectedMessage(message);
+                        setShowMessageMenu(true);
+                      }
+                    }}
                     className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
                   >
                     {!isOwnMessage && (
@@ -455,6 +459,83 @@ export function Chat() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Message Menu */}
+      <AnimatePresence>
+        {showMessageMenu && selectedMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed z-50 bg-white dark:bg-[#1A1D21] rounded-xl shadow-xl border border-black/5 dark:border-white/10 overflow-hidden"
+            style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          >
+            <button
+              onClick={async () => {
+                try {
+                  const res = await messageApi.recallMessage(selectedMessage.id);
+                  if (res.code === 200) {
+                    setMessages(prev => prev.filter(m => m.id !== selectedMessage.id));
+                    toast('已撤回', 'success');
+                  } else {
+                    toast(res.msg || '撤回失败', 'error');
+                  }
+                } catch {
+                  toast('撤回失败', 'error');
+                }
+                setShowMessageMenu(false);
+              }}
+              className="w-full px-6 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              撤回消息
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(selectedMessage.content);
+                toast('已复制', 'success');
+                setShowMessageMenu(false);
+              }}
+              className="w-full px-6 py-3 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
+            >
+              复制
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
+                  if (conversations.code === 200) {
+                    const targets = conversations.data.filter((c: any) => c.id !== conversationId);
+                    if (targets.length === 0) {
+                      toast('没有其他会话可转发', 'warning');
+                      setShowMessageMenu(false);
+                      return;
+                    }
+                    const target = targets[0];
+                    await messageApi.sendMessage({
+                      conversationId: target.id,
+                      content: selectedMessage.content,
+                      type: selectedMessage.type
+                    });
+                    toast('已转发', 'success');
+                  }
+                } catch {
+                  toast('转发失败', 'error');
+                }
+                setShowMessageMenu(false);
+              }}
+              className="w-full px-6 py-3 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
+            >
+              转发
+            </button>
+            <button
+              onClick={() => setShowMessageMenu(false)}
+              className="w-full px-6 py-3 text-left text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-t border-black/5 dark:border-white/10"
+            >
+              取消
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Preview */}
       <AnimatePresence>

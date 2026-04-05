@@ -38,8 +38,8 @@ export function Settings() {
   const loadSettings = async () => {
     try {
       const response = await settingsApi.get();
-      if (response.data.code === 200 && response.data.data) {
-        setSettings(response.data.data);
+      if (response.code === 200 && response.data) {
+        setSettings(response.data);
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -53,6 +53,9 @@ export function Settings() {
 
       await settingsApi.update({ [key]: value });
 
+      if (key === 'theme') {
+        document.documentElement.classList.toggle('dark', value === 'dark');
+      }
       if (key === 'language') {
         i18n.changeLanguage(value);
       }
@@ -64,11 +67,11 @@ export function Settings() {
   const handleProfileUpdate = async () => {
     try {
       const response = await settingsApi.updateProfile(profile);
-      if (response.data.code === 200) {
-        setUser(response.data.data);
+      if (response.code === 200) {
+        setUser(response.data);
         toast(t('common.success'), 'success');
       } else {
-        toast(response.data.msg || t('common.error'), 'error');
+        toast(response.msg || t('common.error'), 'error');
       }
     } catch (error) {
       toast(t('common.error'), 'error');
@@ -90,12 +93,12 @@ export function Settings() {
         oldPassword: passwords.oldPassword,
         newPassword: passwords.newPassword
       });
-      if (response.data.code === 200) {
+      if (response.code === 200) {
         toast(t('common.success'), 'success');
         setShowPasswordModal(false);
         setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
       } else {
-        toast(response.data.msg || t('common.error'), 'error');
+        toast(response.msg || t('common.error'), 'error');
       }
     } catch (error) {
       toast(t('common.error'), 'error');
@@ -211,6 +214,85 @@ export function Settings() {
             >
               English
             </button>
+          </div>
+        </div>
+
+        {/* 主题设置 */}
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Moon size={20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white">{t('settings.theme')}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleSettingChange('theme', 'light')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+                settings.theme === 'light'
+                  ? 'bg-[#007AFF] text-white'
+                  : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
+              }`}
+            >
+              ☀️ {t('settings.light')}
+            </button>
+            <button
+              onClick={() => handleSettingChange('theme', 'dark')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+                settings.theme === 'dark'
+                  ? 'bg-[#007AFF] text-white'
+                  : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
+              }`}
+            >
+              🌙 {t('settings.dark')}
+            </button>
+          </div>
+        </div>
+
+        {/* 隐私设置 */}
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Shield size={20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white">{t('settings.privacy')}</span>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-black dark:text-white">{t('settings.showOnlineStatus')}</span>
+              <button
+                onClick={() => handleSettingChange('show_online_status', !settings.show_online_status)}
+                className={`w-12 h-7 rounded-full transition-colors ${
+                  settings.show_online_status ? 'bg-[#007AFF]' : 'bg-black/20 dark:bg-white/20'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  settings.show_online_status ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-black dark:text-white">{t('settings.allowStrangerMsg')}</span>
+              <button
+                onClick={() => handleSettingChange('allow_stranger_msg', !settings.allow_stranger_msg)}
+                className={`w-12 h-7 rounded-full transition-colors ${
+                  settings.allow_stranger_msg ? 'bg-[#007AFF]' : 'bg-black/20 dark:bg-white/20'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  settings.allow_stranger_msg ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 关于 */}
+        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-4 mb-4">
+            <Info size={20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white">{t('settings.about')}</span>
+          </div>
+          <div className="space-y-2 text-sm text-black/60 dark:text-white/60">
+            <p>Code Kitty IM v1.0.0</p>
+            <p>A modern instant messaging application</p>
+            <p className="text-xs mt-4">© 2026 Code Kitty. All rights reserved.</p>
           </div>
         </div>
 

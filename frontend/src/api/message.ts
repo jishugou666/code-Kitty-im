@@ -38,5 +38,8 @@ export const messageApi = {
     }),
 
   markAsRead: (conversationId: number) =>
-    apiClient.post('/message/read', { conversationId })
+    apiClient.post('/message/read', { conversationId }),
+
+  recallMessage: (messageId: number) =>
+    apiClient.delete(`/message/${messageId}`)
 };
