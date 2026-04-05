@@ -4,9 +4,12 @@ export const ConversationService = {
   async getConversationMembers(conversationId) {
     try {
       const sql = `
-        SELECT u.id, u.nickname, u.avatar, u.status, cm.role
+        SELECT u.id, u.nickname, u.avatar, u.status, cm.role,
+          COALESCE(gm.role, cm.role) as my_role
         FROM conversation_member cm
         LEFT JOIN user u ON cm.user_id = u.id
+        LEFT JOIN \`group\` g ON g.id = cm.conversation_id
+        LEFT JOIN group_member gm ON gm.group_id = g.id AND gm.user_id = cm.user_id
         WHERE cm.conversation_id = ?
       `;
       const rows = await query(sql, [conversationId]);

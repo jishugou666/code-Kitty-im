@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router";
+ import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
@@ -73,7 +73,7 @@ export function GroupChat() {
     }
   };
 
-  const myRole = groupInfo?.my_role || 'member';
+  const myRole = groupInfo?.members?.find((m: any) => m.user_id === user?.id)?.my_role || 'member';
 
   const loadMessages = async () => {
     if (!conversationId || !token) return;
