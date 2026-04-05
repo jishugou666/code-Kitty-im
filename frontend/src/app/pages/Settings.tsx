@@ -6,12 +6,14 @@ import { useNavigate } from 'react-router';
 import { settingsApi } from '../../api/settings';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 export function Settings() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, setUser, logout } = useAuthStore();
   const { toast, ToastContainer } = useToast();
+  const isMobile = useIsMobile();
 
   const [settings, setSettings] = useState<any>({
     language: 'zh-CN',
@@ -121,82 +123,82 @@ export function Settings() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#13161A]">
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5">
-        <div className="flex items-center gap-4 px-4 py-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full">
-            <ArrowLeft size={20} className="text-black dark:text-white" />
+    <div className={isMobile ? "min-h-screen bg-white dark:bg-[#13161A] pb-20" : "min-h-screen bg-white dark:bg-[#13161A]"}>
+      <div className={isMobile ? "sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5"}>
+        <div className={isMobile ? "flex items-center gap-3 px-3 py-3" : "flex items-center gap-4 px-4 py-4"}>
+          <button onClick={() => navigate(-1)} className={isMobile ? "p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full" : "p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full"}>
+            <ArrowLeft size={isMobile ? 18 : 20} className="text-black dark:text-white" />
           </button>
-          <h1 className="text-lg font-semibold text-black dark:text-white">{t('settings.title')}</h1>
+          <h1 className={isMobile ? "text-base font-semibold text-black dark:text-white" : "text-lg font-semibold text-black dark:text-white"}>{t('settings.title')}</h1>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto p-4 space-y-6">
-        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-black dark:text-white mb-4">{t('settings.profile')}</h2>
+      <div className={isMobile ? "max-w-2xl mx-auto p-3 space-y-4" : "max-w-2xl mx-auto p-4 space-y-6"}>
+        <div className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-4 shadow-sm" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-sm"}>
+          <h2 className={isMobile ? "text-sm font-semibold text-black dark:text-white mb-3" : "text-base font-semibold text-black dark:text-white mb-4"}>{t('settings.profile')}</h2>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-xl font-semibold">
+          <div className={isMobile ? "flex items-center gap-3 mb-4" : "flex items-center gap-4 mb-6"}>
+            <div className={isMobile ? "w-12 h-12 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-lg font-semibold" : "w-16 h-16 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-xl font-semibold"}>
               {profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'}
             </div>
             <div>
-              <p className="text-sm text-black/60 dark:text-white/60">@{user?.username}</p>
+              <p className={isMobile ? "text-xs text-black/60 dark:text-white/60" : "text-sm text-black/60 dark:text-white/60"}>@{user?.username}</p>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className={isMobile ? "space-y-3" : "space-y-4"}>
             <div>
-              <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('auth.nickname')}</label>
+              <label className={isMobile ? "text-xs text-black/60 dark:text-white/60 mb-1 block" : "text-sm text-black/60 dark:text-white/60 mb-1 block"}>{t('auth.nickname')}</label>
               <input
                 type="text"
                 value={profile.nickname}
                 onChange={(e) => setProfile({ ...profile, nickname: e.target.value })}
-                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                className={isMobile ? "w-full h-10 px-3 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white text-sm" : "w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"}
               />
             </div>
             <div>
-              <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('auth.email')}</label>
+              <label className={isMobile ? "text-xs text-black/60 dark:text-white/60 mb-1 block" : "text-sm text-black/60 dark:text-white/60 mb-1 block"}>{t('auth.email')}</label>
               <input
                 type="email"
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                className={isMobile ? "w-full h-10 px-3 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white text-sm" : "w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"}
               />
             </div>
             <button
               onClick={handleProfileUpdate}
-              className="w-full h-11 bg-[#007AFF] hover:bg-[#006CE0] text-white font-medium rounded-xl transition-colors"
+              className={isMobile ? "w-full h-10 bg-[#007AFF] hover:bg-[#006CE0] text-white font-medium rounded-xl transition-colors text-sm" : "w-full h-11 bg-[#007AFF] hover:bg-[#006CE0] text-white font-medium rounded-xl transition-colors"}
             >
               {t('common.save')}
             </button>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-sm">
+        <div className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl overflow-hidden shadow-sm" : "bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-sm"}>
           {menuItems.map((item, index) => (
             <button
               key={item.label}
               onClick={item.action}
-              className={`w-full flex items-center gap-4 px-4 py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
+              className={`w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
                 index !== menuItems.length - 1 ? 'border-b border-black/5 dark:border-white/5' : ''
               }`}
             >
-              <item.icon size={20} className="text-[#007AFF]" />
-              <span className="flex-1 text-left text-black dark:text-white">{item.label}</span>
+              <item.icon size={isMobile ? 18 : 20} className="text-[#007AFF]" />
+              <span className={isMobile ? "flex-1 text-left text-sm text-black dark:text-white" : "flex-1 text-left text-black dark:text-white"}>{item.label}</span>
               <span className="text-black/30 dark:text-white/30">›</span>
             </button>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <Globe size={20} className="text-[#007AFF]" />
-            <span className="text-black dark:text-white">{t('settings.language')}</span>
+        <div className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 shadow-sm" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm"}>
+          <div className={isMobile ? "flex items-center gap-3 mb-3" : "flex items-center gap-4 mb-4"}>
+            <Globe size={isMobile ? 18 : 20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white text-sm">{t('settings.language')}</span>
           </div>
-          <div className="flex gap-2">
+          <div className={isMobile ? "flex gap-2" : "flex gap-2"}>
             <button
               onClick={() => handleSettingChange('language', 'zh-CN')}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
                 settings.language === 'zh-CN'
                   ? 'bg-[#007AFF] text-white'
                   : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
@@ -206,7 +208,7 @@ export function Settings() {
             </button>
             <button
               onClick={() => handleSettingChange('language', 'en-US')}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
                 settings.language === 'en-US'
                   ? 'bg-[#007AFF] text-white'
                   : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
@@ -217,16 +219,15 @@ export function Settings() {
           </div>
         </div>
 
-        {/* 主题设置 */}
-        <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <Moon size={20} className="text-[#007AFF]" />
-            <span className="text-black dark:text-white">{t('settings.theme')}</span>
+        <div className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 shadow-sm" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm"}>
+          <div className={isMobile ? "flex items-center gap-3 mb-3" : "flex items-center gap-4 mb-4"}>
+            <Moon size={isMobile ? 18 : 20} className="text-[#007AFF]" />
+            <span className="text-black dark:text-white text-sm">{t('settings.theme')}</span>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => handleSettingChange('theme', 'light')}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
                 settings.theme === 'light'
                   ? 'bg-[#007AFF] text-white'
                   : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'
@@ -236,7 +237,7 @@ export function Settings() {
             </button>
             <button
               onClick={() => handleSettingChange('theme', 'dark')}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
                 settings.theme === 'dark'
                   ? 'bg-[#007AFF] text-white'
                   : 'bg-black/5 dark:bg-white/5 text-black dark:text-white'

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { AtSign, Lock, ChevronRight, User, Mail } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 export function Login() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
+  const isMobile = useIsMobile();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,16 +40,22 @@ export function Login() {
       <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] bg-purple-400/20 dark:bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="h-20 w-full bg-white/30 dark:bg-[#1A1D21]/30 backdrop-blur-3xl border-b border-white/50 dark:border-white/5 z-10" />
+      <div className={`${isMobile ? "h-14" : "h-20"} w-full bg-white/30 dark:bg-[#1A1D21]/30 backdrop-blur-3xl border-b border-white/50 dark:border-white/5 z-10 flex items-center justify-center`}>
+        <div className={`${isMobile ? "w-9 h-9" : "w-11 h-11"} bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] rounded-xl flex items-center justify-center shadow-md border border-white/20 dark:border-white/10`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isMobile ? "w-5 h-5" : "w-6 h-6"}>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-8 z-20">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 z-20">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="w-full max-w-md flex flex-col items-center"
+          className={isMobile ? "w-full max-w-sm flex flex-col items-center" : "w-full max-w-md flex flex-col items-center"}
         >
-          <div className="w-24 h-24 bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] rounded-[28px] shadow-[0_12px_40px_rgba(0,122,255,0.3)] flex items-center justify-center mb-10 overflow-hidden relative border border-white/40 dark:border-white/10">
+          <div className={`${isMobile ? "w-20 h-20 mb-6" : "w-24 h-24 mb-10"} bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] rounded-2xl sm:rounded-[28px] shadow-[0_12px_40px_rgba(0,122,255,0.3)] flex items-center justify-center overflow-hidden relative border border-white/40 dark:border-white/10`}>
             <div className="absolute inset-0 bg-white/20 backdrop-blur-sm" />
             <svg
               viewBox="0 0 24 24"
@@ -56,22 +64,22 @@ export function Login() {
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-12 h-12 relative z-10"
+              className={isMobile ? "w-10 h-10 relative z-10" : "w-12 h-12 relative z-10"}
             >
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-3">
+          <h1 className={isMobile ? "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2" : "text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-3"}>
             {isLogin ? 'Welcome back' : 'Create account'}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-[16px] mb-12">
+          <p className={isMobile ? "text-sm text-slate-500 dark:text-slate-400 mb-8" : "text-[16px] text-slate-500 dark:text-slate-400 mb-12"}>
             {isLogin ? 'Sign in to continue to Chat' : 'Sign up to get started'}
           </p>
 
           <form
             onSubmit={handleSubmit}
-            className="w-full bg-white/60 dark:bg-[#1C1F26]/60 backdrop-blur-2xl rounded-[36px] p-8 shadow-[0_16px_64px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/5"
+            className={isMobile ? "w-full bg-white/80 dark:bg-[#1C1F26]/80 backdrop-blur-2xl rounded-2xl sm:rounded-[36px] p-5 sm:p-8 shadow-[0_16px_64px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/5" : "w-full bg-white/60 dark:bg-[#1C1F26]/60 backdrop-blur-2xl rounded-[36px] p-8 shadow-[0_16px_64px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/5"}
           >
             {error && (
               <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm">
@@ -79,33 +87,33 @@ export function Login() {
               </div>
             )}
 
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               {!isLogin && (
                 <>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                      <User size={22} strokeWidth={2} />
+                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                      <User size={isMobile ? 18 : 22} strokeWidth={2} />
                     </div>
                     <input
                       type="text"
-                      placeholder="Nickname (required)"
+                      placeholder="Nickname"
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
-                      className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                      className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
                       required
                     />
                   </div>
 
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                      <Mail size={22} strokeWidth={2} />
+                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                      <Mail size={isMobile ? 18 : 22} strokeWidth={2} />
                     </div>
                     <input
                       type="email"
-                      placeholder="Email (required)"
+                      placeholder="Email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                      className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
                       required
                     />
                   </div>
@@ -114,30 +122,30 @@ export function Login() {
 
               {isLogin && (
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                    <AtSign size={22} strokeWidth={2} />
+                  <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                    <AtSign size={isMobile ? 18 : 22} strokeWidth={2} />
                   </div>
                   <input
                     type="text"
                     placeholder="Email or Username"
                     value={loginField}
                     onChange={(e) => setLoginField(e.target.value)}
-                    className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                    className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
                     required
                   />
                 </div>
               )}
 
               <div className="relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                  <Lock size={22} strokeWidth={2} />
+                <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                  <Lock size={isMobile ? 18 : 22} strokeWidth={2} />
                 </div>
                 <input
                   type="password"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"
+                  className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
                   required
                   minLength={6}
                 />
@@ -147,30 +155,30 @@ export function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-10 w-full h-14 bg-[#007AFF] hover:bg-[#006CE0] active:scale-[0.98] transition-all text-white rounded-2xl font-semibold text-[17px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,122,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className={isMobile ? "mt-6 w-full h-12 bg-[#007AFF] hover:bg-[#006CE0] active:scale-[0.98] transition-all text-white rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,122,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed" : "mt-10 w-full h-14 bg-[#007AFF] hover:bg-[#006CE0] active:scale-[0.98] transition-all text-white rounded-2xl font-semibold text-[17px] flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,122,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"}
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
                   {isLogin ? 'Sign In' : 'Sign Up'}
-                  <ChevronRight size={20} strokeWidth={2.5} />
+                  <ChevronRight size={isMobile ? 18 : 20} strokeWidth={2.5} />
                 </>
               )}
             </button>
 
-            <div className="mt-6 text-center">
+            <div className="mt-4 sm:mt-6 text-center">
               <button
                 type="button"
                 onClick={toggleMode}
-                className="text-[15px] text-[#007AFF] hover:text-[#006CE0] transition-colors"
+                className="text-[13px] sm:text-[15px] text-[#007AFF] hover:text-[#006CE0] transition-colors"
               >
                 {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
               </button>
             </div>
           </form>
 
-          <p className="mt-10 text-xs text-center text-slate-400 dark:text-slate-500 max-w-[280px] leading-relaxed">
+          <p className={isMobile ? "mt-6 text-xs text-center text-slate-400 dark:text-slate-500 max-w-[260px] leading-relaxed px-4" : "mt-10 text-xs text-center text-slate-400 dark:text-slate-500 max-w-[280px] leading-relaxed"}>
             By signing in, you agree to our Terms of Service and Privacy Policy.
           </p>
         </motion.div>

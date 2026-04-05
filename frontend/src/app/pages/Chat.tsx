@@ -10,6 +10,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { GroupInfoSidebar } from '../components/GroupInfoSidebar';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -34,6 +35,7 @@ export function Chat() {
   const { user, token } = useAuthStore();
   const { conversations, messages: storeMessages, fetchConversations, addMessage: storeAddMessage, fetchMessages: storeFetchMessages } = useChatStore();
   const { toast, ToastContainer } = useToast();
+  const isMobile = useIsMobile();
 
   const conversation = conversations.find(c => c.id === conversationId);
 
@@ -318,18 +320,18 @@ export function Chat() {
   return (
     <div className="h-full flex flex-col bg-[#FAFAFC] dark:bg-[#0A0C10]">
       {/* Header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
+      <div className={isMobile ? "h-12 px-3 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl" : "h-14 px-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={() => navigate(isMobile ? '/' : '/')} className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}>
+            <ArrowLeft size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
           </button>
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
-              {isGroupChat && <Users size={16} className="text-[#007AFF]" />}
+            <h2 className={isMobile ? "font-semibold text-gray-900 dark:text-white text-xs sm:text-sm flex items-center gap-1.5" : "font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2"}>
+              {isGroupChat && <Users size={isMobile ? 14 : 16} className="text-[#007AFF]" />}
               {conversation?.name || '聊天'}
-              {isTempConversation && <AlertTriangle size={14} className="text-yellow-500" />}
+              {isTempConversation && <AlertTriangle size={isMobile ? 12 : 14} className="text-yellow-500" />}
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className={isMobile ? "text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block" : "text-xs text-gray-500 dark:text-gray-400"}>
               {(conversation?.members?.length || 0)} 位成员
             </p>
           </div>
@@ -337,13 +339,13 @@ export function Chat() {
         {isGroupChat ? (
           <button
             onClick={() => setShowGroupInfo(true)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+            className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}
           >
-            <Users size={20} className="text-gray-600 dark:text-gray-300" />
+            <Users size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
           </button>
         ) : (
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-            <Info size={20} className="text-gray-600 dark:text-gray-300" />
+          <button className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}>
+            <Info size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
           </button>
         )}
       </div>
@@ -428,18 +430,18 @@ export function Chat() {
                     className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
                   >
                     {!isOwnMessage && !isRecalled && (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0">
+                      <div className={isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0"}>
                         {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                    <div className={clsx("max-w-[70%] rounded-2xl px-4 py-2",
+                    <div className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2" : "max-w-[70%] rounded-2xl px-4 py-2",
                       isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
                       isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
                     )}>
-                      {message.type === 'text' && <p className="text-sm">{message.content}</p>}
-                      {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className="rounded-lg max-w-full" />}
+                      {message.type === 'text' && <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>}
+                      {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
                       {message.type === 'recalled' && (
-                        <p className="text-sm italic opacity-60">{message.content}</p>
+                        <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
                       )}
                       {message.type === 'file' && !isRecalled && (
                         (() => {
@@ -447,14 +449,14 @@ export function Chat() {
                             const fileData = JSON.parse(message.content || '{}');
                             return (
                               <div className="flex items-center gap-2">
-                                <File size={16} />
-                                <span className="text-sm">{fileData.name || '未知文件'}</span>
+                                <File size={isMobile ? 14 : 16} />
+                                <span className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{fileData.name || '未知文件'}</span>
                               </div>
                             );
-                          } catch { return <p className="text-sm">{message.content}</p>; }
+                          } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
                         })()
                       )}
-                      <p className={clsx("text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400")}>
+                      <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400")}>
                         {formatTime(message.created_at)}
                       </p>
                     </div>
@@ -564,10 +566,10 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl">
-        <div className="flex items-end gap-2">
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative">
-            <Plus size={20} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
+      <div className={isMobile ? "p-2 sm:p-3 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl" : "p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
+        <div className="flex items-end gap-1 sm:gap-2">
+          <button className={isMobile ? "p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative"}>
+            <Plus size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
             {showAttachMenu && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-12 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px]">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
@@ -584,11 +586,11 @@ export function Chat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="输入消息..."
-              className="w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
+              className={isMobile ? "w-full h-10 sm:h-11 px-3 sm:px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400" : "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"}
             />
           </div>
-          <button onClick={handleSend} disabled={!input.trim()} className="p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors">
-            <Send size={18} className="text-white" />
+          <button onClick={handleSend} disabled={!input.trim()} className={isMobile ? "p-2 sm:p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors" : "p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"}>
+            <Send size={isMobile ? 16 : 18} className="text-white" />
           </button>
         </div>
       </div>

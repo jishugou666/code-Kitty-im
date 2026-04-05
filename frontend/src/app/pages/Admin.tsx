@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups';
 
@@ -17,6 +18,7 @@ export function Admin() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { toast, ToastContainer } = useToast();
+  const isMobile = useIsMobile();
 
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [dashboard, setDashboard] = useState<any>(null);
@@ -39,6 +41,7 @@ export function Admin() {
   const [actionMenu, setActionMenu] = useState<number | null>(null);
   const [banModal, setBanModal] = useState<{ userId: number; username: string; isBanned: boolean } | null>(null);
   const [banDuration, setBanDuration] = useState('7');
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -329,95 +332,136 @@ export function Admin() {
   ];
 
   return (
-    <div className="h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A]">
-      <div className="w-64 border-r border-black/10 dark:border-white/10 p-4 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl">
-        <div className="flex items-center gap-3 mb-6 px-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
-            <Shield size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-black dark:text-white">管理中心</h1>
-            <p className="text-xs text-black/40 dark:text-white/40">Admin Panel</p>
-          </div>
-        </div>
-        <nav className="space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => handleTabChange(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                activeTab === item.key
-                  ? 'bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white shadow-lg shadow-[#007AFF]/20'
-                  : 'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              <item.icon size={18} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <div className="flex-1 p-6 overflow-y-auto">
-        <div className="flex items-center gap-4 mb-6">
+    <div className={isMobile ? "h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] pb-20" : "h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A]"}>
+      {isMobile && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
             <ArrowLeft size={20} className="text-black dark:text-white" />
           </button>
-          <h2 className="text-2xl font-bold text-black dark:text-white">{menuItems.find(m => m.key === activeTab)?.label}</h2>
+          <h1 className="text-base font-bold text-black dark:text-white">管理中心</h1>
+          <button onClick={() => setShowMobileSidebar(!showMobileSidebar)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
+            <Menu size={20} className="text-black dark:text-white" />
+          </button>
         </div>
+      )}
+
+      {isMobile && showMobileSidebar && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-16 left-0 right-0 z-50 p-4 bg-white/95 dark:bg-[#13161A]/95 backdrop-blur-xl border-b border-black/10 dark:border-white/10"
+        >
+          <nav className="space-y-1">
+            {menuItems.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => { handleTabChange(item.key); setShowMobileSidebar(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                  activeTab === item.key
+                    ? 'bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white shadow-lg shadow-[#007AFF]/20'
+                    : 'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </motion.div>
+      )}
+
+      {!isMobile && (
+        <div className="w-64 border-r border-black/10 dark:border-white/10 p-4 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-6 px-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
+              <Shield size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-black dark:text-white">管理中心</h1>
+              <p className="text-xs text-black/40 dark:text-white/40">Admin Panel</p>
+            </div>
+          </div>
+          <nav className="space-y-1">
+            {menuItems.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => handleTabChange(item.key)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                  activeTab === item.key
+                    ? 'bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white shadow-lg shadow-[#007AFF]/20'
+                    : 'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      <div className={isMobile ? "flex-1 p-3 overflow-y-auto" : "flex-1 p-6 overflow-y-auto"}>
+        {!isMobile && (
+          <div className="flex items-center gap-4 mb-6">
+            <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
+              <ArrowLeft size={20} className="text-black dark:text-white" />
+            </button>
+            <h2 className="text-2xl font-bold text-black dark:text-white">{menuItems.find(m => m.key === activeTab)?.label}</h2>
+          </div>
+        )}
 
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#007AFF]/10">
+          <div className="space-y-4 sm:space-y-6">
+            <div className={isMobile ? "grid grid-cols-2 gap-2 sm:gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 sm:p-4 shadow-lg shadow-[#007AFF]/10" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#007AFF]/10"}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-black/40 dark:text-white/40">总用户数</p>
-                    <p className="text-3xl font-bold text-[#007AFF]">{dashboard?.totalUsers || 0}</p>
+                    <p className={isMobile ? "text-[10px] sm:text-sm text-black/40 dark:text-white/40" : "text-sm text-black/40 dark:text-white/40"}>总用户数</p>
+                    <p className={isMobile ? "text-xl sm:text-2xl font-bold text-[#007AFF]" : "text-3xl font-bold text-[#007AFF]"}>{dashboard?.totalUsers || 0}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-[#007AFF]/10 flex items-center justify-center">
-                    <Users size={24} className="text-[#007AFF]" />
+                  <div className={isMobile ? "w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-[#007AFF]/10 flex items-center justify-center" : "w-12 h-12 rounded-xl bg-[#007AFF]/10 flex items-center justify-center"}>
+                    <Users size={isMobile ? 18 : 24} className="text-[#007AFF]" />
                   </div>
                 </div>
               </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#34C759]/10">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 sm:p-4 shadow-lg shadow-[#34C759]/10" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#34C759]/10"}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-black/40 dark:text-white/40">总消息数</p>
-                    <p className="text-3xl font-bold text-[#34C759]">{dashboard?.totalMessages || 0}</p>
+                    <p className={isMobile ? "text-[10px] sm:text-sm text-black/40 dark:text-white/40" : "text-sm text-black/40 dark:text-white/40"}>总消息数</p>
+                    <p className={isMobile ? "text-xl sm:text-2xl font-bold text-[#34C759]" : "text-3xl font-bold text-[#34C759]"}>{dashboard?.totalMessages || 0}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-[#34C759]/10 flex items-center justify-center">
-                    <MessageCircle size={24} className="text-[#34C759]" />
+                  <div className={isMobile ? "w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-[#34C759]/10 flex items-center justify-center" : "w-12 h-12 rounded-xl bg-[#34C759]/10 flex items-center justify-center"}>
+                    <MessageCircle size={isMobile ? 18 : 24} className="text-[#34C759]" />
                   </div>
                 </div>
               </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#FF9500]/10">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 sm:p-4 shadow-lg shadow-[#FF9500]/10" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#FF9500]/10"}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-black/40 dark:text-white/40">总动态数</p>
-                    <p className="text-3xl font-bold text-[#FF9500]">{dashboard?.totalMoments || 0}</p>
+                    <p className={isMobile ? "text-[10px] sm:text-sm text-black/40 dark:text-white/40" : "text-sm text-black/40 dark:text-white/40"}>总动态数</p>
+                    <p className={isMobile ? "text-xl sm:text-2xl font-bold text-[#FF9500]" : "text-3xl font-bold text-[#FF9500]"}>{dashboard?.totalMoments || 0}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-[#FF9500]/10 flex items-center justify-center">
-                    <Globe size={24} className="text-[#FF9500]" />
+                  <div className={isMobile ? "w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-[#FF9500]/10 flex items-center justify-center" : "w-12 h-12 rounded-xl bg-[#FF9500]/10 flex items-center justify-center"}>
+                    <Globe size={isMobile ? 18 : 24} className="text-[#FF9500]" />
                   </div>
                 </div>
               </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#AF52DE]/10">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 sm:p-4 shadow-lg shadow-[#AF52DE]/10" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg shadow-[#AF52DE]/10"}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-black/40 dark:text-white/40">总会话数</p>
-                    <p className="text-3xl font-bold text-[#AF52DE]">{dashboard?.totalConversations || 0}</p>
+                    <p className={isMobile ? "text-[10px] sm:text-sm text-black/40 dark:text-white/40" : "text-sm text-black/40 dark:text-white/40"}>总会话数</p>
+                    <p className={isMobile ? "text-xl sm:text-2xl font-bold text-[#AF52DE]" : "text-3xl font-bold text-[#AF52DE]"}>{dashboard?.totalConversations || 0}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center">
-                    <MessageSquare size={24} className="text-[#AF52DE]" />
+                  <div className={isMobile ? "w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-[#AF52DE]/10 flex items-center justify-center" : "w-12 h-12 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center"}>
+                    <MessageSquare size={isMobile ? 18 : 24} className="text-[#AF52DE]" />
                   </div>
                 </div>
               </motion.div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-black dark:text-white mb-4">用户统计</h3>
+            <div className={isMobile ? "grid grid-cols-1 gap-3 sm:gap-4" : "grid grid-cols-1 lg:grid-cols-2 gap-6"}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 sm:p-4 shadow-lg" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg"}>
+                <h3 className={isMobile ? "text-sm font-semibold text-black dark:text-white mb-3" : "text-lg font-semibold text-black dark:text-white mb-4"}>用户统计</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>

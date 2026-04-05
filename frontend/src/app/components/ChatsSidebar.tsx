@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
 import { tempConversationApi } from '../../api/tempConversation';
 import { CreateGroupModal } from './CreateGroupModal';
+import { useIsMobile } from './ui/use-mobile';
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export function ChatsSidebar() {
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchConversations();
@@ -101,20 +103,22 @@ export function ChatsSidebar() {
 
   return (
     <div className="flex flex-col h-full bg-transparent">
-      <div className="sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4">
+      <div className={isMobile ? "sticky top-0 z-40 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-3xl pt-4 pb-3 px-3 border-b border-black/5 dark:border-white/5 flex flex-col gap-3" : "sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4"}>
         <div className="flex items-center justify-between px-1">
-          <h1 className="text-xl font-semibold text-black dark:text-white tracking-tight">Messages</h1>
+          <h1 className={isMobile ? "text-lg font-semibold text-black dark:text-white tracking-tight" : "text-xl font-semibold text-black dark:text-white tracking-tight"}>Messages</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowCreateGroup(true)}
               className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full"
               title="创建群组"
             >
-              <Users size={18} strokeWidth={2} />
+              <Users size={isMobile ? 16 : 18} strokeWidth={2} />
             </button>
-            <button className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full">
-              <Edit size={18} strokeWidth={2} />
-            </button>
+            {!isMobile && (
+              <button className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full">
+                <Edit size={18} strokeWidth={2} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -131,7 +135,7 @@ export function ChatsSidebar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search messages"
-            className="w-full h-[38px] pl-9 pr-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-[15px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:bg-white dark:focus:bg-[#1A1D21] focus:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:focus:shadow-[0_4px_16px_rgba(0,0,0,0.2)] focus:border-[#007AFF]/30 border border-transparent transition-all"
+            className={isMobile ? "w-full h-[36px] pl-9 pr-4 bg-black/5 dark:bg-white/5 rounded-lg outline-none text-[14px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:bg-white dark:focus:bg-[#1A1D21] focus:border-[#007AFF]/30 border border-transparent transition-all" : "w-full h-[38px] pl-9 pr-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-[15px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:bg-white dark:focus:bg-[#1A1D21] focus:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:focus:shadow-[0_4px_16px_rgba(0,0,0,0.2)] focus:border-[#007AFF]/30 border border-transparent transition-all"}
           />
         </div>
       </div>
@@ -210,7 +214,7 @@ export function ChatsSidebar() {
                 transition={{ delay: index * 0.05 }}
                 onClick={() => navigate(isGroup ? `/group/${chat.id}` : `/chat/${chat.id}`)}
                 className={clsx(
-                  "flex items-center gap-3 px-3 py-2.5 mx-2 rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
+                  "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
                   isActive
                     ? "bg-[#007AFF] text-white shadow-[0_4px_16px_rgba(0,122,255,0.25)]"
                     : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
@@ -218,15 +222,15 @@ export function ChatsSidebar() {
               >
                 <div className="relative flex-shrink-0">
                   {displayAvatar ? (
-                    <img src={displayAvatar} alt={displayName} className="w-[46px] h-[46px] rounded-full object-cover shadow-sm" />
+                    <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
                   ) : (
-                    <div className="w-[46px] h-[46px] rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold">
+                    <div className={isMobile ? "w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold"}>
                       {displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   {!isGroup && otherUser?.status === 1 && (
                     <div className={clsx(
-                      "absolute bottom-0 right-0 w-[12px] h-[12px] rounded-full border-2",
+                      "absolute bottom-0 right-0 w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2",
                       isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]"
                     )} />
                   )}
@@ -234,32 +238,32 @@ export function ChatsSidebar() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-0.5">
-                    <h2 className={clsx("text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
+                    <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
                       {displayName}
                       {tempConversations.has(chat.id) && (
-                        <AlertTriangle size={12} className="text-yellow-500 flex-shrink-0" />
+                        <AlertTriangle size={isMobile ? 10 : 12} className="text-yellow-500 flex-shrink-0" />
                       )}
                     </h2>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {chat.unread_count === 0 && (
-                        <CheckCheck size={14} className={isActive ? "text-white/70" : "text-[#007AFF] opacity-80"} />
+                        <CheckCheck size={isMobile ? 12 : 14} className={isActive ? "text-white/70" : "text-[#007AFF] opacity-80"} />
                       )}
-                      <span className={clsx("text-[12px]", isActive ? "text-white/70" : "text-black/40 dark:text-white/40")}>
+                      <span className={clsx("text-[11px] sm:text-[12px]", isActive ? "text-white/70" : "text-black/40 dark:text-white/40")}>
                         {formatTime(chat.last_message_time)}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center gap-2">
-                    <p className={clsx("text-[13px] truncate tracking-tight", isActive ? "text-white/80" : "text-black/50 dark:text-white/50")}>
+                    <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", isActive ? "text-white/80" : "text-black/50 dark:text-white/50")}>
                       {chat.last_message || (isGroup ? 'Group conversation' : 'No messages yet')}
                     </p>
                     {(chat.unread_count || 0) > 0 && (
                       <div className={clsx(
-                        "w-[18px] h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
+                        "w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
                         isActive ? "bg-white" : "bg-[#007AFF]"
                       )}>
-                        <span className={clsx("text-[11px] font-bold leading-none", isActive ? "text-[#007AFF]" : "text-white")}>
+                        <span className={clsx("text-[10px] sm:text-[11px] font-bold leading-none", isActive ? "text-[#007AFF]" : "text-white")}>
                           {chat.unread_count}
                         </span>
                       </div>
