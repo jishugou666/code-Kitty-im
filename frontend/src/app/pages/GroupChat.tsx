@@ -1,5 +1,5 @@
  import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
@@ -239,44 +239,59 @@ export function GroupChat() {
                 </button>
               </div>
             </div>
-            <div className="p-4">
+            <div className="p-4 space-y-2">
               {Array.isArray(groupInfo?.members) && groupInfo.members.map((member: any) => (
                 <div
                   key={member?.user_id || Math.random()}
-                  onClick={(e) => {
-                    if (myRole === 'owner' || myRole === 'admin') {
+                  onClick={() => {
+                    if ((myRole === 'owner' || myRole === 'admin') && member.my_role !== 'owner') {
                       setSelectedMember(member);
                       setShowMemberMenu(true);
-                      setMemberMenuPos({ x: e.clientX, y: e.clientY });
+                      setMemberMenuPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
                     }
                   }}
-                  className={`flex items-center gap-3 py-2 mb-2 cursor-pointer ${myRole === 'owner' || myRole === 'admin' ? 'hover:bg-black/5 dark:hover:bg-white/5' : ''} rounded-lg px-2`}
+                  className={`p-3 rounded-xl transition-all cursor-pointer border-2 ${
+                    (myRole === 'owner' || myRole === 'admin') && member.my_role !== 'owner'
+                      ? 'border-transparent hover:border-[#007AFF]/30 hover:bg-[#007AFF]/5 active:bg-[#007AFF]/10'
+                      : 'border-transparent'
+                  }`}
                 >
-                  <div className="relative">
-                    {member?.avatar ? (
-                      <img src={member.avatar} alt={member?.nickname || 'User'} className="w-10 h-10 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm">
-                        {(member?.nickname || member?.username || 'U')[0]?.toUpperCase() || 'U'}
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-shrink-0">
+                      {member?.avatar ? (
+                        <img src={member.avatar} alt={member?.nickname || 'User'} className="w-12 h-12 rounded-full object-cover ring-2 ring-white dark:ring-[#13161A]" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-bold text-lg ring-2 ring-white dark:ring-[#13161A]">
+                          {(member?.nickname || member?.username || 'U')[0]?.toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      {member?.status === 1 && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#34C759] border-2 border-white dark:border-[#13161A] rounded-full" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-[15px] text-black dark:text-white truncate">
+                          {member?.nickname || member?.username || 'Unknown'}
+                        </p>
+                        {member.is_muted === 1 && (
+                          <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">已禁言</span>
+                        )}
                       </div>
-                    )}
-                    {member?.status === 1 && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#34C759] border-2 border-white dark:border-[#13161A] rounded-full" />
-                    )}
+                      <p className="text-xs text-black/40 dark:text-white/40 truncate">@{member?.username || 'unknown'}</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {member.my_role === 'owner' && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF] bg-[#007AFF]/10 px-2 py-1 rounded-lg">群主</span>
+                      )}
+                      {member.my_role === 'admin' && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg">管理员</span>
+                      )}
+                      {(myRole === 'owner' || myRole === 'admin') && member.my_role !== 'owner' && (
+                        <ChevronRight size={16} className="text-black/30 dark:text-white/30" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-black dark:text-white truncate">{member?.nickname || member?.username || 'Unknown'}</p>
-                    <p className="text-xs text-black/40 dark:text-white/40 truncate">@{member?.username || 'unknown'}</p>
-                  </div>
-                  {member?.role === 'owner' && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF] bg-[#007AFF]/10 px-2 py-1 rounded">Owner</span>
-                  )}
-                  {member?.role === 'admin' && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-500 bg-purple-500/10 px-2 py-1 rounded">Admin</span>
-                  )}
-                  {member?.is_muted === 1 && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-2 py-1 rounded">已禁言</span>
-                  )}
                 </div>
               ))}
             </div>
