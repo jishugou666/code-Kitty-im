@@ -20,6 +20,9 @@ export const UserController = {
       if (err.message === 'Email already exists') {
         return res.status(409).json(error('Email already exists', 409));
       }
+      if (err.message === 'Nickname already exists') {
+        return res.status(409).json(error('Nickname already exists', 409));
+      }
       next(err);
     }
   },

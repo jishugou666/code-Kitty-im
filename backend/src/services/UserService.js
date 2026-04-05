@@ -3,9 +3,17 @@ import { hashPassword, comparePassword, generateToken, maskPhone, maskEmail } fr
 
 export const UserService = {
   async register(password, nickname, email) {
-    const existing = await query('SELECT id FROM user WHERE email = ?', [email]);
-    if (existing.length > 0) {
+    const [existingEmail, existingNickname] = await Promise.all([
+      query('SELECT id FROM user WHERE email = ?', [email]),
+      query('SELECT id FROM user WHERE nickname = ?', [nickname])
+    ]);
+
+    if (existingEmail.length > 0) {
       throw new Error('Email already exists');
+    }
+
+    if (existingNickname.length > 0) {
+      throw new Error('Nickname already exists');
     }
 
     const hashedPassword = await hashPassword(password);

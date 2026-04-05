@@ -369,6 +369,20 @@
 
 ## 重要问题修复记录
 
+### 问题: 注册逻辑缺少唯一性检查
+- **发现时间**: 2026-04-05
+- **问题描述**: 用户使用重复的昵称或邮箱能够成功注册，破坏了数据的唯一性约束
+- **原因分析**:
+  1. 数据库 `user` 表中 `email` 和 `nickname` 字段缺少 `UNIQUE` 约束
+  2. 后端 `UserService.register` 只检查了 email 是否存在，未检查 nickname
+- **修复内容**:
+  1. 修改数据库 `init-db.js` 和 `clean-db.js`：为 `email` 和 `nickname` 添加 `UNIQUE` 约束
+  2. 修改 `backend/src/services/UserService.js`：同时检查 email 和 nickname 的存在性
+  3. 修改 `backend/src/controllers/UserController.js`：添加 nickname 重复的 409 错误处理
+- **新增文件**:
+  - `database/migrate_add_unique_constraints.sql` - 线上数据库迁移脚本
+- **状态**: ✅ 已修复
+
 ### 问题: 加好友请求返回409错误
 - **发现时间**: 2026-04-05
 - **问题描述**: 用户点击添加好友时收到 "Request failed with status code 409" 错误
