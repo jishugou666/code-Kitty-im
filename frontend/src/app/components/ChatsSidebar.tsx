@@ -224,7 +224,7 @@ export function ChatsSidebar() {
                   {displayAvatar ? (
                     <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
                   ) : (
-                    <div className={isMobile ? "w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold"}>
+                    <div className={isMobile ? "w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold"}>
                       {displayName.charAt(0).toUpperCase()}
                     </div>
                   )}

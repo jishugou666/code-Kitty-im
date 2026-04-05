@@ -94,7 +94,7 @@ export function Profile() {
                   className={isMobile ? "w-full h-full rounded-full object-cover border-[3px] sm:border-[4px] border-white dark:border-[#1A1D21]" : "w-full h-full rounded-full object-cover border-[4px] border-white dark:border-[#1A1D21]"}
                 />
               ) : (
-                <div className={isMobile ? "w-full h-full rounded-full bg-[#007AFF] flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-[3px] sm:border-[4px] border-white dark:border-[#1A1D21]" : "w-full h-full rounded-full bg-[#007AFF] flex items-center justify-center text-white text-4xl font-bold border-[4px] border-white dark:border-[#1A1D21]"}>
+                <div className={isMobile ? "w-full h-full rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-[3px] sm:border-[4px] border-white dark:border-[#1A1D21]" : "w-full h-full rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-4xl font-bold border-[4px] border-white dark:border-[#1A1D21]"}>
                   {(user?.nickname || user?.username || 'U')[0].toUpperCase()}
                 </div>
               )}

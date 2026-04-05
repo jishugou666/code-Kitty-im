@@ -167,7 +167,7 @@ export function ContactsSidebar() {
                     {contact.avatar ? (
                       <img src={contact.avatar} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm" />
                     ) : (
-                      <div className="w-[42px] h-[42px] rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold">
+                      <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold">
                         {(contact.nickname || contact.username || 'U')[0].toUpperCase()}
                       </div>
                     )}
@@ -310,7 +310,7 @@ export function ContactsSidebar() {
                     {contact.avatar ? (
                       <img src={contact.avatar} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm transition-transform group-hover:scale-105" />
                     ) : (
-                      <div className="w-[42px] h-[42px] rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold transition-transform group-hover:scale-105">
+                      <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold transition-transform group-hover:scale-105">
                         {(contact.nickname || contact.username || 'U')[0].toUpperCase()}
                       </div>
                     )}

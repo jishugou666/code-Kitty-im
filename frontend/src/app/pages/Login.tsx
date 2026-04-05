@@ -40,14 +40,6 @@ export function Login() {
       <div className="absolute top-[10%] left-[10%] w-[500px] h-[500px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] bg-purple-400/20 dark:bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className={`${isMobile ? "h-14" : "h-20"} w-full bg-white/30 dark:bg-[#1A1D21]/30 backdrop-blur-3xl border-b border-white/50 dark:border-white/5 z-10 flex items-center justify-center`}>
-        <div className={`${isMobile ? "w-9 h-9" : "w-11 h-11"} bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] rounded-xl flex items-center justify-center shadow-md border border-white/20 dark:border-white/10`}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isMobile ? "w-5 h-5" : "w-6 h-6"}>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </div>
-      </div>
-
       <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 z-20">
         <motion.div
           initial={{ opacity: 0, y: 30 }}

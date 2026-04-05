@@ -185,7 +185,7 @@ export function Moments() {
                 className={isMobile ? "bg-white dark:bg-[#1A1D21] rounded-xl p-3 shadow-sm" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm"}
               >
                 <div className="flex items-start gap-3">
-                  <div className={isMobile ? "w-9 h-9 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-sm font-semibold" : "w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold"}>
+                  <div className={isMobile ? "w-9 h-9 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-sm font-semibold" : "w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold"}>
                     {moment.nickname?.[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">

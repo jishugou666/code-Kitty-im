@@ -138,7 +138,7 @@ export function Settings() {
           <h2 className={isMobile ? "text-sm font-semibold text-black dark:text-white mb-3" : "text-base font-semibold text-black dark:text-white mb-4"}>{t('settings.profile')}</h2>
 
           <div className={isMobile ? "flex items-center gap-3 mb-4" : "flex items-center gap-4 mb-6"}>
-            <div className={isMobile ? "w-12 h-12 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-lg font-semibold" : "w-16 h-16 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-xl font-semibold"}>
+            <div className={isMobile ? "w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-lg font-semibold" : "w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xl font-semibold"}>
               {profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'}
             </div>
             <div>

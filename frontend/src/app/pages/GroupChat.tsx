@@ -602,7 +602,7 @@ export function GroupChat() {
                         )}
                         onClick={() => !isAlreadyMember && handleAddMember(contact.id)}
                       >
-                        <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm">
                           {(contact.nickname || contact.username || 'U')[0]?.toUpperCase() || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -649,7 +649,7 @@ export function GroupChat() {
                 className={clsx("flex max-w-[70%]", isMe ? "self-end justify-end" : "self-start justify-start gap-3")}
               >
                 {!isMe && (
-                  <div className="w-9 h-9 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm mt-auto mb-5">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm mt-auto mb-5">
                     {(msg.sender_nickname || msg.nickname || msg.username || 'U')[0]?.toUpperCase() || 'U'}
                   </div>
                 )}

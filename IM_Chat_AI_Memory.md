@@ -340,9 +340,73 @@
   - .env.example 中 Pusher 配置改为 placeholder 值
 - **执行结果**: ✅ 完成
 
+### 任务16: 移动端适配与UI优化
+- **执行时间**: 2026-04-05
+- **任务内容**:
+  - 移动端布局全面适配（消息列表直接显示、聊天界面隐藏底部导航）
+  - 灵动岛风格底部导航栏（胶囊状毛玻璃高斯模糊效果）
+  - 移动端输入区域优化（按钮尺寸、间距、触控体验）
+  - 群聊输入框移动端适配
+  - 所有默认头像统一改为蓝紫渐变样式
+- **代码改动关键点**:
+  - `frontend/src/app/components/MobileNav.tsx` - 灵动岛导航栏（rounded-full胶囊、backdrop-blur-xl毛玻璃、bg-white/70半透明）
+  - `frontend/src/app/pages/Chat.tsx` - 输入区域优化（px-3 py-2.5、按钮p-2.5、发送按钮w-11 h-11）
+  - `frontend/src/app/pages/GroupChat.tsx` - 引入useIsMobile hook、输入框移动端适配
+  - `frontend/src/app/pages/Moments.tsx` - 头像改为蓝紫渐变
+  - `frontend/src/app/pages/Settings.tsx` - 头像改为蓝紫渐变
+  - `frontend/src/app/pages/Profile.tsx` - 头像改为蓝紫渐变
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 头像改为蓝紫渐变
+  - `frontend/src/app/components/ContactsSidebar.tsx` - 头像改为蓝紫渐变（2处）
+  - `frontend/src/app/components/SearchModal.tsx` - 头像改为蓝紫渐变
+- **UI设计规范**:
+  - 灵动岛导航: `rounded-full` + `backdrop-blur-xl` + `bg-white/70` + `shadow`
+  - 移动端按钮最小触控: `p-2.5` (10px触控区域)
+  - 移动端输入框: `h-11` + `text-[15px]`
+  - 默认头像渐变: `bg-gradient-to-br from-[#007AFF] to-[#5856D6]`
+- **执行结果**: ✅ 完成
+
 ---
 
-## 全局依赖映射
+## 重要问题修复记录
+
+### 问题: 加好友请求返回409错误
+- **发现时间**: 2026-04-05
+- **问题描述**: 用户点击添加好友时收到 "Request failed with status code 409" 错误
+- **原因分析**: 409表示请求冲突，尝试添加的联系人已经存在（已经是好友关系）
+- **解决方案**: 这是正常的业务逻辑返回，需要前端做好友好提示，而非真正的BUG
+- **建议改进**: 前端应检查好友关系后再显示添加按钮，避免用户重复点击
+- **状态**: ✅ 已向用户解释说明
+
+---
+
+## UI设计规范（重要）
+
+### 移动端设计规范
+| 元素 | 样式 | 说明 |
+|------|------|------|
+| 底部导航栏 | `rounded-full` + `backdrop-blur-xl` + `bg-white/70` | 灵动岛胶囊毛玻璃效果 |
+| 导航阴影 | `shadow-[0_8px_32px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.1)]` | 多层阴影营造浮起感 |
+| 按钮触控区 | `p-2.5` (10px) | 最小触控区域 |
+| 输入框高度 | `h-11` | 适合触控的高度 |
+| 输入框字体 | `text-[15px]` | 清晰的文字大小 |
+| 间距 | `gap-2` / `px-3 py-2.5` | 舒适的间距 |
+
+### 默认头像样式
+```tsx
+// 蓝紫渐变头像
+className="bg-gradient-to-br from-[#007AFF] to-[#5856D6]"
+```
+- 用于：消息列表、联系人列表、搜索结果、个人资料、朋友圈、设置页
+- 只有用户自定义头像才显示真实图片
+
+### 主题色
+| 用途 | 色值 |
+|------|------|
+| 主色 | `#007AFF` (iOS Blue) |
+| 辅助色 | `#5856D6` (iOS Purple) |
+| 成功色 | `#34C759` (iOS Green) |
+| 警告色 | `#FF9500` (iOS Orange) |
+| 错误色 | `#FF3B30` (iOS Red) |
 
 ### 前端依赖 (frontend/package.json)
 | 依赖包 | 版本 | 用途 |
