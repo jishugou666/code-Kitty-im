@@ -9,16 +9,24 @@ export const GroupService = {
 
       const memberList = [...new Set([ownerId, ...(memberIds || [])])];
 
-      const result = await query(
-        'INSERT INTO `group` (name, description, owner_id, need_approval) VALUES (?, ?, ?, ?)',
-        [name.trim(), description || '', ownerId, needApproval]
+      const convResult = await query(
+        'INSERT INTO conversation (type, name, created_by) VALUES (?, ?, ?)',
+        ['group', name.trim(), ownerId]
       );
+      const groupId = convResult.insertId;
 
-      if (!result?.insertId) {
-        return { code: 500, data: null, msg: '创建失败' };
+      for (const userId of memberList) {
+        const role = userId === ownerId ? 'owner' : 'member';
+        await query(
+          'INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, ?)',
+          [groupId, userId, role]
+        );
       }
 
-      const groupId = result.insertId;
+      await query(
+        'INSERT INTO `group` (id, name, description, owner_id, need_approval) VALUES (?, ?, ?, ?, ?)',
+        [groupId, name.trim(), description || '', ownerId, needApproval]
+      );
 
       for (const userId of memberList) {
         const role = userId === ownerId ? 'owner' : 'member';
@@ -156,6 +164,10 @@ export const GroupService = {
           'INSERT INTO group_member (group_id, user_id, role) VALUES (?, ?, "member")',
           [groupId, userId]
         );
+        await query(
+          'INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, "member")',
+          [groupId, userId]
+        );
         return { code: 200, data: null, msg: '加入成功' };
       }
     } catch (err) {
@@ -184,10 +196,16 @@ export const GroupService = {
           return { code: 400, data: null, msg: '群主不能退出，请先转让群组' };
         }
         await query('DELETE FROM group_member WHERE group_id = ?', [groupId]);
+        await query('DELETE FROM conversation_member WHERE conversation_id = ?', [groupId]);
+        await query('DELETE FROM conversation WHERE id = ?', [groupId]);
         await query('DELETE FROM `group` WHERE id = ?', [groupId]);
       } else {
         await query(
           'DELETE FROM group_member WHERE group_id = ? AND user_id = ?',
+          [groupId, userId]
+        );
+        await query(
+          'DELETE FROM conversation_member WHERE conversation_id = ? AND user_id = ?',
           [groupId, userId]
         );
       }
@@ -216,6 +234,10 @@ export const GroupService = {
     try {
       await query(
         'DELETE FROM group_member WHERE group_id = ? AND user_id = ? AND role != "owner"',
+        [groupId, userId]
+      );
+      await query(
+        'DELETE FROM conversation_member WHERE conversation_id = ? AND user_id = ?',
         [groupId, userId]
       );
       return { code: 200, data: null, msg: '已移出群聊' };
@@ -262,6 +284,10 @@ export const GroupService = {
       if (approved) {
         await query(
           'INSERT INTO group_member (group_id, user_id, role) VALUES (?, ?, "member")',
+          [request.group_id, request.user_id]
+        );
+        await query(
+          'INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, "member")',
           [request.group_id, request.user_id]
         );
       }

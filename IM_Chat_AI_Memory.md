@@ -285,6 +285,35 @@
 - **数据库变更**: 执行 database/migrate_v2_features.sql
 - **执行结果**: ✅ 完成
 
+### 任务14: 群组功能开发
+- **执行时间**: 2026-04-05
+- **任务内容**:
+  - 群组创建功能（群名称、介绍、成员选择、审核开关）
+  - 群组搜索功能
+  - 群申请消息通知
+  - 群聊界面侧边栏（成员列表、身份标签、管理功能）
+  - Admin 后台群组管理
+- **新增文件**:
+  - `frontend/src/api/group.ts` - 群组 API
+  - `frontend/src/app/components/CreateGroupModal.tsx` - 创建群组弹窗
+  - `frontend/src/app/components/GroupSearchModal.tsx` - 搜索群组弹窗
+  - `frontend/src/app/components/GroupInfoSidebar.tsx` - 群信息侧边栏
+  - `backend/src/services/GroupService.js` - 群组服务
+  - `backend/src/controllers/GroupController.js` - 群组控制器
+  - `backend/src/routes/group.js` - 群组路由
+- **修改文件**:
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 添加创建群组按钮
+  - `frontend/src/app/components/ContactsSidebar.tsx` - 添加群搜索、群申请、我的群组
+  - `frontend/src/app/pages/Chat.tsx` - 集成群信息侧边栏
+  - `frontend/src/app/pages/Admin.tsx` - 添加群组管理 Tab
+  - `backend/src/services/GroupService.js` - 修复群组与会话关联（group.id = conversation.id）
+- **数据库变更**:
+  - `group` 表：群组基本信息
+  - `group_member` 表：群组成员
+  - `group_join_request` 表：加群申请
+- **重要修复**: `GroupService.createGroup` 先创建 conversation 获取 ID，然后用该 ID 作为 group.id，确保群组能显示在消息列表
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 全局依赖映射
@@ -328,12 +357,26 @@ CREATE TABLE user (
   id INT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(50) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  nickname VARCHAR(100),
+  nickname VARCHAR(100) NOT NULL,
   avatar VARCHAR(500),
-  email VARCHAR(100),
+  email VARCHAR(100) NOT NULL,
   phone VARCHAR(20),
+  role ENUM('user','admin','tech_god') DEFAULT 'user',
   status TINYINT DEFAULT 1 COMMENT '1在线 0离线',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### user_settings 用户设置表
+```sql
+CREATE TABLE user_settings (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT UNIQUE NOT NULL,
+  language VARCHAR(10) DEFAULT 'zh-CN',
+  theme VARCHAR(20) DEFAULT 'light',
+  notification_enabled TINYINT DEFAULT 1,
+  sound_enabled TINYINT DEFAULT 1,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
@@ -391,6 +434,97 @@ CREATE TABLE contact (
 );
 ```
 
+### group 群组表
+```sql
+CREATE TABLE `group` (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(500),
+  avatar VARCHAR(500),
+  owner_id INT NOT NULL,
+  need_approval TINYINT DEFAULT 0 COMMENT '0不需要审核 1需要审核',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### group_member 群组成员表
+```sql
+CREATE TABLE group_member (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  group_id INT NOT NULL,
+  user_id INT NOT NULL,
+  role ENUM('owner', 'admin', 'member') DEFAULT 'member',
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES `group`(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
+### group_join_request 群加入申请表
+```sql
+CREATE TABLE group_join_request (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  group_id INT NOT NULL,
+  user_id INT NOT NULL,
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES `group`(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
+### moments 朋友圈表
+```sql
+CREATE TABLE moments (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  images VARCHAR(1000),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
+### moments_comment 朋友圈评论表
+```sql
+CREATE TABLE moments_comment (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  moment_id INT NOT NULL,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (moment_id) REFERENCES moments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
+### moments_like 朋友圈点赞表
+```sql
+CREATE TABLE moments_like (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  moment_id INT NOT NULL,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (moment_id) REFERENCES moments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_like (moment_id, user_id)
+);
+```
+
+### message_read 消息已读表
+```sql
+CREATE TABLE message_read (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  message_id INT NOT NULL,
+  user_id INT NOT NULL,
+  read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (message_id) REFERENCES message(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_read (message_id, user_id)
+);
+```
+
 ---
 
 ## API 接口与前端组件映射
@@ -421,6 +555,19 @@ CREATE TABLE contact (
 | POST /api/contact/block | POST | - | 阻止联系人 |
 | POST /api/contact/unblock | POST | - | 取消阻止 |
 | DELETE /api/contact/:userId | DELETE | - | 删除联系人 |
+| POST /api/group | POST | CreateGroupModal.tsx | 创建群组 |
+| GET /api/group | GET | ContactsSidebar.tsx | 获取我的群组列表 |
+| GET /api/group/search | GET | GroupSearchModal.tsx | 搜索群组 |
+| GET /api/group/:groupId | GET | GroupInfoSidebar.tsx | 获取群组信息 |
+| POST /api/group/:groupId/join | POST | GroupSearchModal.tsx | 申请/加入群组 |
+| POST /api/group/:groupId/leave | POST | GroupInfoSidebar.tsx | 退出群组 |
+| PUT /api/group/:groupId/admin/:userId | PUT | GroupInfoSidebar.tsx | 设置/取消管理员 |
+| DELETE /api/group/:groupId/members/:userId | DELETE | GroupInfoSidebar.tsx | 移除群成员 |
+| GET /api/group/:groupId/requests | GET | ContactsSidebar.tsx | 获取加群申请 |
+| PUT /api/group/:groupId/requests/:requestId | PUT | ContactsSidebar.tsx | 处理加群申请 |
+| GET /api/admin/groups | GET | Admin.tsx | 获取群组列表(后台) |
+| GET /api/admin/groups/:groupId/members | GET | Admin.tsx | 获取群组成员(后台) |
+| DELETE /api/admin/groups/:groupId | DELETE | Admin.tsx | 删除群组(后台) |
 
 ---
 
@@ -487,6 +634,26 @@ CREATE TABLE contact (
 ### 问题9: Admin页面应隐藏消息列表 ⚠️ 已解决
 - **描述**: 进入管理中心时左侧消息列表仍然显示
 - **修复方案**: 在 `MainLayout.tsx` 中添加条件判断 `{!location.pathname.startsWith('/admin') && (...)}`
+- **状态**: ✅ 已解决
+
+### 问题10: 群组不显示在消息列表 ⚠️ 已解决
+- **描述**: 创建群组后，群组不显示在消息列表中
+- **根本原因**: `GroupService.createGroup` 只在 `group` 表创建记录，没有在 `conversation` 表创建对应记录。消息列表从 `conversation` 表获取数据。
+- **修复方案**: 修改 `createGroup`，先创建 `conversation` 获取 ID，然后用该 ID 作为 `group.id`，确保群组能关联到会话
+- **核心逻辑**: `group.id` 和 `conversation.id` 共用同一个 ID
+- **涉及文件**:
+  - `backend/src/services/GroupService.js` - `createGroup`, `joinGroup`, `handleJoinRequest`, `leaveGroup`, `removeMember`
+- **状态**: ✅ 已解决
+
+### 问题11: 前端群组API响应解析错误 ⚠️ 已解决
+- **描述**: 创建群组显示失败，群组列表获取失败
+- **根本原因**: axios 拦截器已返回 `{ code, data, msg }`，但前端代码使用 `response.data.code`（多了一层 data）
+- **修复方案**: 统一使用 `response.code` 和 `response.data`
+- **涉及文件**:
+  - `CreateGroupModal.tsx` - handleSearch, handleCreate
+  - `GroupSearchModal.tsx` - handleSearch, handleJoin
+  - `GroupInfoSidebar.tsx` - loadGroupInfo, handleSetAdmin, handleRemoveMember, handleLeaveGroup
+  - `ContactsSidebar.tsx` - fetchGroupRequests, fetchMyGroups, handleGroupJoinRequest
 - **状态**: ✅ 已解决
 
 ### AI智能调度系统 ⚠️ 已实现
