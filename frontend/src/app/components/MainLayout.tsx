@@ -25,6 +25,7 @@ export function MainLayout() {
 
   const isContacts = location.pathname.startsWith('/contacts');
   const isAdmin = location.pathname.startsWith('/admin');
+  const isChat = location.pathname.startsWith('/chat') || location.pathname.startsWith('/group');
 
   if (isMobile) {
     return (
@@ -43,7 +44,7 @@ export function MainLayout() {
             </motion.div>
           </AnimatePresence>
         </div>
-        <MobileNav />
+        {!isChat && <MobileNav />}
       </div>
     );
   }
