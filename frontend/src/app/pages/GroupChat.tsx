@@ -73,7 +73,7 @@ export function GroupChat() {
     }
   };
 
-  const myRole = groupInfo?.members?.find((m: any) => m.user_id === user?.id)?.my_role || 'member';
+  const myRole = groupInfo?.role || 'member';
 
   const loadMessages = async () => {
     if (!conversationId || !token) return;
@@ -240,12 +240,14 @@ export function GroupChat() {
               </div>
             </div>
             <div className="p-4 space-y-2">
-              {Array.isArray(groupInfo?.members) && groupInfo.members.map((member: any) => (
+              {Array.isArray(groupInfo?.members) && groupInfo.members.map((member: any) => {
+                const memberId = member.user_id || member.id;
+                return (
                 <div
-                  key={member?.user_id || Math.random()}
+                  key={memberId || Math.random()}
                   onClick={() => {
                     if ((myRole === 'owner' || myRole === 'admin') && member.my_role !== 'owner') {
-                      setSelectedMember(member);
+                      setSelectedMember({ ...member, user_id: memberId });
                       setShowMemberMenu(true);
                       setMemberMenuPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
                     }
@@ -293,7 +295,8 @@ export function GroupChat() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </motion.div>
         )}
