@@ -166,25 +166,20 @@ export const MomentsService = {
     }
   },
 
-  async addComment(momentId, userId, content, parentId = null) {
+  async addComment(momentId, userId, content) {
     try {
       if (!content || !content.trim()) {
         return { code: 400, data: null, msg: '评论内容不能为空' };
       }
 
       const result = await query(
-        'INSERT INTO moments_comment (moment_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)',
-        [momentId, userId, parentId, content]
+        'INSERT INTO moments_comment (moment_id, user_id, content) VALUES (?, ?, ?)',
+        [momentId, userId, content]
       );
 
       if (!result || !result.insertId) {
         return { code: 500, data: null, msg: '评论失败' };
       }
-
-      await query(
-        'UPDATE moments SET comments_count = comments_count + 1 WHERE id = ?',
-        [momentId]
-      );
 
       const comments = await query(
         `SELECT c.*, u.nickname, u.avatar
