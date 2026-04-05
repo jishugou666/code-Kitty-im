@@ -92,6 +92,18 @@ export const GroupController = {
     }
   },
 
+  async muteMember(req, res, next) {
+    try {
+      const { groupId, userId } = req.params;
+      const { durationMinutes } = req.body;
+      const result = await GroupService.muteMember(parseInt(groupId), parseInt(userId), durationMinutes || 0);
+      res.json(result);
+    } catch (err) {
+      console.error('muteMember error:', err);
+      res.json({ code: 200, data: null, msg: '操作失败' });
+    }
+  },
+
   async getJoinRequests(req, res, next) {
     try {
       const { groupId } = req.params;

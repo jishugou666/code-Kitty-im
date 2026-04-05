@@ -33,6 +33,10 @@ export const groupApi = {
     return apiClient.delete(`/group/${groupId}/members/${userId}`);
   },
 
+  muteMember(groupId, userId, durationMinutes) {
+    return apiClient.put(`/group/${groupId}/members/${userId}/mute`, { durationMinutes });
+  },
+
   getJoinRequests(groupId) {
     return apiClient.get(`/group/${groupId}/requests`);
   },

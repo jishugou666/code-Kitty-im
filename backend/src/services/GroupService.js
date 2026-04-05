@@ -53,7 +53,8 @@ export const GroupService = {
   async getGroupMembers(groupId) {
     try {
       const members = await query(
-        `SELECT gm.*, u.nickname, u.username, u.avatar
+        `SELECT gm.*, u.nickname, u.username, u.avatar,
+         CASE WHEN gm.muted_until IS NOT NULL AND gm.muted_until > NOW() THEN 1 ELSE 0 END as is_muted
          FROM group_member gm
          JOIN user u ON gm.user_id = u.id
          WHERE gm.group_id = ?`,
@@ -244,6 +245,41 @@ export const GroupService = {
     } catch (err) {
       console.error('removeMember error:', err);
       return { code: 200, data: null, msg: '移除失败' };
+    }
+  },
+
+  async muteMember(groupId, userId, durationMinutes) {
+    try {
+      const members = await query(
+        'SELECT * FROM group_member WHERE group_id = ? AND user_id = ?',
+        [groupId, userId]
+      );
+
+      if (!members || members.length === 0) {
+        return { code: 400, data: null, msg: '成员不在群中' };
+      }
+
+      if (members[0].role === 'owner') {
+        return { code: 400, data: null, msg: '不能禁言群主' };
+      }
+
+      const mutedUntil = durationMinutes > 0
+        ? new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
+        : null;
+
+      await query(
+        'UPDATE group_member SET muted_until = ? WHERE group_id = ? AND user_id = ?',
+        [mutedUntil, groupId, userId]
+      );
+
+      if (durationMinutes > 0) {
+        return { code: 200, data: null, msg: `已禁言 ${durationMinutes} 分钟` };
+      } else {
+        return { code: 200, data: null, msg: '已解除禁言' };
+      }
+    } catch (err) {
+      console.error('muteMember error:', err);
+      return { code: 200, data: null, msg: '操作失败' };
     }
   },
 
