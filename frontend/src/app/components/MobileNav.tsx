@@ -26,12 +26,12 @@ export function MobileNav() {
   } : null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pb-safe">
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex items-center gap-1 px-2 py-1.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.1)] backdrop-blur-3xl bg-white/80 dark:bg-[#1A1D21]/90 border border-white/20 dark:border-white/10"
+        className="flex items-center gap-1 px-3 py-1.5 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)] backdrop-blur-3xl bg-white/90 dark:bg-[#1A1D21]/90 border border-white/20 dark:border-white/10"
       >
         {navItems.map((item, index) => {
           const active = item.isMatch(location.pathname);

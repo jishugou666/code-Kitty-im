@@ -5,12 +5,14 @@ import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
+import { useContactStore } from '../../store/contactStore';
 import { conversationApi } from '../../api/conversation';
 import { userApi } from '../../api/user';
 import { messageApi } from '../../api/message';
 import { groupApi } from '../../api/group';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -34,7 +36,13 @@ export function GroupChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
   const { conversations, fetchConversations } = useChatStore();
+  const { contacts, fetchContacts } = useContactStore();
   const { toast, ToastContainer } = useToast();
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
 
   useWebSocket(conversationId, (newMessage) => {
     if (newMessage.type === 'recalled') {
@@ -566,36 +574,52 @@ export function GroupChat() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-[400px] bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-xl"
+              className={isMobile ? "w-[90%] max-h-[70vh] bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-xl" : "w-[400px] bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-xl"}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-black dark:text-white">Add Members</h3>
+                <h3 className="text-lg font-semibold text-black dark:text-white">添加群成员</h3>
                 <button onClick={() => setShowAddMember(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full">
                   <X size={20} />
                 </button>
               </div>
-              <input
-                type="text"
-                placeholder="Search users..."
-                onChange={(e) => handleSearchUser(e.target.value)}
-                className="w-full px-4 py-3 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 mb-4"
-              />
-              <div className="max-h-[300px] overflow-y-auto">
-                {Array.isArray(searchResults) && searchResults.map((result) => (
-                  <div key={result?.id || Math.random()} className="flex items-center gap-3 py-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl px-2 cursor-pointer" onClick={() => result?.id && handleAddMember(result.id)}>
-                    <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm">
-                      {(result?.nickname || result?.username || 'U')[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-black dark:text-white truncate">{result?.nickname || result?.username || 'Unknown'}</p>
-                      <p className="text-xs text-black/40 dark:text-white/40 truncate">@{result?.username || 'unknown'}</p>
-                    </div>
-                    <button className="p-2 bg-[#007AFF]/10 text-[#007AFF] rounded-full">
-                      <Plus size={16} />
-                    </button>
+              <div className={isMobile ? "max-h-[50vh] overflow-y-auto" : "max-h-[300px] overflow-y-auto"}>
+                {contacts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-black/40 dark:text-white/40 text-sm">
+                    <Users size={32} className="mb-2 opacity-50" />
+                    <p>暂无联系人</p>
+                    <p className="text-xs mt-1">请先添加联系人</p>
                   </div>
-                ))}
+                ) : (
+                  contacts.map((contact) => {
+                    const isAlreadyMember = conversation?.members?.some((m: any) => m.id === contact.id);
+                    return (
+                      <div
+                        key={contact.id}
+                        className={clsx(
+                          "flex items-center gap-3 py-2 px-2 rounded-xl cursor-pointer transition-colors",
+                          isAlreadyMember ? "opacity-50" : "hover:bg-black/5 dark:hover:bg-white/5"
+                        )}
+                        onClick={() => !isAlreadyMember && handleAddMember(contact.id)}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold text-sm">
+                          {(contact.nickname || contact.username || 'U')[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-black dark:text-white truncate">{contact.nickname || contact.username || 'Unknown'}</p>
+                          <p className="text-xs text-black/40 dark:text-white/40 truncate">@{contact.username || 'unknown'}</p>
+                        </div>
+                        {isAlreadyMember ? (
+                          <span className="text-xs text-black/40 dark:text-white/40">已添加</span>
+                        ) : (
+                          <button className="p-2 bg-[#007AFF]/10 text-[#007AFF] rounded-full">
+                            <Plus size={16} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -656,31 +680,33 @@ export function GroupChat() {
       </div>
 
       {/* Input */}
-      <div className="pb-8 pt-4 px-8 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl border-t border-black/5 dark:border-white/5 flex justify-center z-40 relative">
-        <div className="max-w-4xl w-full flex items-end gap-3">
-          <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={clsx("p-3 rounded-full transition-colors", showAttachMenu ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-black/40 hover:text-[#007AFF]")}>
-            <Plus size={24} className={showAttachMenu ? "rotate-45" : ""} />
+      <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "pb-8 pt-4 px-8 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl border-t border-black/5 dark:border-white/5 flex justify-center z-40 relative"}>
+        <div className={isMobile ? "w-full flex items-end gap-2" : "max-w-4xl w-full flex items-end gap-3"}>
+          <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={clsx("p-2.5 rounded-full transition-colors flex-shrink-0", showAttachMenu ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-black/40 dark:text-white/40 hover:text-[#007AFF]")}>
+            <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45" : ""} />
           </button>
-          <div className="flex-1 bg-black/5 dark:bg-white/5 rounded-[24px] min-h-[46px] max-h-[140px] flex items-center px-4">
+          <div className={isMobile ? "flex-1 bg-black/5 dark:bg-white/5 rounded-2xl min-h-[44px] max-h-[120px] flex items-center px-4" : "flex-1 bg-black/5 dark:bg-white/5 rounded-[24px] min-h-[46px] max-h-[140px] flex items-center px-4"}>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Message group..."
-              className="flex-1 bg-transparent border-none outline-none py-3 text-[15px] text-black dark:text-white placeholder:text-black/40"
+              className={isMobile ? "flex-1 bg-transparent border-none outline-none py-2.5 text-[15px] text-black dark:text-white placeholder:text-black/40" : "flex-1 bg-transparent border-none outline-none py-3 text-[15px] text-black dark:text-white placeholder:text-black/40"}
             />
-            <button className="p-2 text-black/40 hover:text-[#007AFF] transition-colors ml-1">
-              <Smile size={20} />
-            </button>
+            {!isMobile && (
+              <button className="p-2 text-black/40 hover:text-[#007AFF] transition-colors ml-1">
+                <Smile size={20} />
+              </button>
+            )}
           </div>
           {input.trim() ? (
-            <button onClick={handleSend} className="w-[46px] h-[46px] bg-[#007AFF] hover:bg-[#006ce0] rounded-full flex items-center justify-center text-white shadow-md transition-all flex-shrink-0">
-              <Send size={18} />
+            <button onClick={handleSend} className={isMobile ? "w-11 h-11 bg-[#007AFF] hover:bg-[#006ce0] rounded-full flex items-center justify-center text-white shadow-md transition-all flex-shrink-0" : "w-[46px] h-[46px] bg-[#007AFF] hover:bg-[#006ce0] rounded-full flex items-center justify-center text-white shadow-md transition-all flex-shrink-0"}>
+              <Send size={isMobile ? 18 : 18} />
             </button>
           ) : (
-            <button className="p-3 text-black/40 hover:text-[#007AFF] rounded-full transition-colors flex-shrink-0">
-              <Mic size={24} />
+            <button className={isMobile ? "p-2.5 text-black/40 dark:text-white/40 hover:text-[#007AFF] rounded-full transition-colors flex-shrink-0" : "p-3 text-black/40 hover:text-[#007AFF] rounded-full transition-colors flex-shrink-0"}>
+              <Mic size={isMobile ? 22 : 24} />
             </button>
           )}
         </div>

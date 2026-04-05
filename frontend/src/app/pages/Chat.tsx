@@ -566,14 +566,17 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Input */}
-      <div className={isMobile ? "p-2 sm:p-3 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl" : "p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
-        <div className="flex items-end gap-1 sm:gap-2">
-          <button className={isMobile ? "p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors relative"}>
-            <Plus size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" onClick={() => setShowAttachMenu(!showAttachMenu)} />
+      <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
+        <div className="flex items-end gap-2 sm:gap-3">
+          <button
+            onClick={() => setShowAttachMenu(!showAttachMenu)}
+            className={isMobile ? "p-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0"}
+          >
+            <Plus size={isMobile ? 22 : 20} className="text-gray-600 dark:text-gray-300" />
             {showAttachMenu && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-12 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px]">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-2 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
-                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
                   <Image size={16} /> 图片
                 </label>
               </motion.div>
@@ -586,11 +589,15 @@ export function Chat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="输入消息..."
-              className={isMobile ? "w-full h-10 sm:h-11 px-3 sm:px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400" : "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"}
+              className={isMobile ? "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400" : "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"}
             />
           </div>
-          <button onClick={handleSend} disabled={!input.trim()} className={isMobile ? "p-2 sm:p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors" : "p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"}>
-            <Send size={isMobile ? 16 : 18} className="text-white" />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            className={isMobile ? "p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-40 disabled:cursor-not-allowed rounded-full transition-all flex-shrink-0 w-11 h-11 flex items-center justify-center" : "p-2.5 bg-[#007AFF] hover:bg-[#006CE0] disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors flex-shrink-0"}
+          >
+            <Send size={isMobile ? 18 : 18} className="text-white" />
           </button>
         </div>
       </div>
