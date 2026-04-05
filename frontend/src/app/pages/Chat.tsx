@@ -472,20 +472,19 @@ export function Chat() {
       {/* Message Menu */}
       <AnimatePresence>
         {showMessageMenu && selectedMessage && (
-          <>
+          <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
               onClick={() => setShowMessageMenu(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="fixed z-50 bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden"
-              style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: isMobile ? '80%' : 'auto', maxWidth: '280px' }}
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className={isMobile ? "relative w-full bg-white dark:bg-[#1A1D21] rounded-t-2xl p-4 shadow-2xl" : "relative w-full max-w-xs bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden"}
             >
               <button
                 onClick={async () => {
@@ -556,7 +555,7 @@ export function Chat() {
                 取消
               </button>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 
