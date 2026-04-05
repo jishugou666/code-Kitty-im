@@ -58,11 +58,19 @@ export const ConversationService = {
       'INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, ?)',
       [conversationId, userId, 'owner']
     );
+    await query(
+      'INSERT INTO group_member (group_id, user_id, role) VALUES (?, ?, ?)',
+      [conversationId, userId, 'owner']
+    );
 
     for (const memberId of memberIds) {
       if (memberId !== userId) {
         await query(
           'INSERT INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, ?)',
+          [conversationId, memberId, 'member']
+        );
+        await query(
+          'INSERT INTO group_member (group_id, user_id, role) VALUES (?, ?, ?)',
           [conversationId, memberId, 'member']
         );
       }
@@ -122,6 +130,10 @@ export const ConversationService = {
         'INSERT IGNORE INTO conversation_member (conversation_id, user_id, role) VALUES (?, ?, ?)',
         [conversationId, memberId, 'member']
       );
+      await query(
+        'INSERT IGNORE INTO group_member (group_id, user_id, role) VALUES (?, ?, ?)',
+        [conversationId, memberId, 'member']
+      );
     }
     return this.getConversationMembers(conversationId);
   },
@@ -129,6 +141,10 @@ export const ConversationService = {
   async removeMember(conversationId, userId, targetUserId) {
     await query(
       'DELETE FROM conversation_member WHERE conversation_id = ? AND user_id = ?',
+      [conversationId, targetUserId]
+    );
+    await query(
+      'DELETE FROM group_member WHERE group_id = ? AND user_id = ?',
       [conversationId, targetUserId]
     );
   }

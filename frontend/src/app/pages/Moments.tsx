@@ -65,7 +65,7 @@ export function Moments() {
   const handleLike = async (momentId: number) => {
     try {
       const res = await momentsApi.like(momentId);
-      if (res.code === 200) {
+      if (res.code === 200 && res.data) {
         setMoments(prev => prev.map(m =>
           m.id === momentId
             ? { ...m, is_liked: res.data.liked, likes_count: res.data.liked ? m.likes_count + 1 : m.likes_count - 1 }

@@ -726,6 +726,37 @@ CREATE TABLE message_read (
   - `backend/src/routes/admin.js` - 添加 `/ai-stats` 路由
 - **状态**: ✅ 已实现
 
+### 问题14: 朋友圈点赞报错 Cannot read properties of null ⚠️ 已解决
+- **描述**: 朋友圈点赞后全屏报错 `Cannot read properties of null (reading 'liked')`
+- **根本原因**: `MomentsService.js` 异常时返回 `{ code: 200, data: null, msg: '操作失败' }`，前端直接访问 `res.data.liked` 导致报错
+- **修复方案**: 前端添加 `res.data` 空值检查
+- **涉及文件**:
+  - `frontend/src/app/pages/Moments.tsx` - handleLike 函数
+- **状态**: ✅ 已解决
+
+### 问题15: 群管理员标签刷新后消失 ⚠️ 已解决
+- **描述**: 设置群管理员后当时显示标签，但刷新页面后标签消失
+- **根本原因**: 
+  1. `getGroupMembers` SQL 查询返回 `role` 字段，但前端检查的是 `my_role` 字段（已在后端修复）
+  2. `loadGroupInfo` 使用 `conversationApi.getConversation` 而不是 `groupApi.getInfo`，导致无法获取包含 `my_role` 的成员数据
+- **修复方案**: 
+  - 后端 SQL 添加 `gm.role as my_role` 别名（已在 GroupService.js 修复）
+  - 前端改用 `groupApi.getInfo` 获取完整的群组成员信息
+- **涉及文件**:
+  - `backend/src/services/GroupService.js` - getGroupMembers 函数
+  - `frontend/src/app/pages/GroupChat.tsx` - loadGroupInfo 函数
+- **状态**: ✅ 已解决
+
+### 问题16: 群聊成员操作弹窗毛玻璃背景延伸 ⚠️ 已解决
+- **描述**: 成员操作弹窗和禁言弹窗的毛玻璃背景延伸到消息列表区域外
+- **根本原因**: 模态框使用 `absolute inset-0` 覆盖整个容器，且主容器未限制溢出
+- **修复方案**: 
+  - 主容器添加 `overflow-hidden`
+  - 模态框使用双层结构（背景层+内容层分离）
+- **涉及文件**:
+  - `frontend/src/app/pages/GroupChat.tsx` - 主容器和模态框结构
+- **状态**: ✅ 已解决
+
 ---
 
 ## 项目目录结构

@@ -64,9 +64,9 @@ export function GroupChat() {
 
   const loadGroupInfo = async () => {
     try {
-      const response = await conversationApi.getConversation(conversationId);
-      if (response.data) {
-        setGroupInfo(response.data);
+      const res = await groupApi.getInfo(conversationId);
+      if (res.code === 200 && res.data) {
+        setGroupInfo(res.data);
       }
     } catch (error) {
       console.error('Failed to load group info:', error);
