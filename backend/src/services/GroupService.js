@@ -53,7 +53,7 @@ export const GroupService = {
   async getGroupMembers(groupId) {
     try {
       const members = await query(
-        `SELECT gm.*, u.nickname, u.username, u.avatar,
+        `SELECT gm.*, u.nickname, u.username, u.avatar, gm.role as my_role,
          CASE WHEN gm.muted_until IS NOT NULL AND gm.muted_until > NOW() THEN 1 ELSE 0 END as is_muted
          FROM group_member gm
          JOIN user u ON gm.user_id = u.id

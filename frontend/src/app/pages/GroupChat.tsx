@@ -187,7 +187,7 @@ export function GroupChat() {
   const safeMessages = Array.isArray(messages) ? messages : [];
 
   return (
-    <div className="flex flex-col h-full bg-[#FAFAFC] dark:bg-[#0A0C10] relative">
+    <div className="flex flex-col h-full bg-[#FAFAFC] dark:bg-[#0A0C10] relative overflow-hidden">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl pt-6 pb-4 px-8 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-4 cursor-pointer">
@@ -305,18 +305,19 @@ export function GroupChat() {
       {/* Member Action Menu */}
       <AnimatePresence>
         {showMemberMenu && selectedMember && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowMemberMenu(false)}
-          >
+          <div className="absolute inset-0 z-50 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setShowMemberMenu(false)}
+            />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl rounded-2xl shadow-2xl w-80 overflow-hidden"
+              className="relative bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl rounded-2xl shadow-2xl w-80 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 flex flex-col items-center border-b border-black/5 dark:border-white/10">
@@ -425,25 +426,26 @@ export function GroupChat() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
       {/* Mute Modal */}
       <AnimatePresence>
         {showMuteModal && selectedMember && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
-            onClick={() => setShowMuteModal(false)}
-          >
+          <div className="absolute inset-0 z-50 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShowMuteModal(false)}
+            />
             <motion.div
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-80"
+              className="relative bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-80"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-black dark:text-white mb-4">禁言 {selectedMember?.nickname || selectedMember?.username}</h3>
@@ -546,7 +548,7 @@ export function GroupChat() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
