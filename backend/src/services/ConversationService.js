@@ -4,7 +4,7 @@ export const ConversationService = {
   async getConversationMembers(conversationId) {
     try {
       const sql = `
-        SELECT u.id, u.nickname, u.avatar, cm.role
+        SELECT u.id, u.nickname, u.avatar, u.status, cm.role
         FROM conversation_member cm
         LEFT JOIN user u ON cm.user_id = u.id
         WHERE cm.conversation_id = ?

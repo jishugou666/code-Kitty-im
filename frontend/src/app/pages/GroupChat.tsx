@@ -7,7 +7,9 @@ import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { conversationApi } from '../../api/conversation';
 import { userApi } from '../../api/user';
+import { messageApi } from '../../api/message';
 import { useToast } from '../../hooks/useToast';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -27,6 +29,23 @@ export function GroupChat() {
   const { user, token } = useAuthStore();
   const { conversations, fetchConversations } = useChatStore();
   const { toast, ToastContainer } = useToast();
+
+  useWebSocket(conversationId, (newMessage) => {
+    if (newMessage.type === 'recalled') {
+      setMessages(prev => prev.map(m =>
+        m.id === newMessage.id
+          ? { ...m, type: 'recalled', content: '此消息已撤回' }
+          : m
+      ));
+    } else {
+      setMessages(prev => {
+        if (prev.some(m => m.id === newMessage.id)) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
+    }
+  });
 
   const conversation = conversations.find(c => c.id === conversationId);
 
@@ -64,6 +83,8 @@ export function GroupChat() {
       const data = await response.json();
       if (data.code === 200 && Array.isArray(data.data)) {
         setMessages(data.data || []);
+        messageApi.markAsRead(conversationId);
+        fetchConversations();
       } else {
         setMessages([]);
       }
@@ -328,7 +349,11 @@ export function GroupChat() {
                     </div>
                   )}
                   <div className={clsx("px-4 py-3 rounded-[20px] text-[15px] leading-[1.5]", isMe ? "bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] text-white" : "bg-white/90 dark:bg-[#23272D]/90 text-black dark:text-white")}>
-                    <p className="text-sm">{msg.content}</p>
+                    {msg.type === 'recalled' ? (
+                      <p className="text-sm italic opacity-60">{msg.content}</p>
+                    ) : (
+                      <p className="text-sm">{msg.content}</p>
+                    )}
                   </div>
                   <span className="text-[12px] text-black/30 dark:text-white/30 mt-1.5 px-1 font-medium">
                     {formatTime(msg.created_at)}
