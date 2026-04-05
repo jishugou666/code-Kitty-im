@@ -81,5 +81,15 @@ export const UserController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async updateStatus(req, res, next) {
+    try {
+      const { status } = req.body;
+      await UserService.updateStatus(req.user.id, status);
+      res.json(success(null, 'Status updated'));
+    } catch (err) {
+      next(err);
+    }
   }
 };

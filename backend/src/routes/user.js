@@ -10,5 +10,6 @@ router.get('/profile', authMiddleware, UserController.getProfile);
 router.put('/profile', authMiddleware, UserController.updateProfile);
 router.get('/search', authMiddleware, UserController.searchUsers);
 router.post('/logout', authMiddleware, UserController.logout);
+router.put('/status', authMiddleware, UserController.updateStatus);
 
 export default router;

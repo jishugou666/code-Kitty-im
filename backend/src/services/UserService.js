@@ -80,6 +80,10 @@ export const UserService = {
     await query('UPDATE user SET status = 0 WHERE id = ?', [userId]);
   },
 
+  async updateStatus(userId, status) {
+    await query('UPDATE user SET status = ? WHERE id = ?', [status, userId]);
+  },
+
   sanitizeUser(user, searchResult = false) {
     const sanitized = { ...user };
     if (!searchResult) {

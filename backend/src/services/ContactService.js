@@ -38,6 +38,18 @@ export const ContactService = {
         throw new Error('Contact request not found');
       }
     }
+
+    const existingReverse = await query(
+      'SELECT * FROM contact WHERE user_id = ? AND contact_user_id = ?',
+      [userId, contactUserId]
+    );
+
+    if (existingReverse.length === 0) {
+      await query(
+        'INSERT INTO contact (user_id, contact_user_id, status) VALUES (?, ?, ?)',
+        [userId, contactUserId, 'accepted']
+      );
+    }
   },
 
   async rejectContact(userId, contactUserId) {

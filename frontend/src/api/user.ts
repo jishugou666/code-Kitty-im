@@ -45,5 +45,8 @@ export const userApi = {
     apiClient.get<{ id: number; username: string; nickname: string; avatar: string; status: number }[]>('/user/search', { params: { keyword } }),
 
   logout: () =>
-    apiClient.post('/user/logout')
+    apiClient.post('/user/logout'),
+
+  updateStatus: (status: number) =>
+    apiClient.put('/user/status', { status })
 };

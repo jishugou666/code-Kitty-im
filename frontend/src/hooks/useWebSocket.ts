@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
+import { userApi } from '../api/user';
 
 const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
 const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'ap1';
@@ -25,8 +26,22 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   const { token, isAuthenticated, user } = useAuthStore();
   const { addMessage, fetchConversations, fetchMessages } = useChatStore();
 
+  const handleVisibilityChange = useCallback(() => {
+    if (!isAuthenticated) return;
+    const isOnline = document.visibilityState === 'visible';
+    userApi.updateStatus(isOnline ? 1 : 0);
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, handleVisibilityChange]);
+
   const handleNewMessage = useCallback((data: any) => {
-    console.log('[Pusher] New message received:', data);
     if (data && data.id) {
       addMessage(data.conversation_id, data);
       if (data.conversation_id === conversationId && onNewMessage) {
@@ -37,7 +52,6 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   }, [addMessage, fetchConversations, conversationId, onNewMessage]);
 
   const handleMessageRead = useCallback((data: any) => {
-    console.log('[Pusher] Message read:', data);
     fetchConversations();
   }, [fetchConversations]);
 
@@ -48,7 +62,6 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 
     if (conversationId) {
       const channelName = `chat-${conversationId}`;
-      console.log(`[Pusher] Subscribing to channel: ${channelName}`);
 
       channelRef.current = pusher.subscribe(channelName);
 
@@ -83,7 +96,6 @@ export function useGlobalWebSocket() {
     const userChannel = pusher.subscribe(`user-${user?.id}`);
 
     userChannel.bind('conversation-update', (data: any) => {
-      console.log('[Pusher] Conversation update:', data);
       fetchConversations();
     });
 
