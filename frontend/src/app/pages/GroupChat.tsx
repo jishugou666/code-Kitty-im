@@ -881,12 +881,12 @@ export function GroupChat() {
       {/* Input */}
       <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "pb-8 pt-4 px-8 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl border-t border-black/5 dark:border-white/5 flex justify-center z-40 relative"}>
         <div className={isMobile ? "w-full flex items-end gap-2" : "max-w-4xl w-full flex items-end gap-3"}>
-          <div className="relative">
+          <div className="relative z-10">
             <button
               onClick={() => setShowAttachMenu(!showAttachMenu)}
               className={isMobile ? "p-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0"}
             >
-              <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45 text-[#007AFF]" : "text-black/40 dark:text-white/40"} />
+              <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45 text-[#007AFF]" : "text-gray-600 dark:text-gray-300"} />
             </button>
             {showAttachMenu && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-full left-0 mb-2 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
