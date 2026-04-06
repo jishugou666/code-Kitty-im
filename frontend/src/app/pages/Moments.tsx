@@ -65,10 +65,22 @@ export function Moments() {
     try {
       const uploadedImages: string[] = [];
       for (const img of publishImages) {
-        const uploadRes = await uploadApi.uploadImage(img);
-        if (uploadRes.code === 200 && uploadRes.data?.url) {
-          uploadedImages.push(uploadRes.data.url);
+        try {
+          const uploadRes = await uploadApi.uploadImage(img);
+          if (uploadRes.code === 200 && uploadRes.data?.url) {
+            uploadedImages.push(uploadRes.data.url);
+          } else {
+            console.error('Image upload failed:', uploadRes.msg);
+          }
+        } catch (uploadErr) {
+          console.error('Image upload error:', uploadErr);
         }
+      }
+
+      if (publishImages.length > 0 && uploadedImages.length === 0) {
+        toast('图片上传失败，请重试', 'error');
+        setIsPublishing(false);
+        return;
       }
 
       const res = await momentsApi.create({ content: publishContent, images: uploadedImages });
