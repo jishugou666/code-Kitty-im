@@ -106,7 +106,6 @@ export function Settings() {
       } else {
         toast(response.msg || t('common.error'), 'error');
       }
-};
     } catch (error) {
       toast(t('common.error'), 'error');
     }
