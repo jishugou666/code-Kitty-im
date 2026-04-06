@@ -90,17 +90,31 @@ export function Profile() {
       setAvatarPreview(base64);
 
       try {
+        console.log('Uploading avatar image...');
         const uploadRes = await uploadApi.uploadImage(base64);
+        console.log('Upload result:', uploadRes);
+
         if (uploadRes.code === 200 && uploadRes.data?.url) {
-          await userApi.updateProfile({ avatar: uploadRes.data.url });
-          await loadUser();
-          toast(t('common.success'), 'success');
+          const newAvatarUrl = uploadRes.data.url;
+          console.log('Updating profile with avatar:', newAvatarUrl);
+
+          const updateRes = await userApi.updateProfile({ avatar: newAvatarUrl });
+          console.log('Update profile result:', updateRes);
+
+          if (updateRes.data) {
+            updateUser(updateRes.data);
+            await loadUser();
+            toast(t('common.success'), 'success');
+          } else {
+            toast(updateRes.msg || t('common.error'), 'error');
+          }
         } else {
+          console.error('Upload failed:', uploadRes.msg);
           toast(uploadRes.msg || t('common.error'), 'error');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Avatar upload error:', error);
-        toast(t('common.error'), 'error');
+        toast(error.message || t('common.error'), 'error');
       } finally {
         setAvatarPreview(null);
       }

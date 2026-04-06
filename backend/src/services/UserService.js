@@ -68,9 +68,35 @@ export const UserService = {
 
   async updateProfile(userId, data) {
     const { nickname, avatar, email, phone } = data;
+
+    const updates = [];
+    const values = [];
+
+    if (nickname !== undefined) {
+      updates.push('nickname = ?');
+      values.push(nickname);
+    }
+    if (avatar !== undefined) {
+      updates.push('avatar = ?');
+      values.push(avatar);
+    }
+    if (email !== undefined) {
+      updates.push('email = ?');
+      values.push(email);
+    }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone);
+    }
+
+    if (updates.length === 0) {
+      return this.getProfile(userId);
+    }
+
+    values.push(userId);
     await query(
-      'UPDATE user SET nickname = ?, avatar = ?, email = ?, phone = ? WHERE id = ?',
-      [nickname, avatar, email, phone, userId]
+      `UPDATE user SET ${updates.join(', ')} WHERE id = ?`,
+      values
     );
     return this.getProfile(userId);
   },

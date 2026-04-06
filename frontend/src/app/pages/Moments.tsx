@@ -63,12 +63,13 @@ export function Moments() {
     }
     setIsPublishing(true);
     try {
-      const uploadedImages: string[] = [];
+      let finalContent = publishContent.trim();
+
       for (const img of publishImages) {
         try {
           const uploadRes = await uploadApi.uploadImage(img);
           if (uploadRes.code === 200 && uploadRes.data?.url) {
-            uploadedImages.push(uploadRes.data.url);
+            finalContent += `\n[IMG]${uploadRes.data.url}[/IMG]`;
           } else {
             console.error('Image upload failed:', uploadRes.msg);
           }
@@ -77,13 +78,13 @@ export function Moments() {
         }
       }
 
-      if (publishImages.length > 0 && uploadedImages.length === 0) {
+      if (publishImages.length > 0 && !finalContent.includes('[IMG]')) {
         toast('图片上传失败，请重试', 'error');
         setIsPublishing(false);
         return;
       }
 
-      const res = await momentsApi.create({ content: publishContent, images: uploadedImages });
+      const res = await momentsApi.create({ content: finalContent });
       if (res.code === 200) {
         setPublishContent('');
         setPublishImages([]);
@@ -96,6 +97,20 @@ export function Moments() {
     } finally {
       setIsPublishing(false);
     }
+  };
+
+  const extractImagesFromContent = (content: string): { text: string; images: string[] } => {
+    const imageRegex = /\[IMG\](.*?)\[\/IMG\]/g;
+    const images: string[] = [];
+    let match;
+    let text = content;
+
+    while ((match = imageRegex.exec(content)) !== null) {
+      images.push(match[1]);
+    }
+    text = text.replace(/\[IMG\]https?:\/\/.*?\[\/IMG\]/g, '').trim();
+
+    return { text, images };
   };
 
   const handleLike = async (momentId: number) => {
@@ -166,7 +181,18 @@ export function Moments() {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach(file => {
+    const currentCount = publishImages.length;
+    const maxImages = 9;
+    const remainingSlots = maxImages - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast(`最多只能上传${maxImages}张图片`, 'warning');
+      return;
+    }
+
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    filesToProcess.forEach(file => {
       if (file.size > 5 * 1024 * 1024) {
         toast('图片大小不能超过5MB', 'error');
         return;
@@ -175,7 +201,13 @@ export function Moments() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        setPublishImages(prev => [...prev, result]);
+        setPublishImages(prev => {
+          if (prev.length >= maxImages) {
+            toast(`最多只能上传${maxImages}张图片`, 'warning');
+            return prev;
+          }
+          return [...prev, result];
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -218,7 +250,9 @@ export function Moments() {
           </div>
         ) : (
           <div className="space-y-6">
-            {moments.map((moment) => (
+            {moments.map((moment) => {
+              const { text: displayText, images: momentImages } = extractImagesFromContent(moment.content || '');
+              return (
               <motion.div
                 key={moment.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -234,11 +268,13 @@ export function Moments() {
                       <h3 className={isMobile ? "text-sm font-medium text-black dark:text-white" : "font-medium text-black dark:text-white"}>{moment.nickname}</h3>
                       <span className="text-xs text-black/40 dark:text-white/40">{formatTime(moment.created_at)}</span>
                     </div>
-                    <p className={isMobile ? "mt-1.5 text-sm text-black dark:text-white whitespace-pre-wrap" : "mt-2 text-[15px] text-black dark:text-white whitespace-pre-wrap"}>{moment.content}</p>
+                    {displayText && (
+                      <p className={isMobile ? "mt-1.5 text-sm text-black dark:text-white whitespace-pre-wrap" : "mt-2 text-[15px] text-black dark:text-white whitespace-pre-wrap"}>{displayText}</p>
+                    )}
 
-                    {moment.images && moment.images.length > 0 && (
+                    {momentImages && momentImages.length > 0 && (
                       <div className={isMobile ? "mt-2 grid grid-cols-3 gap-1.5" : "mt-3 grid grid-cols-3 gap-2"}>
-                        {moment.images.map((img: string, idx: number) => (
+                        {momentImages.map((img: string, idx: number) => (
                           <img
                             key={idx}
                             src={img}
@@ -326,7 +362,8 @@ export function Moments() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         )}
         </div>
