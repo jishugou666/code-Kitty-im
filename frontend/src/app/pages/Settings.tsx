@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, User, Lock, Globe, Moon, Bell, Shield, Info, LogOut } from 'lucide-react';
+import { ArrowLeft, User, Lock, Globe, Moon, Bell, Shield, Info, LogOut, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { settingsApi } from '../../api/settings';
+import { uploadApi } from '../../api/upload';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useIsMobile } from '../components/ui/use-mobile';
@@ -29,6 +30,9 @@ export function Settings() {
     email: user?.email || '',
     avatar: user?.avatar || ''
   });
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -82,11 +86,11 @@ export function Settings() {
 
   const handlePasswordChange = async () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
-      toast(t('auth.confirmPassword') + ' ' + t('common.error'), 'error');
+      toast(t('settings.passwordMismatch'), 'error');
       return;
     }
     if (passwords.newPassword.length < 6) {
-      toast('密码长度不能少于6位', 'error');
+      toast(t('settings.passwordTooShort'), 'error');
       return;
     }
 
@@ -102,9 +106,42 @@ export function Settings() {
       } else {
         toast(response.msg || t('common.error'), 'error');
       }
+};
     } catch (error) {
       toast(t('common.error'), 'error');
     }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast(t('settings.imageOnly'), 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      if (!base64) return;
+
+      setAvatarPreview(base64);
+
+      try {
+        const uploadRes = await uploadApi.uploadImage(base64);
+        if (uploadRes.code === 200 && uploadRes.data?.url) {
+          setProfile(prev => ({ ...prev, avatar: uploadRes.data.url }));
+          toast(t('common.success'), 'success');
+        } else {
+          toast(uploadRes.msg || t('common.error'), 'error');
+        }
+      } catch (error) {
+        console.error('Avatar upload error:', error);
+        toast(t('common.error'), 'error');
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLogout = () => {
@@ -138,11 +175,33 @@ export function Settings() {
           <h2 className={isMobile ? "text-sm font-semibold text-black dark:text-white mb-3" : "text-base font-semibold text-black dark:text-white mb-4"}>{t('settings.profile')}</h2>
 
           <div className={isMobile ? "flex items-center gap-3 mb-4" : "flex items-center gap-4 mb-6"}>
-            <div className={isMobile ? "w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-lg font-semibold" : "w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xl font-semibold"}>
-              {profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'}
+            <div
+              className={isMobile ? "w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden" : "w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden"}
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              {(avatarPreview || profile.avatar || user?.avatar) ? (
+                <img
+                  src={avatarPreview || profile.avatar || user?.avatar}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'
+              )}
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <Camera size={isMobile ? 16 : 20} className="text-white" />
+              </div>
             </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
             <div>
               <p className={isMobile ? "text-xs text-black/60 dark:text-white/60" : "text-sm text-black/60 dark:text-white/60"}>@{user?.nickname}</p>
+              <p className={isMobile ? "text-[10px] text-[#007AFF] dark:text-[#007AFF] mt-0.5" : "text-xs text-[#007AFF] dark:text-[#007AFF] mt-0.5"}>{t('settings.clickToChangeAvatar')}</p>
             </div>
           </div>
 
@@ -327,27 +386,36 @@ export function Settings() {
           >
             <h3 className="text-lg font-semibold text-black dark:text-white mb-4">{t('settings.changePassword')}</h3>
             <div className="space-y-4">
-              <input
-                type="password"
-                placeholder={t('auth.password')}
-                value={passwords.oldPassword}
-                onChange={(e) => setPasswords({ ...passwords, oldPassword: e.target.value })}
-                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
-              />
-              <input
-                type="password"
-                placeholder={t('auth.password')}
-                value={passwords.newPassword}
-                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
-              />
-              <input
-                type="password"
-                placeholder={t('auth.confirmPassword')}
-                value={passwords.confirmPassword}
-                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-                className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
-              />
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.oldPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.oldPassword')}
+                  value={passwords.oldPassword}
+                  onChange={(e) => setPasswords({ ...passwords, oldPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.newPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.newPassword')}
+                  value={passwords.newPassword}
+                  onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.confirmNewPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.confirmNewPassword')}
+                  value={passwords.confirmPassword}
+                  onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowPasswordModal(false)}

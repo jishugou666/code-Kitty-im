@@ -4,6 +4,7 @@ import { ArrowLeft, Image, Send, Heart, MessageCircle, MoreHorizontal, Trash2 } 
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { momentsApi } from '../../api/moments';
+import { uploadApi } from '../../api/upload';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useIsMobile } from '../components/ui/use-mobile';
@@ -61,7 +62,15 @@ export function Moments() {
     }
     setIsPublishing(true);
     try {
-      const res = await momentsApi.create({ content: publishContent, images: publishImages });
+      const uploadedImages: string[] = [];
+      for (const img of publishImages) {
+        const uploadRes = await uploadApi.uploadImage(img);
+        if (uploadRes.code === 200 && uploadRes.data?.url) {
+          uploadedImages.push(uploadRes.data.url);
+        }
+      }
+
+      const res = await momentsApi.create({ content: publishContent, images: uploadedImages });
       if (res.code === 200) {
         setPublishContent('');
         setPublishImages([]);

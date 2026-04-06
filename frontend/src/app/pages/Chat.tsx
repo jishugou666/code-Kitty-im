@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
+import { uploadApi } from '../../api/upload';
 import { GroupInfoSidebar } from '../components/GroupInfoSidebar';
 import { useIsMobile } from '../components/ui/use-mobile';
 
@@ -189,6 +190,15 @@ export function Chat() {
       setPreviewImage(base64);
 
       try {
+        const uploadRes = await uploadApi.uploadImage(base64);
+        if (uploadRes.code !== 200 || !uploadRes.data?.url) {
+          toast(uploadRes.msg || '图片上传失败', 'error');
+          setPreviewImage(null);
+          return;
+        }
+
+        const imageUrl = uploadRes.data.url;
+
         const response = await fetch(`${API_BASE_URL}/message/send`, {
           method: 'POST',
           headers: {
@@ -197,7 +207,7 @@ export function Chat() {
           },
           body: JSON.stringify({
             conversationId,
-            content: base64,
+            content: imageUrl,
             type: 'image'
           })
         });
