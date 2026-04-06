@@ -23,6 +23,7 @@ export function Moments() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [expandedComments, setExpandedComments] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+  const [comments, setComments] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
     loadMoments();
@@ -39,6 +40,17 @@ export function Moments() {
       console.error('Failed to load moments:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadComments = async (momentId: number) => {
+    try {
+      const res = await momentsApi.getComments(momentId);
+      if (res.code === 200) {
+        setComments((prev) => ({ ...prev, [momentId]: res.data || [] }));
+      }
+    } catch (error) {
+      console.error('Failed to load comments:', error);
     }
   };
 
@@ -88,6 +100,13 @@ export function Moments() {
       if (res.code === 200) {
         setCommentInputs({ ...commentInputs, [momentId]: '' });
         loadMoments();
+        setComments((prev) => {
+          const existing = prev[momentId] || [];
+          return {
+            ...prev,
+            [momentId]: [...existing, res.data]
+          };
+        });
       }
     } catch (error) {
       console.error('Failed to add comment:', error);
@@ -212,7 +231,16 @@ export function Moments() {
                         <span>{moment.likes_count || 0}</span>
                       </button>
                       <button
-                        onClick={() => setExpandedComments(expandedComments === moment.id ? null : moment.id)}
+                        onClick={() => {
+                          if (expandedComments === moment.id) {
+                            setExpandedComments(null);
+                          } else {
+                            setExpandedComments(moment.id);
+                            if (!comments[moment.id]) {
+                              loadComments(moment.id);
+                            }
+                          }
+                        }}
                         className="flex items-center gap-1 text-sm text-black/60 dark:text-white/60"
                       >
                         <MessageCircle size={isMobile ? 16 : 18} />
@@ -236,6 +264,19 @@ export function Moments() {
                           exit={{ opacity: 0, height: 0 }}
                           className={isMobile ? "mt-3 space-y-2" : "mt-4 space-y-3"}
                         >
+                          {comments[moment.id]?.map((comment: any) => (
+                            <div key={comment.id} className="flex items-start gap-2">
+                              <div className="w-6 h-6 rounded-full bg-[#007AFF] flex items-center justify-center text-white text-xs flex-shrink-0">
+                                {comment.user?.nickname?.charAt(0) || 'U'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline gap-1.5 flex-wrap">
+                                  <span className="text-[13px] font-medium text-[#007AFF]">{comment.user?.nickname || '未知用户'}</span>
+                                  <span className="text-[12px] text-black/40 dark:text-white/40">{comment.content}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                           <div className="flex gap-2">
                             <input
                               type="text"

@@ -533,7 +533,7 @@ export function Admin() {
                           </div>
                           <div>
                             <p className="font-medium text-black dark:text-white">{u.nickname || u.username}</p>
-                            <p className="text-xs text-black/40 dark:text-white/40">@{u.username}</p>
+                            <p className="text-xs text-black/40 dark:text-white/40">@{u.nickname}</p>
                           </div>
                         </div>
                       </td>

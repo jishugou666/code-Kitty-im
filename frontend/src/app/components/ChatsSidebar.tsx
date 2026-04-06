@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users } from "lucide-react";
-import { motion } from "motion/react";
+import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users, Pin, PinOff, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
@@ -11,24 +11,70 @@ import { tempConversationApi } from '../../api/tempConversation';
 import { CreateGroupModal } from './CreateGroupModal';
 import { useIsMobile } from './ui/use-mobile';
 
+interface PinnedConversation {
+  id: number;
+  type: 'pinned';
+}
+
 export function ChatsSidebar() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [tempConversations, setTempConversations] = useState<Set<number>>(new Set());
+  const [pinnedConversations, setPinnedConversations] = useState<Set<number>>(new Set());
+  const [collapsedPrivate, setCollapsedPrivate] = useState(false);
+  const [collapsedGroup, setCollapsedGroup] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; chatId: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const isMobile = useIsMobile();
-  const { t } = useTranslation();
 
   useEffect(() => {
     fetchConversations();
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('pinnedConversations');
+    if (saved) {
+      setPinnedConversations(new Set(JSON.parse(saved)));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('pinnedConversations', JSON.stringify([...pinnedConversations]));
+  }, [pinnedConversations]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [contextMenu]);
+
+  useEffect(() => {
+    const handleLongPress = (e: CustomEvent) => {
+      const chatId = e.detail?.chatId;
+      if (chatId) {
+        togglePin(chatId);
+      }
+    };
+    window.addEventListener('longPressChat' as any, handleLongPress);
+    return () => window.removeEventListener('longPressChat' as any, handleLongPress);
+  }, [pinnedConversations]);
 
   useEffect(() => {
     const checkTempConversations = async () => {
@@ -42,7 +88,6 @@ export function ChatsSidebar() {
               tempSet.add(chat.id);
             }
           } catch (e) {
-            // ignore
           }
         }
       }
@@ -89,14 +134,32 @@ export function ChatsSidebar() {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return date.toLocaleTimeString('zh-CN', { hour: 'numeric', minute: '2-digit' });
     } else if (days === 1) {
-      return 'Yesterday';
+      return t('chat.yesterday');
     } else if (days < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
+      return date.toLocaleDateString('zh-CN', { weekday: 'short' });
     } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
     }
+  };
+
+  const togglePin = (chatId: number) => {
+    setPinnedConversations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chatId)) {
+        newSet.delete(chatId);
+      } else {
+        newSet.add(chatId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, chatId: number) => {
+    if (isMobile) return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, chatId });
   };
 
   const handleSearchResultClick = (msg: SearchMessageResult) => {
@@ -104,16 +167,175 @@ export function ChatsSidebar() {
     setSearchQuery("");
   };
 
+  const privateChats = conversations
+    .filter(c => c.type === 'single')
+    .sort((a, b) => {
+      if (pinnedConversations.has(a.id) && !pinnedConversations.has(b.id)) return -1;
+      if (!pinnedConversations.has(a.id) && pinnedConversations.has(b.id)) return 1;
+      const techGodA = a.members?.some((m: any) => m.nickname === '技术狗');
+      const techGodB = b.members?.some((m: any) => m.nickname === '技术狗');
+      if (techGodA && !techGodB) return -1;
+      if (!techGodA && techGodB) return 1;
+      return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
+    });
+
+  const groupChats = conversations
+    .filter(c => c.type === 'group')
+    .sort((a, b) => {
+      if (pinnedConversations.has(a.id) && !pinnedConversations.has(b.id)) return -1;
+      if (!pinnedConversations.has(a.id) && pinnedConversations.has(b.id)) return 1;
+      return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
+    });
+
+  const renderChatItem = (chat: any, isGroup: boolean) => {
+    const isActive = id === String(chat.id);
+    const otherUser = isGroup ? null : getOtherUser(chat);
+    const displayName = isGroup ? (chat.name || '群聊') : (otherUser?.nickname || 'Unknown');
+    const displayAvatar = isGroup ? (chat.avatar || '') : (otherUser?.avatar || '');
+    const isPinned = pinnedConversations.has(chat.id);
+    const isTechGod = !isGroup && otherUser?.nickname === '技术狗';
+
+    return (
+      <motion.div
+        key={chat.id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        onClick={() => navigate(isGroup ? `/group/${chat.id}` : `/chat/${chat.id}`)}
+        onContextMenu={(e) => handleContextMenu(e, chat.id)}
+        onTouchEnd={() => {
+          if (isMobile) {
+            window.dispatchEvent(new CustomEvent('longPressChat', { detail: { chatId: chat.id } }));
+          }
+        }}
+        className={clsx(
+          "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
+          isActive
+            ? "bg-[#007AFF] text-white shadow-[0_4px_16px_rgba(0,122,255,0.25)]"
+            : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
+        )}
+      >
+        {isPinned && !isTechGod && (
+          <Pin size={12} className="absolute top-1 right-1 text-[#007AFF] dark:text-white/60" />
+        )}
+        <div className="relative flex-shrink-0">
+          {displayAvatar ? (
+            <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
+          ) : (
+            <div className={isMobile ? "w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold"}>
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {!isGroup && otherUser?.status === 1 && (
+            <div className={clsx(
+              "absolute bottom-0 right-0 w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2",
+              isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]"
+            )} />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-baseline mb-0.5">
+            <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
+              {displayName}
+              {isTechGod && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center gap-0.5">
+                  <Pin size={8} />{t('chat.siteOwner')}
+                </span>
+              )}
+              {tempConversations.has(chat.id) && (
+                <AlertTriangle size={isMobile ? 10 : 12} className="text-yellow-500 flex-shrink-0" />
+              )}
+            </h2>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {chat.unread_count === 0 && (
+                <CheckCheck size={isMobile ? 12 : 14} className={isActive ? "text-white/70" : "text-[#007AFF] opacity-80"} />
+              )}
+              <span className={clsx("text-[11px] sm:text-[12px]", isActive ? "text-white/70" : "text-black/40 dark:text-white/40")}>
+                {formatTime(chat.last_message_time)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center gap-2">
+            <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", isActive ? "text-white/80" : "text-black/50 dark:text-white/50")}>
+              {chat.last_message || (isGroup ? t('chat.groupConversation') : t('chat.noMessagesYet'))}
+            </p>
+            {(chat.unread_count || 0) > 0 && (
+              <div className={clsx(
+                "w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
+                isActive ? "bg-white" : "bg-[#007AFF]"
+              )}>
+                <span className={clsx("text-[10px] sm:text-[11px] font-bold leading-none", isActive ? "text-[#007AFF]" : "text-white")}>
+                  {chat.unread_count}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderCategory = (
+    title: string,
+    icon: React.ReactNode,
+    chats: any[],
+    isCollapsed: boolean,
+    onToggle: () => void,
+    colorClass: string = 'text-[#007AFF]'
+  ) => (
+    <div className="mb-2">
+      <div
+        className="sticky top-0 z-30 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-md px-5 py-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          {icon}
+          <span className={clsx("text-[12px] font-bold", colorClass)}>
+            {title} ({chats.length})
+          </span>
+        </div>
+        <motion.div
+          animate={{ rotate: isCollapsed ? -90 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-black/30 dark:text-white/30"
+        >
+          ▼
+        </motion.div>
+      </div>
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {chats.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-black/40 dark:text-white/40 text-sm">
+                <MessageCircle size={24} className="mb-1 opacity-50" />
+                <p>{t('chat.noConversationsYet')}</p>
+              </div>
+            ) : (
+              chats.map(chat => renderChatItem(chat, chat.type === 'group'))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full bg-transparent">
       <div className={isMobile ? "sticky top-0 z-40 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-3xl pt-4 pb-3 px-3 border-b border-black/5 dark:border-white/5 flex flex-col gap-3" : "sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4"}>
         <div className="flex items-center justify-between px-1">
-          <h1 className={isMobile ? "text-lg font-semibold text-black dark:text-white tracking-tight" : "text-xl font-semibold text-black dark:text-white tracking-tight"}>Messages</h1>
+          <h1 className={isMobile ? "text-lg font-semibold text-black dark:text-white tracking-tight" : "text-xl font-semibold text-black dark:text-white tracking-tight"}>{t('chat.message')}</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowCreateGroup(true)}
               className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full"
-              title="创建群组"
+              title={t('chat.createGroup')}
             >
               <Users size={isMobile ? 16 : 18} strokeWidth={2} />
             </button>
@@ -147,7 +369,7 @@ export function ChatsSidebar() {
         <div className="flex-1 overflow-y-auto py-3 px-2">
           <div className="sticky top-0 z-30 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-md px-3 py-2 mb-2 rounded-xl">
             <span className="text-[12px] font-semibold text-[#007AFF]">
-              Search Results ({searchResults.length})
+              {t('chat.searchResults')} ({searchResults.length})
             </span>
           </div>
 
@@ -202,93 +424,56 @@ export function ChatsSidebar() {
             </div>
           )}
 
-          {conversations.map((chat, index) => {
-            const isActive = id === String(chat.id);
-            const otherUser = chat.type === 'single' ? getOtherUser(chat) : null;
-            const displayName = otherUser?.nickname || chat.name || 'Unknown';
-            const displayAvatar = otherUser?.avatar || chat.avatar || '';
-            const isGroup = chat.type === 'group';
+          {renderCategory(
+            t('chat.privateChats'),
+            <MessageCircle size={14} className="text-[#007AFF]" />,
+            privateChats,
+            collapsedPrivate,
+            () => setCollapsedPrivate(!collapsedPrivate)
+          )}
 
-            return (
-              <motion.div
-                key={chat.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => navigate(isGroup ? `/group/${chat.id}` : `/chat/${chat.id}`)}
-                className={clsx(
-                  "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
-                  isActive
-                    ? "bg-[#007AFF] text-white shadow-[0_4px_16px_rgba(0,122,255,0.25)]"
-                    : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
-                )}
-              >
-                <div className="relative flex-shrink-0">
-                  {displayAvatar ? (
-                    <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
-                  ) : (
-                    <div className={isMobile ? "w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold"}>
-                      {displayName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {!isGroup && otherUser?.status === 1 && (
-                    <div className={clsx(
-                      "absolute bottom-0 right-0 w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2",
-                      isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]"
-                    )} />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
-                      {displayName}
-                      {otherUser?.nickname === '技术狗' && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
-                          {t('chat.siteOwner')}
-                        </span>
-                      )}
-                      {tempConversations.has(chat.id) && (
-                        <AlertTriangle size={isMobile ? 10 : 12} className="text-yellow-500 flex-shrink-0" />
-                      )}
-                    </h2>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {chat.unread_count === 0 && (
-                        <CheckCheck size={isMobile ? 12 : 14} className={isActive ? "text-white/70" : "text-[#007AFF] opacity-80"} />
-                      )}
-                      <span className={clsx("text-[11px] sm:text-[12px]", isActive ? "text-white/70" : "text-black/40 dark:text-white/40")}>
-                        {formatTime(chat.last_message_time)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-2">
-                    <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", isActive ? "text-white/80" : "text-black/50 dark:text-white/50")}>
-                      {chat.last_message || (isGroup ? 'Group conversation' : 'No messages yet')}
-                    </p>
-                    {(chat.unread_count || 0) > 0 && (
-                      <div className={clsx(
-                        "w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
-                        isActive ? "bg-white" : "bg-[#007AFF]"
-                      )}>
-                        <span className={clsx("text-[10px] sm:text-[11px] font-bold leading-none", isActive ? "text-[#007AFF]" : "text-white")}>
-                          {chat.unread_count}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          {renderCategory(
+            t('chat.groupChats'),
+            <Users size={14} className="text-purple-500" />,
+            groupChats,
+            collapsedGroup,
+            () => setCollapsedGroup(!collapsedGroup),
+            'text-purple-500'
+          )}
         </div>
       )}
 
-      <CreateGroupModal
-        isOpen={showCreateGroup}
-        onClose={() => setShowCreateGroup(false)}
-        onSuccess={() => fetchConversations()}
-      />
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[100] bg-white dark:bg-[#1A1D21] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.15)] border border-black/10 dark:border-white/10 py-1 min-w-[160px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            onClick={() => {
+              togglePin(contextMenu.chatId);
+              setContextMenu(null);
+            }}
+            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 transition-colors"
+          >
+            {pinnedConversations.has(contextMenu.chatId) ? (
+              <>
+                <PinOff size={16} className="text-[#007AFF]" />
+                {t('chat.unpin')}
+              </>
+            ) : (
+              <>
+                <Pin size={16} className="text-[#007AFF]" />
+                {t('chat.pin')}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {showCreateGroup && (
+        <CreateGroupModal onClose={() => setShowCreateGroup(false)} />
+      )}
     </div>
   );
 }

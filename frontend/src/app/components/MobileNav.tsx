@@ -26,7 +26,7 @@ export function MobileNav() {
   } : null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pb-safe">
+    <div className="fixed left-1/2 -translate-x-1/2 z-50" style={{ bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

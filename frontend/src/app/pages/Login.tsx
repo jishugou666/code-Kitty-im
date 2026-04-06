@@ -97,10 +97,10 @@ export function Login() {
           </div>
 
           <h1 className={isMobile ? "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2" : "text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-3"}>
-            {isLogin ? 'Welcome back' : 'Create account'}
+            {isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
           </h1>
           <p className={isMobile ? "text-sm text-slate-500 dark:text-slate-400 mb-8" : "text-[16px] text-slate-500 dark:text-slate-400 mb-12"}>
-            {isLogin ? 'Sign in to continue to Chat' : 'Sign up to get started'}
+            {isLogin ? t('auth.signInContinue') : t('auth.signUpStart')}
           </p>
 
           <form

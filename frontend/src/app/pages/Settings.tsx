@@ -142,7 +142,7 @@ export function Settings() {
               {profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'}
             </div>
             <div>
-              <p className={isMobile ? "text-xs text-black/60 dark:text-white/60" : "text-sm text-black/60 dark:text-white/60"}>@{user?.username}</p>
+              <p className={isMobile ? "text-xs text-black/60 dark:text-white/60" : "text-sm text-black/60 dark:text-white/60"}>@{user?.nickname}</p>
             </div>
           </div>
 

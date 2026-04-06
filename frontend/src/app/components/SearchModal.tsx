@@ -149,7 +149,7 @@ export function SearchModal({ isOpen, onClose, onAddSuccess }: SearchModalProps)
                       {result.nickname || result.username}
                     </h3>
                     <p className="text-[12px] text-black/40 dark:text-white/40 truncate">
-                      @{result.username}
+                      @{result.nickname}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

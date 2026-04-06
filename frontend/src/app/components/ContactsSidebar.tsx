@@ -177,7 +177,7 @@ export function ContactsSidebar() {
                       {contact.nickname || contact.username}
                     </h3>
                     <p className="text-[12px] text-black/40 dark:text-white/40 truncate">
-                      @{contact.username}
+                      @{contact.nickname}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

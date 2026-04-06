@@ -290,7 +290,7 @@ export function GroupChat() {
                           <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">已禁言</span>
                         )}
                       </div>
-                      <p className="text-xs text-black/40 dark:text-white/40 truncate">@{member?.username || 'unknown'}</p>
+                      <p className="text-xs text-black/40 dark:text-white/40 truncate">@{member?.nickname || '未知'}</p>
                     </div>
                     <div className="flex-shrink-0">
                       {member.my_role === 'owner' && (
@@ -343,8 +343,8 @@ export function GroupChat() {
                     <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#34C759] border-2 border-white dark:border-[#1A1D21] rounded-full" />
                   )}
                 </div>
-                <h3 className="text-lg font-semibold text-black dark:text-white">{selectedMember?.nickname || selectedMember?.username || 'Unknown'}</h3>
-                <p className="text-sm text-black/40 dark:text-white/40">@{selectedMember?.username || 'unknown'}</p>
+                <h3 className="text-lg font-semibold text-black dark:text-white">{selectedMember?.nickname || selectedMember?.username || '未知'}</h3>
+                <p className="text-sm text-black/40 dark:text-white/40">@{selectedMember?.nickname || '未知'}</p>
                 {selectedMember.my_role === 'owner' && (
                   <span className="mt-2 text-xs font-bold uppercase tracking-wider text-[#007AFF] bg-[#007AFF]/10 px-3 py-1 rounded-full">群主</span>
                 )}
@@ -609,7 +609,7 @@ export function GroupChat() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-black dark:text-white truncate">{contact.nickname || contact.username || 'Unknown'}</p>
-                          <p className="text-xs text-black/40 dark:text-white/40 truncate">@{contact.username || 'unknown'}</p>
+                          <p className="text-xs text-black/40 dark:text-white/40 truncate">@{contact.nickname || '未知'}</p>
                         </div>
                         {isAlreadyMember ? (
                           <span className="text-xs text-black/40 dark:text-white/40">已添加</span>

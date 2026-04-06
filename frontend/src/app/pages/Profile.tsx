@@ -138,7 +138,7 @@ export function Profile() {
                 {user?.nickname || user?.username || 'User'}
               </h2>
               <p className={isMobile ? "text-sm text-black/50 dark:text-white/50 mt-1 font-medium" : "text-[16px] text-black/50 dark:text-white/50 mt-1 font-medium"}>
-                @{user?.username}
+                @{user?.nickname}
               </p>
               <p className={isMobile ? "text-xs sm:text-sm text-black/40 dark:text-white/40 mt-1" : "text-[14px] text-black/40 dark:text-white/40 mt-1"}>
                 {user?.email || 'No email set'}

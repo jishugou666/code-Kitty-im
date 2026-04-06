@@ -27,7 +27,11 @@
     "hasAccount": "已有账号？立即登录",
     "loginSuccess": "登录成功",
     "registerSuccess": "注册成功",
-    "logoutSuccess": "退出登录成功"
+    "logoutSuccess": "退出登录成功",
+    "welcomeBack": "欢迎回来",
+    "createAccount": "创建账号",
+    "signInContinue": "登录以继续聊天",
+    "signUpStart": "注册以开始使用"
   },
   "chat": {
     "message": "消息",
@@ -37,7 +41,10 @@
     "admin": "后台",
     "searchPlaceholder": "搜索聊天记录...",
     "noMessages": "暂无消息",
+    "noMessagesYet": "暂无消息",
+    "groupConversation": "群聊消息",
     "searchNoResults": "未找到相关消息",
+    "searchResults": "搜索结果",
     "sendPlaceholder": "输入消息...",
     "send": "发送",
     "loadMore": "加载更多",
@@ -48,7 +55,14 @@
     "online": "在线",
     "siteOwner": "站长",
     "noConversationsYet": "暂无会话",
-    "startNewChat": "开始新聊天！"
+    "startNewChat": "开始新聊天！",
+    "selectChat": "选择一个会话开始聊天",
+    "selectChatDesc": "从现有会话中选择或从联系人中发起新的聊天",
+    "privateChats": "私聊",
+    "groupChats": "群聊",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "createGroup": "创建群组"
   },
   "contacts": {
     "title": "联系人",
