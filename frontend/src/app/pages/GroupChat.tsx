@@ -1,6 +1,6 @@
  import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X, ChevronRight } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X, ChevronRight, Image } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
@@ -11,6 +11,7 @@ import { conversationApi } from '../../api/conversation';
 import { userApi } from '../../api/user';
 import { messageApi } from '../../api/message';
 import { groupApi } from '../../api/group';
+import { uploadApi } from '../../api/upload';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useIsMobile } from '../components/ui/use-mobile';
@@ -34,6 +35,8 @@ export function GroupChat() {
   const [memberMenuPos, setMemberMenuPos] = useState({ x: 0, y: 0 });
   const [muteMinutes, setMuteMinutes] = useState(0);
   const [showMuteModal, setShowMuteModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
   const { conversations, fetchConversations } = useChatStore();
@@ -152,6 +155,67 @@ export function GroupChat() {
       console.error('Failed to send message:', error);
       toast('发送失败', 'error');
     }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !conversationId || !token) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast('只支持图片文件', 'info');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      if (!base64) return;
+
+      setPreviewImage(base64);
+
+      try {
+        const uploadRes = await uploadApi.uploadImage(base64);
+        if (uploadRes.code !== 200 || !uploadRes.data?.url) {
+          toast(uploadRes.msg || '图片上传失败', 'error');
+          setPreviewImage(null);
+          return;
+        }
+
+        const imageUrl = uploadRes.data.url;
+
+        const response = await fetch(`${API_BASE_URL}/message/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            conversationId,
+            content: imageUrl,
+            type: 'image'
+          })
+        });
+        const data = await response.json();
+
+        if ((data.code === 200 || data.code === 201) && data.data) {
+          setMessages(prev => [...(prev || []), data.data]);
+          fetchConversations();
+        } else {
+          toast(data.msg || '发送失败', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to send image:', error);
+        toast('发送失败', 'error');
+      } finally {
+        setPreviewImage(null);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setShowAttachMenu(false);
   };
 
   const handleSearchUser = async (keyword: string) => {
@@ -681,19 +745,43 @@ export function GroupChat() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Preview */}
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 py-2 bg-gray-100 dark:bg-[#1A1D21]">
+            <div className="relative inline-block">
+              <img src={previewImage} alt="Preview" className="h-20 rounded-lg" />
+              <button onClick={() => setPreviewImage(null)} className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full">
+                <X size={12} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input */}
       <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "pb-8 pt-4 px-8 bg-white/70 dark:bg-[#13161A]/70 backdrop-blur-3xl border-t border-black/5 dark:border-white/5 flex justify-center z-40 relative"}>
         <div className={isMobile ? "w-full flex items-end gap-2" : "max-w-4xl w-full flex items-end gap-3"}>
-          <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={clsx("p-2.5 rounded-full transition-colors flex-shrink-0", showAttachMenu ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-black/40 dark:text-white/40 hover:text-[#007AFF]")}>
-            <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45" : ""} />
-          </button>
+          <div className="relative">
+            <button onClick={() => setShowAttachMenu(!showAttachMenu)} className={clsx("p-2.5 rounded-full transition-colors flex-shrink-0", showAttachMenu ? "bg-[#007AFF]/10 text-[#007AFF]" : "text-black/40 dark:text-white/40 hover:text-[#007AFF]")}>
+              <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45" : ""} />
+            </button>
+            {showAttachMenu && (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload-group" />
+                <label htmlFor="image-upload-group" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                  <Image size={16} /> 图片
+                </label>
+              </motion.div>
+            )}
+          </div>
           <div className={isMobile ? "flex-1 bg-black/5 dark:bg-white/5 rounded-2xl min-h-[44px] max-h-[120px] flex items-center px-4" : "flex-1 bg-black/5 dark:bg-white/5 rounded-[24px] min-h-[46px] max-h-[140px] flex items-center px-4"}>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Message group..."
+              placeholder="输入群消息..."
               className={isMobile ? "flex-1 bg-transparent border-none outline-none py-2.5 text-[15px] text-black dark:text-white placeholder:text-black/40" : "flex-1 bg-transparent border-none outline-none py-3 text-[15px] text-black dark:text-white placeholder:text-black/40"}
             />
             {!isMobile && (

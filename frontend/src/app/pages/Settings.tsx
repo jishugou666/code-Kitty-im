@@ -174,30 +174,35 @@ export function Settings() {
           <h2 className={isMobile ? "text-sm font-semibold text-black dark:text-white mb-3" : "text-base font-semibold text-black dark:text-white mb-4"}>{t('settings.profile')}</h2>
 
           <div className={isMobile ? "flex items-center gap-3 mb-4" : "flex items-center gap-4 mb-6"}>
-            <div
-              className={isMobile ? "w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden" : "w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden"}
-              onClick={() => avatarInputRef.current?.click()}
-            >
-              {(avatarPreview || profile.avatar || user?.avatar) ? (
-                <img
-                  src={avatarPreview || profile.avatar || user?.avatar}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'
-              )}
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <Camera size={isMobile ? 16 : 20} className="text-white" />
+            <div className="relative">
+              <div
+                className={isMobile ? "w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden" : "w-16 h-16 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xl font-semibold cursor-pointer hover:opacity-80 transition-opacity relative overflow-hidden"}
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                {(avatarPreview || profile.avatar || user?.avatar) ? (
+                  <img
+                    src={avatarPreview || profile.avatar || user?.avatar}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  profile.nickname?.[0]?.toUpperCase() || user?.nickname?.[0]?.toUpperCase() || 'U'
+                )}
               </div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-[#006CE0] transition-colors z-10"
+              >
+                <Camera size={14} />
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
             </div>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarChange}
-              className="hidden"
-            />
             <div>
               <p className={isMobile ? "text-xs text-black/60 dark:text-white/60" : "text-sm text-black/60 dark:text-white/60"}>@{user?.nickname}</p>
               <p className={isMobile ? "text-[10px] text-[#007AFF] dark:text-[#007AFF] mt-0.5" : "text-xs text-[#007AFF] dark:text-[#007AFF] mt-0.5"}>{t('settings.clickToChangeAvatar')}</p>
