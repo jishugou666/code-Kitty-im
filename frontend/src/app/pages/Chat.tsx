@@ -586,20 +586,22 @@ export function Chat() {
       {/* Input */}
       <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
         <div className="flex items-end gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowAttachMenu(!showAttachMenu)}
-            className={isMobile ? "p-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0"}
-          >
-            <Plus size={isMobile ? 22 : 20} className="text-gray-600 dark:text-gray-300" />
+          <div className="relative">
+            <button
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+              className={isMobile ? "p-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors flex-shrink-0"}
+            >
+              <Plus size={isMobile ? 22 : 20} className="text-gray-600 dark:text-gray-300" />
+            </button>
             {showAttachMenu && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-2 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
-                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm active:bg-gray-200 dark:active:bg-white/20">
                   <Image size={16} /> 图片
                 </label>
               </motion.div>
             )}
-          </button>
+          </div>
           <div className="flex-1 relative">
             <input
               type="text"

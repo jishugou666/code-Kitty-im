@@ -781,7 +781,7 @@ export function GroupChat() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center cursor-zoom-out"
+            className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center cursor-zoom-out"
             onClick={() => setShowImageViewer(false)}
           >
             <motion.img
