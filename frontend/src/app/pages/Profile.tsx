@@ -153,9 +153,12 @@ export function Profile() {
       <div className={isMobile ? "relative z-10 w-full pt-12 pb-24 px-4 flex flex-col items-center" : "relative z-10 max-w-3xl mx-auto w-full pt-16 pb-28 px-8 flex flex-col items-center"}>
 
         <div className={isMobile ? "flex flex-col items-center mb-8 sm:mb-12" : "flex flex-col items-center mb-12"}>
-          <div className="relative group">
-            <div className="absolute inset-[-6px] bg-gradient-to-br from-[#007AFF] via-purple-500 to-pink-500 rounded-full blur-[16px] opacity-40 dark:opacity-20" />
-            <div className="absolute inset-[-4px] bg-gradient-to-br from-[#007AFF] via-purple-500 to-pink-500 rounded-full opacity-60 dark:opacity-40" />
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            className="relative group cursor-pointer active:scale-95 transition-transform"
+          >
+            <div className="absolute inset-[-6px] bg-gradient-to-br from-[#007AFF] via-purple-500 to-pink-500 rounded-full blur-[16px] opacity-40 dark:opacity-20 group-hover:opacity-60 transition-opacity" />
+            <div className="absolute inset-[-4px] bg-gradient-to-br from-[#007AFF] via-purple-500 to-pink-500 rounded-full opacity-60 dark:opacity-40 group-hover:opacity-80 transition-opacity" />
             <div className={isMobile ? "w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] rounded-full p-[3px] sm:p-[4px] bg-white/20 dark:bg-black/20 backdrop-blur-md relative z-10 overflow-hidden" : "w-[120px] h-[120px] rounded-full p-[4px] bg-white/20 dark:bg-black/20 backdrop-blur-md relative z-10 overflow-hidden"}>
               {user?.avatar ? (
                 <img
@@ -168,11 +171,11 @@ export function Profile() {
                   {(user?.nickname || user?.username || 'U')[0].toUpperCase()}
                 </div>
               )}
-              <button onClick={() => avatarInputRef.current?.click()} className={isMobile ? "absolute bottom-0 right-0 w-7 h-7 sm:w-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" : "absolute bottom-0 right-0 w-8 h-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"}>
-                <Camera size={isMobile ? 12 : 14} />
-              </button>
+              <div className={isMobile ? "absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" : "absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"}>
+                <Camera size={isMobile ? 24 : 28} className="text-white" />
+              </div>
             </div>
-          </div>
+          </button>
           <input
             ref={avatarInputRef}
             type="file"

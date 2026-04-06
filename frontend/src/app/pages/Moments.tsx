@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Image, Send, Heart, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react';
+import { ArrowLeft, Image, Send, Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { momentsApi } from '../../api/moments';
@@ -25,6 +25,7 @@ export function Moments() {
   const [expandedComments, setExpandedComments] = useState<number | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
   const [comments, setComments] = useState<Record<number, any[]>>({});
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadMoments();
@@ -226,7 +227,13 @@ export function Moments() {
                     {moment.images && moment.images.length > 0 && (
                       <div className={isMobile ? "mt-2 grid grid-cols-3 gap-1.5" : "mt-3 grid grid-cols-3 gap-2"}>
                         {moment.images.map((img: string, idx: number) => (
-                          <img key={idx} src={img} alt="" className={isMobile ? "w-full aspect-square object-cover rounded-md" : "w-full aspect-square object-cover rounded-lg"} />
+                          <img
+                            key={idx}
+                            src={img}
+                            alt=""
+                            onClick={() => setViewingImage(img)}
+                            className={isMobile ? "w-full aspect-square object-cover rounded-md cursor-pointer hover:opacity-80" : "w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"}
+                          />
                         ))}
                       </div>
                     )}
@@ -354,16 +361,20 @@ export function Moments() {
               </div>
             )}
             <div className={isMobile ? "flex items-center justify-between mt-3" : "flex items-center justify-between mt-4"}>
-              <label className={isMobile ? "p-1.5 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full cursor-pointer" : "p-2 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full cursor-pointer"}>
-                <Image size={isMobile ? 18 : 20} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </label>
+              <button
+                onClick={() => document.getElementById('moments-image-upload')?.click()}
+                className={isMobile ? "p-2 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full cursor-pointer active:bg-[#007AFF]/20" : "p-2 text-[#007AFF] hover:bg-[#007AFF]/10 rounded-full cursor-pointer"}
+              >
+                <Image size={isMobile ? 20 : 22} />
+              </button>
+              <input
+                id="moments-image-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
               <button
                 onClick={handlePublish}
                 disabled={isPublishing}
@@ -377,6 +388,33 @@ export function Moments() {
       )}
 
       <ToastContainer />
+
+      <AnimatePresence>
+        {viewingImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center cursor-zoom-out"
+            onClick={() => setViewingImage(null)}
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={viewingImage}
+              alt=""
+              className="max-w-[90vw] max-h-[90vh] object-contain"
+            />
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white"
+            >
+              <X size={24} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
