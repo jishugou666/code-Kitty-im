@@ -1,12 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Bell, Lock, Shield, HelpCircle, LogOut, Camera } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from '../../store/authStore';
 import { userApi } from '../../api/user';
+import { uploadApi } from '../../api/upload';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useToast } from '../../hooks/useToast';
 import { useIsMobile } from '../components/ui/use-mobile';
+import { settingsApi } from '../../api/settings';
 
 
 export function Profile() {
@@ -20,6 +22,10 @@ export function Profile() {
   const [privateAccount, setPrivateAccount] = useState(false);
   const [faceId, setFaceId] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwords, setPasswords] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [editForm, setEditForm] = useState({
     nickname: '',
     email: '',
@@ -59,10 +65,72 @@ export function Profile() {
       if (response.data) {
         updateUser(response.data);
         setIsEditing(false);
-        toast('Profile updated successfully', 'success');
+        toast(t('settings.profileUpdated'), 'success');
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
+      toast(t('common.error'), 'error');
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast('只支持图片文件', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      if (!base64) return;
+
+      setAvatarPreview(base64);
+
+      try {
+        const uploadRes = await uploadApi.uploadImage(base64);
+        if (uploadRes.code === 200 && uploadRes.data?.url) {
+          await userApi.updateProfile({ avatar: uploadRes.data.url });
+          await loadUser();
+          toast(t('common.success'), 'success');
+        } else {
+          toast(uploadRes.msg || t('common.error'), 'error');
+        }
+      } catch (error) {
+        console.error('Avatar upload error:', error);
+        toast(t('common.error'), 'error');
+      } finally {
+        setAvatarPreview(null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      toast(t('settings.passwordMismatch'), 'error');
+      return;
+    }
+    if (passwords.newPassword.length < 6) {
+      toast(t('settings.passwordTooShort'), 'error');
+      return;
+    }
+
+    try {
+      const response = await settingsApi.changePassword({
+        oldPassword: passwords.oldPassword,
+        newPassword: passwords.newPassword
+      });
+      if (response.code === 200) {
+        toast(t('common.success'), 'success');
+        setShowPasswordModal(false);
+        setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        toast(response.msg || t('common.error'), 'error');
+      }
+    } catch (error) {
       toast(t('common.error'), 'error');
     }
   };
@@ -100,11 +168,18 @@ export function Profile() {
                   {(user?.nickname || user?.username || 'U')[0].toUpperCase()}
                 </div>
               )}
-              <button className={isMobile ? "absolute bottom-0 right-0 w-7 h-7 sm:w-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" : "absolute bottom-0 right-0 w-8 h-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"}>
+              <button onClick={() => avatarInputRef.current?.click()} className={isMobile ? "absolute bottom-0 right-0 w-7 h-7 sm:w-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" : "absolute bottom-0 right-0 w-8 h-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"}>
                 <Camera size={isMobile ? 12 : 14} />
               </button>
             </div>
           </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
 
           {isEditing ? (
             <div className="mt-6 w-full max-w-xs">
@@ -145,7 +220,7 @@ export function Profile() {
               </p>
               {user?.role === 'admin' && (
                 <div className="mt-2 px-3 py-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full shadow-sm">
-                  <span className="text-[12px] font-semibold text-white">Admin</span>
+                  <span className="text-[12px] font-semibold text-white">{t('common.admin')}</span>
                 </div>
               )}
             </>
@@ -158,12 +233,12 @@ export function Profile() {
               Account
             </span>
             <div className={isMobile ? "bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl rounded-2xl sm:rounded-[28px] overflow-hidden border border-white/60 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.02)]" : "bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl rounded-[28px] overflow-hidden border border-white/60 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"}>
-              <div className={isMobile ? "flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" : "flex items-center justify-between px-6 py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"}>
+              <div onClick={() => setShowPasswordModal(true)} className={isMobile ? "flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" : "flex items-center justify-between px-6 py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"}>
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-[#007AFF]" : "w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-[#007AFF]"}>
                     <Lock size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>Password</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>{t('settings.password')}</span>
                 </div>
                 <ChevronRight size={isMobile ? 18 : 20} className="text-black/30 dark:text-white/30" />
               </div>
@@ -173,7 +248,7 @@ export function Profile() {
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500" : "w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500"}>
                     <Shield size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>Biometric</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>{t('settings.biometric')}</span>
                 </div>
                 <button
                   onClick={() => setFaceId(!faceId)}
@@ -192,16 +267,14 @@ export function Profile() {
           </div>
 
           <div className="w-full">
-            <span className={isMobile ? "text-[12px] sm:text-[13px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider ml-4 sm:ml-6 mb-2 sm:mb-3 block" : "text-[13px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider ml-6 mb-3 block"}>
-              Preferences
-            </span>
+            <span className={isMobile ? "text-[12px] sm:text-[13px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider ml-4 sm:ml-6 mb-2 sm:mb-3 block" : "text-[13px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wider ml-6 mb-3 block"}>{t('settings.preferences')}</span>
             <div className={isMobile ? "bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl rounded-2xl sm:rounded-[28px] overflow-hidden border border-white/60 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.02)]" : "bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl rounded-[28px] overflow-hidden border border-white/60 dark:border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"}>
               <div className={isMobile ? "flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors" : "flex items-center justify-between px-6 py-4 border-b border-black/[0.04] dark:border-white/[0.04] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"}>
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500" : "w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500"}>
                     <Bell size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>Notifications</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>{t('settings.notifications')}</span>
                 </div>
                 <button
                   onClick={() => setNotifications(!notifications)}
@@ -222,7 +295,7 @@ export function Profile() {
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500" : "w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500"}>
                     <Shield size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>Private</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>{t('settings.privateAccount')}</span>
                 </div>
                 <button
                   onClick={() => setPrivateAccount(!privateAccount)}
@@ -247,7 +320,7 @@ export function Profile() {
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500" : "w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500"}>
                     <HelpCircle size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>Help</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-black dark:text-white font-medium" : "text-[17px] text-black dark:text-white font-medium"}>{t('settings.help')}</span>
                 </div>
                 <ChevronRight size={isMobile ? 18 : 20} className="text-black/30 dark:text-white/30" />
               </div>
@@ -269,6 +342,60 @@ export function Profile() {
       </div>
       <ToastContainer />
       <ConfirmDialogComponent />
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">{t('settings.changePassword')}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.oldPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.oldPassword')}
+                  value={passwords.oldPassword}
+                  onChange={(e) => setPasswords({ ...passwords, oldPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.newPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.newPassword')}
+                  value={passwords.newPassword}
+                  onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-black/60 dark:text-white/60 mb-1 block">{t('settings.confirmNewPassword')}</label>
+                <input
+                  type="password"
+                  placeholder={t('settings.confirmNewPassword')}
+                  value={passwords.confirmPassword}
+                  onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                  className="w-full h-11 px-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-black dark:text-white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 h-11 bg-black/5 dark:bg-white/5 text-black dark:text-white font-medium rounded-xl"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handlePasswordChange}
+                  className="flex-1 h-11 bg-[#007AFF] text-white font-medium rounded-xl"
+                >
+                  {t('common.confirm')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
