@@ -3,7 +3,7 @@ const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '2c62307c13e33467f1567c4dc26f
 
 export async function uploadToImgBB(base64Data) {
   try {
-    const formData = new URLSearchParams();
+    const formData = new FormData();
     formData.append('key', IMGBB_API_KEY);
     formData.append('image', base64Data);
 
