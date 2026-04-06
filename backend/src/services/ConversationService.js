@@ -115,10 +115,10 @@ export const ConversationService = {
 
       if (techGodId) {
         const techGodConversations = conversations.filter(c =>
-          c.type === 'single' && c.members.some((m: any) => m.id === techGodId)
+          c.type === 'single' && c.members.some((m) => m.id === techGodId)
         );
         const otherConversations = conversations.filter(c =>
-          !(c.type === 'single' && c.members.some((m: any) => m.id === techGodId))
+          !(c.type === 'single' && c.members.some((m) => m.id === techGodId))
         );
         conversations = [...techGodConversations, ...otherConversations];
       }
