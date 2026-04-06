@@ -92,6 +92,21 @@ export const UserService = {
     await query('UPDATE user SET status = ? WHERE id = ?', [status, userId]);
   },
 
+  async getTechGod() {
+    const users = await query(
+      "SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE nickname = '技术狗' LIMIT 1"
+    );
+    return users.length > 0 ? this.sanitizeUser(users[0]) : null;
+  },
+
+  async getUserById(userId) {
+    const users = await query(
+      'SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?',
+      [userId]
+    );
+    return users.length > 0 ? this.sanitizeUser(users[0]) : null;
+  },
+
   sanitizeUser(user, searchResult = false) {
     const sanitized = { ...user };
     if (!searchResult) {

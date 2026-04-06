@@ -75,9 +75,10 @@ export function ChatsSidebar() {
 
   const getOtherUser = (chat: any) => {
     if (chat.type === 'single' && chat.members) {
-      return chat.members.find((m: any) => m.id !== user?.id) || { nickname: 'Unknown', avatar: '' };
+      const otherMember = chat.members.find((m: any) => m.id !== user?.id) || { nickname: 'Unknown', avatar: '', role: 'user' };
+      return otherMember;
     }
-    return { nickname: chat.name || 'Unknown', avatar: chat.avatar || '' };
+    return { nickname: chat.name || 'Unknown', avatar: chat.avatar || '', role: 'user' };
   };
 
   const formatTime = (timeStr: string | undefined) => {
@@ -196,8 +197,8 @@ export function ChatsSidebar() {
 
           {conversations.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center h-32 text-black/40 dark:text-white/40 text-sm">
-              <p>No conversations yet</p>
-              <p className="text-xs mt-1">Start a new chat!</p>
+              <p>{t('chat.noConversationsYet')}</p>
+              <p className="text-xs mt-1">{t('chat.startNewChat')}</p>
             </div>
           )}
 
@@ -242,6 +243,11 @@ export function ChatsSidebar() {
                   <div className="flex justify-between items-baseline mb-0.5">
                     <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
                       {displayName}
+                      {otherUser?.nickname === '技术狗' && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+                          {t('chat.siteOwner')}
+                        </span>
+                      )}
                       {tempConversations.has(chat.id) && (
                         <AlertTriangle size={isMobile ? 10 : 12} className="text-yellow-500 flex-shrink-0" />
                       )}

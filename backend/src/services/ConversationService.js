@@ -81,7 +81,24 @@ export const ConversationService = {
 
   async getConversationList(userId) {
     try {
-      const conversations = await query(
+      const techGodResult = await query("SELECT id FROM user WHERE nickname = '技术狗' LIMIT 1");
+      const techGodId = techGodResult.length > 0 ? techGodResult[0].id : null;
+
+      if (techGodId && techGodId !== userId) {
+        const existingConv = await query(
+          `SELECT c.id FROM conversation c
+           JOIN conversation_member cm1 ON c.id = cm1.conversation_id AND cm1.user_id = ?
+           JOIN conversation_member cm2 ON c.id = cm2.conversation_id AND cm2.user_id = ?
+           WHERE c.type = 'single'`,
+          [userId, techGodId]
+        );
+
+        if (existingConv.length === 0) {
+          await this.createSingleConversation(userId, techGodId);
+        }
+      }
+
+      let conversations = await query(
         `SELECT c.*, cm.role,
           (SELECT m.content FROM message m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
           (SELECT m.created_at FROM message m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_time,
@@ -94,6 +111,16 @@ export const ConversationService = {
 
       for (const conv of conversations) {
         conv.members = await this.getConversationMembers(conv.id);
+      }
+
+      if (techGodId) {
+        const techGodConversations = conversations.filter(c =>
+          c.type === 'single' && c.members.some((m: any) => m.id === techGodId)
+        );
+        const otherConversations = conversations.filter(c =>
+          !(c.type === 'single' && c.members.some((m: any) => m.id === techGodId))
+        );
+        conversations = [...techGodConversations, ...otherConversations];
       }
 
       return conversations;

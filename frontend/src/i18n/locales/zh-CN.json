@@ -45,7 +45,10 @@
     "yesterday": "昨天",
     "groupName": "群聊",
     "members": "成员",
-    "online": "在线"
+    "online": "在线",
+    "siteOwner": "站长",
+    "noConversationsYet": "暂无会话",
+    "startNewChat": "开始新聊天！"
   },
   "contacts": {
     "title": "联系人",

@@ -48,5 +48,8 @@ export const userApi = {
     apiClient.post('/user/logout'),
 
   updateStatus: (status: number) =>
-    apiClient.put('/user/status', { status })
+    apiClient.put('/user/status', { status }),
+
+  getTechGod: () =>
+    apiClient.get<UserProfile>('/user/tech-god')
 };

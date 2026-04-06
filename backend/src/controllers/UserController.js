@@ -110,5 +110,17 @@ export const UserController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async getTechGod(req, res, next) {
+    try {
+      const techGod = await UserService.getTechGod();
+      if (!techGod) {
+        return res.status(404).json(error('技术负责人不存在', 404));
+      }
+      res.json(success(techGod));
+    } catch (err) {
+      next(err);
+    }
   }
 };
