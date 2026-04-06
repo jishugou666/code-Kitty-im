@@ -27,7 +27,7 @@ export async function getPool() {
 
 export async function query(sql, params = []) {
   const pool = await getPool();
-  const [results] = await pool.execute(sql, params);
+  const [results] = await pool.query(sql, params);
   return results;
 }
 
