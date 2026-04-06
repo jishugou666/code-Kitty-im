@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { AtSign, Lock, ChevronRight, User, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 export function Login() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { login, register, isLoading, error, clearError, setError } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
   const [loginField, setLoginField] = useState('');
