@@ -98,7 +98,7 @@ export const ConversationService = {
         }
       }
 
-      let conversations = await query(
+      const conversations = await query(
         `SELECT c.*, cm.role,
           (SELECT m.content FROM message m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
           (SELECT m.created_at FROM message m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message_time,
@@ -109,8 +109,35 @@ export const ConversationService = {
         [userId, userId, userId]
       );
 
+      if (conversations.length === 0) {
+        return [];
+      }
+
+      const conversationIds = conversations.map(c => c.id);
+      const membersData = await query(
+        `SELECT cm.conversation_id, u.id, u.nickname, u.avatar, u.status, cm.role
+         FROM conversation_member cm
+         JOIN user u ON cm.user_id = u.id
+         WHERE cm.conversation_id IN (?)`,
+        [conversationIds]
+      );
+
+      const membersMap = {};
+      for (const row of membersData) {
+        if (!membersMap[row.conversation_id]) {
+          membersMap[row.conversation_id] = [];
+        }
+        membersMap[row.conversation_id].push({
+          id: row.id,
+          nickname: row.nickname,
+          avatar: row.avatar,
+          status: row.status,
+          role: row.role
+        });
+      }
+
       for (const conv of conversations) {
-        conv.members = await this.getConversationMembers(conv.id);
+        conv.members = membersMap[conv.id] || [];
       }
 
       if (techGodId) {
@@ -120,7 +147,7 @@ export const ConversationService = {
         const otherConversations = conversations.filter(c =>
           !(c.type === 'single' && c.members.some((m) => m.id === techGodId))
         );
-        conversations = [...techGodConversations, ...otherConversations];
+        return [...techGodConversations, ...otherConversations];
       }
 
       return conversations;

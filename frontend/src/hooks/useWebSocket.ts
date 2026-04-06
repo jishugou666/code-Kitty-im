@@ -44,20 +44,17 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   const handleNewMessage = useCallback((data: any) => {
     if (data && data.id) {
       addMessage(data.conversation_id, data);
-      fetchConversations();
     }
-  }, [addMessage, fetchConversations]);
+  }, [addMessage]);
 
   const handleMessageRead = useCallback((data: any) => {
-    fetchConversations();
-  }, [fetchConversations]);
+  }, []);
 
   const handleMessageRecalled = useCallback((data: any) => {
     if (data && data.messageId) {
       fetchMessages(data.conversationId);
-      fetchConversations();
     }
-  }, [fetchMessages, fetchConversations]);
+  }, [fetchMessages]);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
