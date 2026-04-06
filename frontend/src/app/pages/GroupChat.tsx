@@ -36,6 +36,10 @@ export function GroupChat() {
   const [muteMinutes, setMuteMinutes] = useState(0);
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showMessageMenu, setShowMessageMenu] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [viewerImage, setViewerImage] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
@@ -700,18 +704,32 @@ export function GroupChat() {
           </div>
         ) : safeMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-black/40 dark:text-white/40 text-sm">
-            <p>No messages yet</p>
-            <p className="text-xs mt-1">Start the conversation!</p>
+            <p>暂无消息</p>
+            <p className="text-xs mt-1">开始聊天吧</p>
           </div>
         ) : (
           safeMessages.map((msg) => {
             if (!msg) return null;
             const isMe = msg.sender_id === user?.id;
+            const isRecalled = msg.type === 'recalled';
             return (
               <motion.div
                 key={msg.id || Math.random()}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                onClick={() => {
+                  if (isMe && !isRecalled) {
+                    setSelectedMessage(msg);
+                    setShowMessageMenu(true);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  if (isMe && !isRecalled) {
+                    e.preventDefault();
+                    setSelectedMessage(msg);
+                    setShowMessageMenu(true);
+                  }
+                }}
                 className={clsx("flex max-w-[70%]", isMe ? "self-end justify-end" : "self-start justify-start gap-3")}
               >
                 {!isMe && (
@@ -727,9 +745,20 @@ export function GroupChat() {
                       </span>
                     </div>
                   )}
-                  <div className={clsx("px-4 py-3 rounded-[20px] text-[15px] leading-[1.5]", isMe ? "bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] text-white" : "bg-white/90 dark:bg-[#23272D]/90 text-black dark:text-white")}>
+                  <div className={clsx("px-4 py-3 rounded-[20px] text-[15px] leading-[1.5]", isRecalled ? "bg-gray-200 dark:bg-gray-800" : isMe ? "bg-gradient-to-tr from-[#007AFF] to-[#5AC8FA] text-white" : "bg-white/90 dark:bg-[#23272D]/90 text-black dark:text-white")}>
                     {msg.type === 'recalled' ? (
                       <p className="text-sm italic opacity-60">{msg.content}</p>
+                    ) : msg.type === 'image' ? (
+                      <img
+                        src={msg.content}
+                        alt="图片"
+                        className="rounded-lg max-w-[250px] cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewerImage(msg.content);
+                          setShowImageViewer(true);
+                        }}
+                      />
                     ) : (
                       <p className="text-sm">{msg.content}</p>
                     )}
@@ -744,6 +773,96 @@ export function GroupChat() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Image Viewer */}
+      <AnimatePresence>
+        {showImageViewer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center cursor-zoom-out"
+            onClick={() => setShowImageViewer(false)}
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={viewerImage}
+              alt="Preview"
+              className="max-w-[90vw] max-h-[90vh] object-contain"
+            />
+            <button
+              onClick={() => setShowImageViewer(false)}
+              className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white"
+            >
+              <X size={24} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Message Menu */}
+      <AnimatePresence>
+        {showMessageMenu && selectedMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            onClick={() => setShowMessageMenu(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className={isMobile ? "w-[80%] bg-white dark:bg-[#1A1D21] rounded-t-2xl p-4" : "bg-white dark:bg-[#1A1D21] rounded-2xl p-4 w-64 shadow-2xl"}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await messageApi.recallMessage(selectedMessage.id);
+                    if (res.code === 200) {
+                      setMessages(prev => prev.map(m =>
+                        m.id === selectedMessage.id
+                          ? { ...m, type: 'recalled', content: '此消息已撤回' }
+                          : m
+                      ));
+                      fetchConversations();
+                      toast('已撤回', 'success');
+                    } else {
+                      toast(res.msg || '撤回失败', 'error');
+                    }
+                  } catch {
+                    toast('撤回失败', 'error');
+                  }
+                  setShowMessageMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+              >
+                撤回消息
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedMessage.content);
+                  toast('已复制', 'success');
+                  setShowMessageMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg mt-1"
+              >
+                复制
+              </button>
+              <button
+                onClick={() => setShowMessageMenu(false)}
+                className="w-full px-4 py-3 text-left text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg mt-1"
+              >
+                取消
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Preview */}
       <AnimatePresence>
