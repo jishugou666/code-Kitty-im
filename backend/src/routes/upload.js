@@ -9,7 +9,7 @@ router.post('/image', authMiddleware, async (req, res, next) => {
     const { image } = req.body;
 
     if (!image) {
-      return res.json({ code: 400, data: null, msg: '请提供图片数据' });
+      return res.status(400).json({ code: 400, data: null, msg: '请提供图片数据' });
     }
 
     let base64Data = image;
@@ -18,7 +18,11 @@ router.post('/image', authMiddleware, async (req, res, next) => {
       base64Data = extracted.data;
     }
 
+    console.log('Uploading image, base64 length:', base64Data.length);
+
     const result = await uploadToImgBB(base64Data);
+
+    console.log('ImgBB result:', result);
 
     if (result.code === 200) {
       return res.json({
@@ -30,11 +34,11 @@ router.post('/image', authMiddleware, async (req, res, next) => {
         msg: '上传成功'
       });
     } else {
-      return res.json({ code: result.code, data: null, msg: result.msg });
+      return res.status(500).json({ code: 500, data: null, msg: result.msg || '上传失败' });
     }
   } catch (err) {
     console.error('Upload error:', err);
-    res.json({ code: 500, data: null, msg: '上传失败' });
+    res.status(500).json({ code: 500, data: null, msg: '服务器内部错误' });
   }
 });
 

@@ -7,12 +7,27 @@ export async function uploadToImgBB(base64Data) {
     formData.append('key', IMGBB_API_KEY);
     formData.append('image', base64Data);
 
+    console.log('Sending request to ImgBB, data length:', base64Data.length);
+
     const response = await fetch(IMGBB_API_URL, {
       method: 'POST',
       body: formData
     });
 
+    console.log('ImgBB response status:', response.status);
+
+    if (!response.ok) {
+      console.error('ImgBB HTTP error:', response.status, response.statusText);
+      return {
+        code: 500,
+        data: null,
+        msg: `ImgBB API错误: ${response.status}`
+      };
+    }
+
     const data = await response.json();
+
+    console.log('ImgBB response data:', JSON.stringify(data).substring(0, 200));
 
     if (data.success && data.data && data.data.url) {
       return {
