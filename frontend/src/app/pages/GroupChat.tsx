@@ -886,9 +886,9 @@ export function GroupChat() {
               <Plus size={isMobile ? 22 : 24} className={showAttachMenu ? "rotate-45" : ""} />
             </button>
             {showAttachMenu && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-full left-0 mb-2 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload-group" />
-                <label htmlFor="image-upload-group" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm">
+                <label htmlFor="image-upload-group" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm active:bg-gray-200 dark:active:bg-white/20">
                   <Image size={16} /> 图片
                 </label>
               </motion.div>
