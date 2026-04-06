@@ -37,11 +37,15 @@
     "admin": "后台",
     "searchPlaceholder": "搜索聊天记录...",
     "noMessages": "暂无消息",
+    "searchNoResults": "未找到相关消息",
     "sendPlaceholder": "输入消息...",
     "send": "发送",
     "loadMore": "加载更多",
     "today": "今天",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "groupName": "群聊",
+    "members": "成员",
+    "online": "在线"
   },
   "contacts": {
     "title": "联系人",
@@ -73,7 +77,11 @@
     "logout": "退出登录",
     "logoutConfirm": "确定要退出登录吗？",
     "version": "版本",
-    "checkUpdate": "检查更新"
+    "checkUpdate": "检查更新",
+    "appName": "Code Kitty IM",
+    "appVersion": "v1.0.0",
+    "appDescription": "一款现代化的即时通讯应用",
+    "copyright": "© 2026 Code Kitty. 保留所有权利。"
   },
   "moments": {
     "title": "朋友圈",

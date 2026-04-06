@@ -378,7 +378,7 @@ export function Admin() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-black dark:text-white">管理中心</h1>
-              <p className="text-xs text-black/40 dark:text-white/40">Admin Panel</p>
+              <p className="text-xs text-black/40 dark:text-white/40">{t('admin.title')}</p>
             </div>
           </div>
           <nav className="space-y-1">

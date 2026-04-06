@@ -1,4 +1,5 @@
- import { useParams, useNavigate } from "react-router";
+ import { useTranslation } from 'react-i18next';
+import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
@@ -39,6 +40,7 @@ export function GroupChat() {
   const { contacts, fetchContacts } = useContactStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchContacts();
@@ -204,9 +206,9 @@ export function GroupChat() {
           </button>
           <div>
             <h2 className="text-[17px] font-semibold text-black dark:text-white">
-              {groupInfo?.name || conversation?.name || 'Group Chat'}
+              {groupInfo?.name || conversation?.name || t('chat.groupName')}
             </h2>
-            <p className="text-[13px] text-black/40 dark:text-white/40">{totalCount} Members - {onlineCount} Online</p>
+            <p className="text-[13px] text-black/40 dark:text-white/40">{totalCount} {t('chat.members')} - {onlineCount} {t('chat.online')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

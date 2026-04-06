@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, Bell, Lock, Shield, HelpCircle, LogOut, Camera } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
@@ -14,6 +15,7 @@ export function Profile() {
   const { confirm, ConfirmDialogComponent } = useConfirmDialog();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState(true);
   const [privateAccount, setPrivateAccount] = useState(false);
   const [faceId, setFaceId] = useState(true);
@@ -61,7 +63,7 @@ export function Profile() {
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      toast('Failed to update profile', 'error');
+      toast(t('common.error'), 'error');
     }
   };
 
@@ -110,7 +112,7 @@ export function Profile() {
                 type="text"
                 value={editForm.nickname}
                 onChange={(e) => setEditForm({ ...editForm, nickname: e.target.value })}
-                placeholder="Nickname"
+                placeholder={t('auth.nickname')}
                 className="w-full px-4 py-2 text-center text-lg font-semibold bg-white/60 dark:bg-[#13161A]/60 rounded-xl outline-none border border-transparent focus:border-[#007AFF]/50 transition-all mb-3"
               />
               <div className="flex gap-3 justify-center">
@@ -118,7 +120,7 @@ export function Profile() {
                   onClick={handleCancelEdit}
                   className="px-4 py-2 text-sm font-medium text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSaveProfile}
@@ -258,7 +260,7 @@ export function Profile() {
                   <div className={isMobile ? "w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500" : "w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500"}>
                     <LogOut size={isMobile ? 18 : 20} strokeWidth={2.5} />
                   </div>
-                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-red-500 font-medium" : "text-[17px] text-red-500 font-medium"}>Log Out</span>
+                  <span className={isMobile ? "text-[15px] sm:text-[17px] text-red-500 font-medium" : "text-[17px] text-red-500 font-medium"}>{t('settings.logout')}</span>
                 </div>
               </div>
             </div>

@@ -291,9 +291,9 @@ export function Settings() {
             <span className="text-black dark:text-white">{t('settings.about')}</span>
           </div>
           <div className="space-y-2 text-sm text-black/60 dark:text-white/60">
-            <p>Code Kitty IM v1.0.0</p>
-            <p>A modern instant messaging application</p>
-            <p className="text-xs mt-4">© 2026 Code Kitty. All rights reserved.</p>
+            <p>{t('settings.appName')} {t('settings.appVersion')}</p>
+            <p>{t('settings.appDescription')}</p>
+            <p className="text-xs mt-4">{t('settings.copyright')}</p>
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
 import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users } from "lucide-react";
@@ -21,6 +22,7 @@ export function ChatsSidebar() {
   const { user, token } = useAuthStore();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchConversations();
@@ -134,7 +136,7 @@ export function ChatsSidebar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search messages"
+            placeholder={t('chat.searchPlaceholder')}
             className={isMobile ? "w-full h-[36px] pl-9 pr-4 bg-black/5 dark:bg-white/5 rounded-lg outline-none text-[14px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:bg-white dark:focus:bg-[#1A1D21] focus:border-[#007AFF]/30 border border-transparent transition-all" : "w-full h-[38px] pl-9 pr-4 bg-black/5 dark:bg-white/5 rounded-xl outline-none text-[15px] text-black dark:text-white placeholder:text-black/40 dark:placeholder:text-white/40 focus:bg-white dark:focus:bg-[#1A1D21] focus:shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:focus:shadow-[0_4px_16px_rgba(0,0,0,0.2)] focus:border-[#007AFF]/30 border border-transparent transition-all"}
           />
         </div>
@@ -151,7 +153,7 @@ export function ChatsSidebar() {
           {searchResults.length === 0 && !isSearching && (
             <div className="flex flex-col items-center justify-center h-32 text-black/40 dark:text-white/40 text-sm">
               <MessageSquare size={32} className="mb-2 opacity-50" />
-              <p>No messages found</p>
+              <p>{t('chat.searchNoResults')}</p>
             </div>
           )}
 

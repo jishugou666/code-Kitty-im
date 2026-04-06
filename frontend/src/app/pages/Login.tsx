@@ -130,7 +130,7 @@ export function Login() {
                     </div>
                     <input
                       type="text"
-                      placeholder="Nickname"
+                      placeholder={t('auth.nickname')}
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
                       className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
@@ -144,7 +144,7 @@ export function Login() {
                     </div>
                     <input
                       type="email"
-                      placeholder="Email"
+                      placeholder={t('auth.email')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
@@ -161,7 +161,7 @@ export function Login() {
                   </div>
                   <input
                     type="text"
-                    placeholder="Email or Username"
+                    placeholder={t('auth.email')}
                     value={loginField}
                     onChange={(e) => setLoginField(e.target.value)}
                     className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
@@ -176,7 +176,7 @@ export function Login() {
                 </div>
                 <input
                   type="password"
-                  placeholder="Password"
+                  placeholder={t('auth.password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
@@ -195,7 +195,7 @@ export function Login() {
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Sign Up'}
+                  {isLogin ? t('auth.login') : t('auth.register')}
                   <ChevronRight size={isMobile ? 18 : 20} strokeWidth={2.5} />
                 </>
               )}

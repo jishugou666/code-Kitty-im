@@ -37,6 +37,7 @@
     "admin": "Admin",
     "searchPlaceholder": "Search chat history...",
     "noMessages": "No messages",
+    "searchNoResults": "No matching messages found",
     "sendPlaceholder": "Type a message...",
     "send": "Send",
     "loadMore": "Load More",
@@ -73,7 +74,11 @@
     "logout": "Logout",
     "logoutConfirm": "Are you sure you want to logout?",
     "version": "Version",
-    "checkUpdate": "Check for Updates"
+    "checkUpdate": "Check for Updates",
+    "appName": "Code Kitty IM",
+    "appVersion": "v1.0.0",
+    "appDescription": "A modern instant messaging application",
+    "copyright": "© 2026 Code Kitty. All rights reserved."
   },
   "moments": {
     "title": "Moments",
