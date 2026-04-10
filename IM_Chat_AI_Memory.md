@@ -1074,3 +1074,105 @@ IM-Chat-App/
 - [ ] CSRF 测试
 - [ ] 未授权访问测试
 - [ ] npm audit 依赖漏洞扫描
+
+---
+
+## 经验教训总结
+
+### 问题28: CORS配置不完整导致消息无法加载 ⚠️ 已解决
+- **描述**: 用户无法加载消息，浏览器报CORS错误
+- **症状**:
+  - `Request header field cache-control is not allowed by Access-Control-Allow-Headers in preflight response`
+  - `Failed to fetch` 错误
+- **根本原因**:
+  1. **修改CORS配置时遗漏了必要的请求头** - 在修改 `allowedHeaders` 时只包含了部分头信息，遗漏了 `Cache-Control`, `Pragma`, `Expires`
+  2. **未充分测试跨域请求** - 每次修改CORS配置后没有在生产环境验证
+  3. **缓存问题** - 旧的CORS配置被浏览器缓存，导致修改后仍然失败
+- **教训**:
+  1. CORS配置是**白名单**机制，任何自定义请求头都必须显式声明
+  2. 修改CORS后需要清除浏览器缓存或使用隐身模式测试
+  3. 应该在 `allowedHeaders` 中包含所有可能用到的请求头
+- **修复方案**:
+  ```javascript
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',  // 缓存控制
+    'Pragma',         // 兼容HTTP/1.0
+    'Expires'         // 过期时间
+  ]
+  ```
+- **涉及文件**:
+  - `backend/src/app.js` - CORS配置
+- **状态**: ✅ 已解决
+
+### 问题29: storeFetchMessages未定义导致错误 ⚠️ 已解决
+- **描述**: Chat.tsx中调用了storeFetchMessages但该函数从未定义
+- **症状**: JavaScript运行时错误，消息加载逻辑异常
+- **根本原因**:
+  1. **代码传播错误** - 可能是在复制粘贴代码时遗留的错误调用
+  2. **审查不充分** - 没有在修改前检查函数是否存在
+- **教训**:
+  1. 每次添加函数调用前必须确认函数已定义
+  2. 使用IDE的语法检查和lint工具可以提前发现此类问题
+  3. 代码修改后应该进行基本的功能验证
+- **修复方案**: 移除未定义的函数调用
+- **涉及文件**:
+  - `frontend/src/app/pages/Chat.tsx`
+- **状态**: ✅ 已解决
+
+### 问题30: GroupService使用错误字段名read_at ⚠️ 已解决
+- **描述**: 数据库报错 `Unknown column 'read_at' in 'where clause'`
+- **根本原因**: 代码中使用的是 `read_at`，但数据库表中实际字段名是 `seen_at`
+- **教训**:
+  1. **数据库文档必须与代码保持同步** - 这次是因为先更新了文档但代码未同步
+  2. **修改数据库结构后必须同步更新所有相关代码**
+  3. **使用ORM或类型安全的数据库访问层可以减少此类错误**
+- **修复方案**: 将所有 `read_at` 改为 `seen_at`
+- **涉及文件**:
+  - `backend/src/services/GroupService.js`
+- **状态**: ✅ 已解决
+
+---
+
+## 开发规范（教训总结）
+
+### 1. CORS配置规范
+- **必须包含的请求头**:
+  ```javascript
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
+    'Expires'
+  ]
+  ```
+- 修改CORS后必须：
+  1. 清除浏览器缓存或使用隐身模式测试
+  2. 在所有目标浏览器上测试
+  3. 验证preflight请求返回正确的CORS头
+
+### 2. 代码修改规范
+- 修改任何功能前先阅读相关代码
+- 添加函数调用前确认函数已定义
+- 修改后进行基本功能测试
+- 使用 lint 和类型检查工具
+
+### 3. 数据库操作规范
+- 修改数据库表结构后同步更新文档
+- 代码中使用数据库字段名时必须与文档核对
+- 在生产环境执行数据库变更前先在测试环境验证
+
+### 4. 测试规范
+- 每次修改后验证基本功能
+- 测试跨域请求时清除缓存
+- 检查浏览器控制台错误信息
+
+---
