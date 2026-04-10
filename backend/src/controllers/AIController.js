@@ -1,6 +1,6 @@
 import { AIServiceManager } from '../services/AIServiceManager.js';
 import { antiSpamService } from '../services/antiSpamService.js';
-import db from '../config/database.js';
+import { query } from '../utils/db.js';
 import { success } from '../utils/response.js';
 
 export const AIController = {
@@ -46,9 +46,7 @@ export const AIController = {
 
   async getServiceStatus(req, res, next) {
     try {
-      const [rows] = await db.execute(
-        `SELECT * FROM ai_service_status ORDER BY service_name`
-      );
+      const rows = await query(`SELECT * FROM ai_service_status ORDER BY service_name`);
       res.json(success(rows, 'AI服务状态获取成功'));
     } catch (err) {
       console.error('获取AI服务状态失败:', err);
@@ -87,7 +85,7 @@ export const AIController = {
         params.push(severity);
       }
 
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT f.*, u.username, u.nickname, u.avatar
          FROM ai_feedback f
          LEFT JOIN users u ON f.user_id = u.id
@@ -97,7 +95,7 @@ export const AIController = {
         [...params, parseInt(limit), parseInt(offset)]
       );
 
-      const [countResult] = await db.execute(
+      const countResult = await query(
         `SELECT COUNT(*) as total FROM ai_feedback f WHERE ${whereClause}`,
         params
       );
@@ -118,7 +116,7 @@ export const AIController = {
     try {
       const { id } = req.params;
 
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT f.*, u.username, u.nickname, u.avatar, u.email
          FROM ai_feedback f
          LEFT JOIN users u ON f.user_id = u.id
@@ -147,7 +145,7 @@ export const AIController = {
         return res.status(400).json({ success: false, message: '无效的操作类型' });
       }
 
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT * FROM ai_feedback WHERE id = ? AND status = 'pending'`,
         [id]
       );
@@ -159,7 +157,7 @@ export const AIController = {
       const feedback = rows[0];
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-      await db.execute(
+      await query(
         `UPDATE ai_feedback SET status = ?, handled_by = ?, handled_at = CURRENT_TIMESTAMP, handle_result = ?
          WHERE id = ?`,
         [newStatus, adminId, handleResult || '', id]
@@ -167,13 +165,13 @@ export const AIController = {
 
       if (action === 'approve' && feedback.target_type === 'message' && feedback.target_id) {
         try {
-          await db.execute(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
+          await query(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
         } catch (e) {
           console.error('[AIFeedback] Failed to delete message:', e);
         }
       }
 
-      await db.execute(
+      await query(
         `INSERT INTO ai_activity_log (service_name, action, target_type, target_id, result, details, user_id)
          VALUES ('antiSpam', ?, 'feedback', ?, 'success', ?, ?)`,
         [action, id, JSON.stringify({ handleResult }), adminId]
@@ -203,7 +201,7 @@ export const AIController = {
         params.push(action);
       }
 
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT * FROM ai_activity_log
          WHERE ${whereClause}
          ORDER BY created_at DESC
@@ -211,7 +209,7 @@ export const AIController = {
         [...params, parseInt(limit), parseInt(offset)]
       );
 
-      const [countResult] = await db.execute(
+      const countResult = await query(
         `SELECT COUNT(*) as total FROM ai_activity_log WHERE ${whereClause}`,
         params
       );
@@ -245,7 +243,7 @@ export const AIController = {
         params.push(status);
       }
 
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT * FROM ai_blacklist
          WHERE ${whereClause}
          ORDER BY created_at DESC
@@ -269,7 +267,7 @@ export const AIController = {
         return res.status(400).json({ success: false, message: '类型和值不能为空' });
       }
 
-      const [result] = await db.execute(
+      const result = await query(
         `INSERT INTO ai_blacklist (type, value, reason, source, severity, expires_at, created_by)
          VALUES (?, ?, ?, 'admin_added', ?, ?, ?)`,
         [type, value, reason || '', severity || 'warning', expiresAt || null, adminId]
@@ -286,7 +284,7 @@ export const AIController = {
     try {
       const { id } = req.params;
 
-      await db.execute(
+      await query(
         `UPDATE ai_blacklist SET status = 'inactive' WHERE id = ?`,
         [id]
       );

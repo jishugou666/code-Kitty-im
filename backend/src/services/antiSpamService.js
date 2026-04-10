@@ -1,4 +1,4 @@
-import db from '../config/database.js';
+import { query } from '../utils/db.js';
 import pusher from '../utils/pusher.js';
 
 const messageTracking = new Map();
@@ -56,7 +56,7 @@ class AntiSpamService {
 
   async saveAIFeedback(type, severity, userId, targetType, targetId, content, contentFull, metadata, aiConfidence, aiAnalysis) {
     try {
-      const [result] = await db.execute(
+      const result = await query(
         `INSERT INTO ai_feedback (type, severity, user_id, target_type, target_id, content, content_full, metadata, ai_confidence, ai_analysis, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
         [type, severity, userId, targetType, targetId, content?.substring(0, 500), contentFull, JSON.stringify(metadata), aiConfidence, aiAnalysis]
@@ -75,7 +75,7 @@ class AntiSpamService {
 
   async logActivity(action, targetType, targetId, result, details) {
     try {
-      await db.execute(
+      await query(
         `INSERT INTO ai_activity_log (service_name, action, target_type, target_id, result, details)
          VALUES ('antiSpam', ?, ?, ?, ?, ?)`,
         [action, targetType, targetId, result, JSON.stringify(details)]
@@ -87,7 +87,7 @@ class AntiSpamService {
 
   async updateServiceStatus() {
     try {
-      const [rows] = await db.execute(
+      const rows = await query(
         `SELECT * FROM ai_service_status WHERE service_name = 'antiSpam' LIMIT 1`
       );
 
@@ -100,13 +100,13 @@ class AntiSpamService {
       };
 
       if (rows.length === 0) {
-        await db.execute(
+        await query(
           `INSERT INTO ai_service_status (service_name, status, current_task, task_progress, task_detail, metrics)
            VALUES ('antiSpam', 'running', ?, 100, ?, '{"cpu": 0, "memory": 0}')`,
           [`监控中: ${this.monitoredConversations.size}个活跃会话`, JSON.stringify(taskDetail)]
         );
       } else {
-        await db.execute(
+        await query(
           `UPDATE ai_service_status SET current_task = ?, task_detail = ?, last_heartbeat = CURRENT_TIMESTAMP
            WHERE service_name = 'antiSpam'`,
           [`监控中: ${this.monitoredConversations.size}个活跃会话`, JSON.stringify(taskDetail)]
