@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users, Pin, PinOff, MessageCircle } from "lucide-react";
+import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
@@ -10,11 +10,6 @@ import { messageApi, SearchMessageResult } from '../../api/message';
 import { tempConversationApi } from '../../api/tempConversation';
 import { CreateGroupModal } from './CreateGroupModal';
 import { useIsMobile } from './ui/use-mobile';
-
-interface PinnedConversation {
-  id: number;
-  type: 'pinned';
-}
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -26,11 +21,8 @@ export function ChatsSidebar() {
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [tempConversations, setTempConversations] = useState<Set<number>>(new Set());
-  const [pinnedConversations, setPinnedConversations] = useState<Set<number>>(new Set());
   const [collapsedPrivate, setCollapsedPrivate] = useState(false);
   const [collapsedGroup, setCollapsedGroup] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; chatId: number } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
@@ -41,40 +33,6 @@ export function ChatsSidebar() {
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('pinnedConversations');
-    if (saved) {
-      setPinnedConversations(new Set(JSON.parse(saved)));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('pinnedConversations', JSON.stringify([...pinnedConversations]));
-  }, [pinnedConversations]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    if (contextMenu) {
-      document.addEventListener('click', handleClickOutside);
-    }
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [contextMenu]);
-
-  useEffect(() => {
-    const handleLongPress = (e: CustomEvent) => {
-      const chatId = e.detail?.chatId;
-      if (chatId) {
-        togglePin(chatId);
-      }
-    };
-    window.addEventListener('longPressChat' as any, handleLongPress);
-    return () => window.removeEventListener('longPressChat' as any, handleLongPress);
-  }, [pinnedConversations]);
 
   useEffect(() => {
     const checkTempConversations = async () => {
@@ -144,24 +102,6 @@ export function ChatsSidebar() {
     }
   };
 
-  const togglePin = (chatId: number) => {
-    setPinnedConversations(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(chatId)) {
-        newSet.delete(chatId);
-      } else {
-        newSet.add(chatId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, chatId: number) => {
-    if (isMobile) return;
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, chatId });
-  };
-
   const handleSearchResultClick = (msg: SearchMessageResult) => {
     navigate(`/chat/${msg.conversation_id}`);
     setSearchQuery("");
@@ -170,8 +110,6 @@ export function ChatsSidebar() {
   const privateChats = conversations
     .filter(c => c.type === 'single')
     .sort((a, b) => {
-      if (pinnedConversations.has(a.id) && !pinnedConversations.has(b.id)) return -1;
-      if (!pinnedConversations.has(a.id) && pinnedConversations.has(b.id)) return 1;
       const techGodA = a.members?.some((m: any) => m.nickname === '技术狗');
       const techGodB = b.members?.some((m: any) => m.nickname === '技术狗');
       if (techGodA && !techGodB) return -1;
@@ -182,8 +120,6 @@ export function ChatsSidebar() {
   const groupChats = conversations
     .filter(c => c.type === 'group')
     .sort((a, b) => {
-      if (pinnedConversations.has(a.id) && !pinnedConversations.has(b.id)) return -1;
-      if (!pinnedConversations.has(a.id) && pinnedConversations.has(b.id)) return 1;
       return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
     });
 
@@ -192,7 +128,6 @@ export function ChatsSidebar() {
     const otherUser = isGroup ? null : getOtherUser(chat);
     const displayName = isGroup ? (chat.name || '群聊') : (otherUser?.nickname || 'Unknown');
     const displayAvatar = isGroup ? (chat.avatar || '') : (otherUser?.avatar || '');
-    const isPinned = pinnedConversations.has(chat.id);
     const isTechGod = !isGroup && otherUser?.nickname === '技术狗';
 
     return (
@@ -202,12 +137,6 @@ export function ChatsSidebar() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
         onClick={() => navigate(isGroup ? `/group/${chat.id}` : `/chat/${chat.id}`)}
-        onContextMenu={(e) => handleContextMenu(e, chat.id)}
-        onTouchEnd={() => {
-          if (isMobile) {
-            window.dispatchEvent(new CustomEvent('longPressChat', { detail: { chatId: chat.id } }));
-          }
-        }}
         className={clsx(
           "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
           isActive
@@ -215,9 +144,6 @@ export function ChatsSidebar() {
             : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
         )}
       >
-        {isPinned && !isTechGod && (
-          <Pin size={12} className="absolute top-1 right-1 text-[#007AFF] dark:text-white/60" />
-        )}
         <div className="relative flex-shrink-0">
           {displayAvatar ? (
             <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
@@ -440,34 +366,6 @@ export function ChatsSidebar() {
             () => setCollapsedGroup(!collapsedGroup),
             'text-purple-500'
           )}
-        </div>
-      )}
-
-      {contextMenu && (
-        <div
-          ref={contextMenuRef}
-          className="fixed z-[100] bg-white dark:bg-[#1A1D21] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.15)] border border-black/10 dark:border-white/10 py-1 min-w-[160px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            onClick={() => {
-              togglePin(contextMenu.chatId);
-              setContextMenu(null);
-            }}
-            className="w-full px-4 py-2.5 text-left text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2 transition-colors"
-          >
-            {pinnedConversations.has(contextMenu.chatId) ? (
-              <>
-                <PinOff size={16} className="text-[#007AFF]" />
-                {t('chat.unpin')}
-              </>
-            ) : (
-              <>
-                <Pin size={16} className="text-[#007AFF]" />
-                {t('chat.pin')}
-              </>
-            )}
-          </button>
         </div>
       )}
 

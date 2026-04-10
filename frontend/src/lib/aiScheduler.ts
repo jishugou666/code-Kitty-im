@@ -24,10 +24,10 @@ interface AIScheduleConfig {
 }
 
 const DEFAULT_CONFIG: AIScheduleConfig = {
-  maxCacheSize: 50 * 1024 * 1024,
-  defaultTTL: 5 * 60 * 1000,
+  maxCacheSize: 0,
+  defaultTTL: 0,
   prefetchThreshold: 0.7,
-  cleanupInterval: 60 * 1000,
+  cleanupInterval: 60000,
   compressionThreshold: 1000,
 };
 
@@ -47,7 +47,7 @@ class AISmartScheduler {
   async request<T>(request: AIDataRequest<T>): Promise<T> {
     const { key, fetcher, priority = 'medium', ttl = this.config.defaultTTL, prefetch = false } = request;
 
-    if (!prefetch) {
+    if (!prefetch && ttl > 0 && this.config.maxCacheSize > 0) {
       const cached = this.getFromCache<T>(key, ttl);
       if (cached) {
         this.updateAccessPattern(key);
@@ -62,7 +62,9 @@ class AISmartScheduler {
     const promise = (async () => {
       try {
         const data = await fetcher();
-        this.setCache(key, data, priority);
+        if (ttl > 0 && this.config.maxCacheSize > 0) {
+          this.setCache(key, data, priority);
+        }
         return data;
       } finally {
         this.pendingRequests.delete(key);

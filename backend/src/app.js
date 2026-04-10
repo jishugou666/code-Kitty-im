@@ -16,6 +16,7 @@ import adminRoutes from './routes/admin.js';
 import tempConversationRoutes from './routes/tempConversation.js';
 import groupRoutes from './routes/group.js';
 import uploadRoutes from './routes/upload.js';
+import hiddenRoutes from './routes/hidden.js';
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/temp-conversation', tempConversationRoutes);
 app.use('/api/group', groupRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/v2', hiddenRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

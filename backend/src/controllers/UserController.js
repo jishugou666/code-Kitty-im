@@ -51,11 +51,28 @@ export const UserController = {
         return res.status(400).json(validationError('请输入账号和密码'));
       }
 
+      const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || '';
+
+      const { IPBanService } = await import('../services/IPBanService.js');
+      const ipBan = await IPBanService.checkIPBan(clientIP);
+      if (ipBan.isBanned) {
+        return res.status(403).json(error(`IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`, 403));
+      }
+
       const result = await UserService.login(loginField, password);
+
+      if (result.user?.id) {
+        await IPBanService.recordUserIP(result.user.id, clientIP, userAgent);
+      }
+
       res.json(success(result, '登录成功'));
     } catch (err) {
       if (err.message === 'Invalid email/username or password') {
         return res.status(401).json(error('账号或密码错误', 401));
+      }
+      if (err.message.includes('账户已被封禁')) {
+        return res.status(403).json(error(err.message, 403));
       }
       next(err);
     }

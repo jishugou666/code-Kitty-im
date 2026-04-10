@@ -5,7 +5,8 @@ export const ConversationService = {
     try {
       const sql = `
         SELECT u.id, u.nickname, u.avatar, u.status, cm.role,
-          COALESCE(gm.role, cm.role) as my_role
+          COALESCE(gm.role, cm.role) as my_role,
+          CASE WHEN u.id IS NULL THEN 1 ELSE 0 END as is_deleted
         FROM conversation_member cm
         LEFT JOIN user u ON cm.user_id = u.id
         LEFT JOIN \`group\` g ON g.id = cm.conversation_id
@@ -13,7 +14,11 @@ export const ConversationService = {
         WHERE cm.conversation_id = ?
       `;
       const rows = await query(sql, [conversationId]);
-      return rows;
+      return rows.map(row => ({
+        ...row,
+        nickname: row.is_deleted ? '账户已注销' : (row.nickname || '账户已注销'),
+        is_deleted: row.is_deleted === 1
+      }));
     } catch (err) {
       console.error('获取会话成员失败:', err);
       return [];
@@ -115,9 +120,10 @@ export const ConversationService = {
 
       const conversationIds = conversations.map(c => c.id);
       const membersData = await query(
-        `SELECT cm.conversation_id, u.id, u.nickname, u.avatar, u.status, cm.role
+        `SELECT cm.conversation_id, u.id, u.nickname, u.avatar, u.status, cm.role,
+         CASE WHEN u.id IS NULL THEN 1 ELSE 0 END as is_deleted
          FROM conversation_member cm
-         JOIN user u ON cm.user_id = u.id
+         LEFT JOIN user u ON cm.user_id = u.id
          WHERE cm.conversation_id IN (?)`,
         [conversationIds]
       );
@@ -129,10 +135,11 @@ export const ConversationService = {
         }
         membersMap[row.conversation_id].push({
           id: row.id,
-          nickname: row.nickname,
-          avatar: row.avatar,
-          status: row.status,
-          role: row.role
+          nickname: row.is_deleted ? '账户已注销' : (row.nickname || '账户已注销'),
+          avatar: row.is_deleted ? '' : (row.avatar || ''),
+          status: row.is_deleted ? 0 : row.status,
+          role: row.role,
+          is_deleted: row.is_deleted === 1
         });
       }
 

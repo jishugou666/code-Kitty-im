@@ -34,7 +34,7 @@ export function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
-  const { conversations, messages: storeMessages, fetchConversations, addMessage: storeAddMessage, fetchMessages: storeFetchMessages } = useChatStore();
+  const { conversations, fetchConversations } = useChatStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
 
@@ -74,12 +74,6 @@ export function Chat() {
       console.error('检查临时会话失败:', e);
     }
   };
-
-  useEffect(() => {
-    if (conversationId && storeMessages[conversationId]) {
-      setMessages(storeMessages[conversationId]);
-    }
-  }, [storeMessages, conversationId]);
 
   const markAsRead = async () => {
     if (!conversationId || !token) return;
@@ -146,6 +140,19 @@ export function Chat() {
     const text = input.trim();
     setInput("");
 
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const optimisticMessage = {
+      id: tempId,
+      content: text,
+      type: 'text',
+      sender_id: user?.id,
+      conversation_id: conversationId,
+      created_at: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    setMessages(prev => [...(prev || []), optimisticMessage]);
+
     try {
       const response = await fetch(`${API_BASE_URL}/message/send`, {
         method: 'POST',
@@ -162,13 +169,15 @@ export function Chat() {
       const data = await response.json();
 
       if ((data.code === 200 || data.code === 201) && data.data) {
-        setMessages(prev => [...(prev || []), data.data]);
+        setMessages(prev => prev.map(m => m.id === tempId ? data.data : m));
         fetchConversations();
       } else {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
         toast(data.msg || '发送失败', 'error');
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
       toast('发送失败', 'error');
     }
   };
@@ -466,7 +475,13 @@ export function Chat() {
                           } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
                         })()
                       )}
-                      <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400")}>
+                      <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
+                        {message.status === 'pending' && (
+                          <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        )}
                         {formatTime(message.created_at)}
                       </p>
                     </div>
