@@ -31,12 +31,21 @@ export const MessageService = {
         return { code: 200, data: [], msg: '成功' };
       }
 
-      if (audit === true && rows.length >= 10) {
+      if (rows.length >= 10) {
+        console.log(`[MessageService] 会话${conversationId}有${rows.length}条消息，触发审计`);
         setTimeout(() => {
           try {
-            messageAuditor.auditConversation(conversationId);
+            messageAuditor.auditConversation(conversationId).then(result => {
+              console.log(`[MessageService] 审计完成:`, {
+                conversationId,
+                totalMessages: result.totalMessages,
+                suspiciousUsers: result.suspiciousUsers.length
+              });
+            }).catch(err => {
+              console.error('[MessageService] Audit failed:', err);
+            });
           } catch (err) {
-            console.error('[MessageService] Audit failed:', err);
+            console.error('[MessageService] Audit exception:', err);
           }
         }, 100);
       }

@@ -3,10 +3,10 @@ import { antiSpamService } from './antiSpamService.js';
 
 const AUDIT_CONFIG = {
   batchSize: 50,
-  similarityThreshold: 0.8,
+  similarityThreshold: 0.7,
   floodWindowMs: 10000,
-  floodThreshold: 10,
-  repeatThreshold: 3
+  floodThreshold: 5,
+  repeatThreshold: 2
 };
 
 class MessageAuditor {
