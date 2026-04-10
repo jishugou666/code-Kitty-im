@@ -29,7 +29,9 @@ export const AdminService = {
       const safeLimit = Math.max(1, parseInt(limit) || 20);
       const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const users = await query(
-        `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status, u.ban_status, u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
+        `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
+         COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
+         u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
          (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
          (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count,
          (SELECT ip_address FROM user_ip_log WHERE user_id = u.id ORDER BY login_time DESC LIMIT 1) as last_ip
@@ -63,14 +65,30 @@ export const AdminService = {
           ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
           : null;
         await query(
-          `UPDATE user SET status = ?, ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
-          [status, expiresAt, reason, adminId, userId]
+          `UPDATE user SET status = 0 WHERE id = ?`,
+          [userId]
         );
+        try {
+          await query(
+            `UPDATE user SET ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
+            [expiresAt, reason, adminId, userId]
+          );
+        } catch (e) {
+          console.log('ban_status字段可能不存在:', e.message);
+        }
       } else {
         await query(
-          `UPDATE user SET status = ?, ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
-          [status, userId]
+          `UPDATE user SET status = 1 WHERE id = ?`,
+          [userId]
         );
+        try {
+          await query(
+            `UPDATE user SET ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
+            [userId]
+          );
+        } catch (e) {
+          console.log('ban_status字段可能不存在:', e.message);
+        }
       }
       return { code: 200, data: null, msg: '更新成功' };
     } catch (err) {

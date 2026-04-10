@@ -48,9 +48,11 @@ export const UserService = {
       throw new Error('Invalid email/username or password');
     }
 
-    if (user.ban_status === 'banned') {
+    if (user.ban_status === 'banned' || user.status === 0) {
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', user.id]);
+        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', user.id]);
+        user.ban_status = 'active';
+        user.status = 1;
       } else {
         const expiresText = user.ban_expires_at
           ? `，将于 ${new Date(user.ban_expires_at).toLocaleString()} 解封`
@@ -76,10 +78,11 @@ export const UserService = {
     }
     const user = users[0];
 
-    if (user.ban_status === 'banned') {
+    if (user.ban_status === 'banned' || user.status === 0) {
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', userId]);
+        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', userId]);
         user.ban_status = 'active';
+        user.status = 1;
       } else {
         const banInfo = {
           isBanned: true,

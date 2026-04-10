@@ -37,9 +37,11 @@ export async function authMiddleware(req, res, next) {
 
     const user = users[0];
 
-    if (user.ban_status === 'banned') {
+    const isEffectivelyBanned = user.ban_status === 'banned' || user.status === 0;
+
+    if (isEffectivelyBanned) {
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', user.id]);
+        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', user.id]);
       } else {
         return res.status(403).json({
           code: 403,
