@@ -101,7 +101,7 @@ export const GroupService = {
         `SELECT g.*, gm.role as my_role,
          (SELECT COUNT(*) FROM group_member WHERE group_id = g.id) as member_count,
          (SELECT MAX(created_at) FROM message WHERE conversation_id = g.id) as last_message_time,
-         (SELECT COUNT(*) FROM message WHERE conversation_id = g.id AND created_at > COALESCE((SELECT MAX(read_at) FROM message_read WHERE user_id = ? AND conversation_id = g.id), '1970-01-01')) as unread_count
+         (SELECT COUNT(*) FROM message WHERE conversation_id = g.id AND created_at > COALESCE((SELECT MAX(seen_at) FROM message_read WHERE user_id = ? AND conversation_id = g.id), '1970-01-01')) as unread_count
          FROM \`group\` g
          JOIN group_member gm ON g.id = gm.group_id AND gm.user_id = ?
          ORDER BY last_message_time DESC`,
