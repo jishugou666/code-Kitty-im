@@ -152,6 +152,8 @@ export function GroupChat() {
       if ((data.code === 200 || data.code === 201) && data.data) {
         setMessages(prev => [...(prev || []), data.data]);
         fetchConversations();
+      } else if (data.code === 429 && data.data?.blocked) {
+        toast(`⛔ ${data.data.details || '消息被拦截'}`, 'warning');
       } else {
         toast(data.msg || '发送失败', 'error');
       }

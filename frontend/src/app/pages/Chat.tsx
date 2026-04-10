@@ -177,6 +177,9 @@ export function Chat() {
       if ((data.code === 200 || data.code === 201) && data.data) {
         setMessages(prev => prev.map(m => m.id === tempId ? data.data : m));
         fetchConversations();
+      } else if (data.code === 429 && data.data?.blocked) {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+        toast(`⛔ ${data.data.details || '消息被拦截'}`, 'warning');
       } else {
         setMessages(prev => prev.filter(m => m.id !== tempId));
         toast(data.msg || '发送失败', 'error');

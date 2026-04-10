@@ -1,5 +1,6 @@
 import { query } from '../utils/db.js';
 import { triggerEvent } from '../utils/pusher.js';
+import { antiSpamService } from './antiSpamService.js';
 
 export const MessageService = {
   async getMessageList(conversationId, limit = 50) {
@@ -49,6 +50,30 @@ export const MessageService = {
       if (!content && type !== 'image') {
         console.log('消息内容为空');
         return { code: 400, data: null, msg: '消息内容不能为空' };
+      }
+
+      const ip = 'unknown';
+
+      const analysis = antiSpamService.analyzeMessagePattern(senderId, ip, content, null, conversationId);
+
+      console.log('=== AI反垃圾分析结果 ===');
+      console.log('isSpam:', analysis.isSpam);
+      console.log('score:', analysis.score);
+      console.log('confidence:', analysis.confidence);
+      console.log('reasons:', analysis.reasons);
+      console.log('shouldBlock:', analysis.shouldBlock);
+
+      if (analysis.isSpam && analysis.confidence >= 65) {
+        console.log('=== 检测到恶意刷屏，拦截消息 ===');
+        return {
+          code: 429,
+          data: {
+            blocked: true,
+            reason: '消息发送过于频繁，请稍后再试',
+            details: analysis.reasons.join('; ')
+          },
+          msg: '消息发送过于频繁，请稍后再试'
+        };
       }
 
       const result = await query(

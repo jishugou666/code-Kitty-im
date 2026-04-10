@@ -91,22 +91,27 @@ export const AIServiceManager = {
   },
 
   getAntiSpamStats() {
+    const realStats = antiSpamService.getServiceStats();
     return {
       nameKey: 'aiServices.antiSpam',
       status: 'running',
       descKey: 'aiServices.antiSpamDesc',
       details: {
-        messageTracking: 'Active',
-        ipTracking: 'Active',
-        cooldownUsers: 'Managed',
-        cooldownIPs: 'Managed'
+        monitoredConversations: realStats.monitoredConversations,
+        messagesProcessed: realStats.messagesProcessed,
+        threatsBlocked: realStats.threatsBlocked,
+        activeUsers: realStats.activeUsers,
+        cooldownUsers: realStats.cooldownUsers,
+        cooldownIPs: realStats.cooldownIPs
       },
       config: {
-        maxMessagesPerWindow: 10,
-        windowMs: 60000,
-        repeatThreshold: 3,
-        cooldownMs: 5000,
-        maxConcurrent: 5
+        maxMessagesPerWindow: 5,
+        windowMs: 5000,
+        repeatThreshold: 2,
+        cooldownMs: 3000,
+        maxConcurrent: 3,
+        blockThreshold: 50,
+        feedbackConfidence: 65
       },
       features: [
         'aiServices.messageFrequencyDetection',
