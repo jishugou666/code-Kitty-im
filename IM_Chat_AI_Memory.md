@@ -459,7 +459,7 @@ className="bg-gradient-to-br from-[#007AFF] to-[#5856D6]"
 ```sql
 CREATE TABLE user (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(50) UNIQUE NOT NULL,
+  username VARCHAR(50),
   password VARCHAR(255) NOT NULL,
   nickname VARCHAR(100) NOT NULL,
   avatar VARCHAR(500),
@@ -467,6 +467,11 @@ CREATE TABLE user (
   phone VARCHAR(20),
   role ENUM('user','admin','tech_god') DEFAULT 'user',
   status TINYINT DEFAULT 1 COMMENT '1在线 0离线',
+  ban_status ENUM('active','banned') DEFAULT 'active' COMMENT '账户状态',
+  banned_at TIMESTAMP NULL COMMENT '封禁时间',
+  ban_expires_at TIMESTAMP NULL COMMENT '封禁到期时间',
+  ban_reason VARCHAR(500) COMMENT '封禁原因',
+  banned_by INT COMMENT '封禁者ID',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -476,12 +481,13 @@ CREATE TABLE user (
 ```sql
 CREATE TABLE user_settings (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  user_id INT UNIQUE NOT NULL,
+  user_id INT NOT NULL,
   language VARCHAR(10) DEFAULT 'zh-CN',
   theme VARCHAR(20) DEFAULT 'light',
   notification_enabled TINYINT DEFAULT 1,
   sound_enabled TINYINT DEFAULT 1,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_user_id (user_id)
 );
 ```
 
@@ -525,6 +531,18 @@ CREATE TABLE message (
 );
 ```
 
+### message_read 消息已读表
+```sql
+CREATE TABLE message_read (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  conversation_id INT NOT NULL,
+  user_id INT NOT NULL,
+  seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
 ### contact 联系人表
 ```sql
 CREATE TABLE contact (
@@ -532,7 +550,9 @@ CREATE TABLE contact (
   user_id INT NOT NULL,
   contact_user_id INT NOT NULL,
   status ENUM('pending', 'accepted', 'blocked') DEFAULT 'pending',
+  is_friend TINYINT DEFAULT 0 COMMENT '是否为好友',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  friend_time TIMESTAMP NULL COMMENT '成为好友时间',
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
   FOREIGN KEY (contact_user_id) REFERENCES user(id) ON DELETE CASCADE
 );
@@ -543,12 +563,13 @@ CREATE TABLE contact (
 CREATE TABLE `group` (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
-  description VARCHAR(500),
+  description TEXT,
   avatar VARCHAR(500),
   owner_id INT NOT NULL,
   need_approval TINYINT DEFAULT 0 COMMENT '0不需要审核 1需要审核',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_id) REFERENCES user(id) ON DELETE CASCADE
 );
 ```
 
@@ -560,6 +581,7 @@ CREATE TABLE group_member (
   user_id INT NOT NULL,
   role ENUM('owner', 'admin', 'member') DEFAULT 'member',
   joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  muted_until TIMESTAMP NULL COMMENT '禁言截止时间',
   FOREIGN KEY (group_id) REFERENCES `group`(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
@@ -573,6 +595,7 @@ CREATE TABLE group_join_request (
   user_id INT NOT NULL,
   status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (group_id) REFERENCES `group`(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
@@ -583,8 +606,8 @@ CREATE TABLE group_join_request (
 CREATE TABLE moments (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
-  content TEXT NOT NULL,
-  images VARCHAR(1000),
+  content TEXT,
+  images JSON COMMENT '图片URL数组',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
@@ -612,20 +635,53 @@ CREATE TABLE moments_like (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (moment_id) REFERENCES moments(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_like (moment_id, user_id)
+  UNIQUE KEY uk_moment_user (moment_id, user_id)
 );
 ```
 
-### message_read 消息已读表
+### user_ip_log 用户IP记录表
 ```sql
-CREATE TABLE message_read (
+CREATE TABLE user_ip_log (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  message_id INT NOT NULL,
   user_id INT NOT NULL,
-  read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (message_id) REFERENCES message(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_read (message_id, user_id)
+  ip_address VARCHAR(45) NOT NULL,
+  user_agent VARCHAR(500),
+  login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_user_id (user_id),
+  INDEX idx_ip_address (ip_address),
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+```
+
+### ip_ban IP封禁表
+```sql
+CREATE TABLE ip_ban (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  ip_address VARCHAR(45) NOT NULL,
+  ban_type ENUM('exact', 'range', 'subnet') DEFAULT 'exact',
+  ban_reason VARCHAR(500),
+  ban_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NULL,
+  is_active TINYINT DEFAULT 1,
+  INDEX idx_ip_address (ip_address),
+  INDEX idx_expires_at (expires_at)
+);
+```
+
+### temp_conversation 临时会话表
+```sql
+CREATE TABLE temp_conversation (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  conversation_id INT NOT NULL,
+  user_id INT NOT NULL,
+  target_user_id INT NOT NULL,
+  is_blocked TINYINT DEFAULT 0 COMMENT '是否被封禁',
+  warning_count INT DEFAULT 0 COMMENT '警告次数',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NULL,
+  FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
 ```
 
@@ -834,6 +890,121 @@ CREATE TABLE message_read (
 - **涉及文件**:
   - `frontend/src/app/pages/GroupChat.tsx` - 主容器和模态框结构
 - **状态**: ✅ 已解决
+
+### 问题17: 头像上传问题 ⚠️ 已解决
+- **描述**: 用户上传头像失败
+- **根本原因**: UserService.updateProfile 中头像URL生成有问题
+- **修复方案**: 修正头像上传逻辑，确保URL正确生成
+- **涉及文件**:
+  - `backend/src/services/UserService.js` - updateProfile 函数
+- **状态**: ✅ 已解决
+
+### 问题18: AI缓存导致会话跳转错误 ⚠️ 已解决
+- **描述**: 点击消息列表的会话时会错误跳转
+- **根本原因**: AI缓存加速导致数据错乱
+- **修复方案**: 取消AI缓存加速，只允许缓存静态文件和已存在的聊天记录
+- **涉及文件**:
+  - `frontend/src/lib/aiScheduler.ts` - 缓存策略修改
+  - `frontend/src/hooks/useSmartData.ts` - 智能数据Hook修改
+- **状态**: ✅ 已解决
+
+### 问题19: Pin is not defined ⚠️ 已解决
+- **描述**: 全屏报错 Pin is not defined
+- **根本原因**: ChatsSidebar.tsx 中移除了 Pin 图标 import 但仍在使用 `<Pin>` 组件
+- **修复方案**: 彻底取消置顶功能，移除所有 Pin 相关代码
+- **涉及文件**:
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 移除 Pin 组件和功能
+- **状态**: ✅ 已解决
+
+### 问题20: 数据库密码变更 ⚠️ 已解决
+- **描述**: 数据库密码从 `cyccodemao1234` 变更为 `YougCvAcH2XPXVQf`
+- **根本原因**: 数据库密码重置
+- **修复方案**: 更新 backend/.env 中的数据库密码配置
+- **涉及文件**:
+  - `backend/.env` - DB_PASSWORD
+- **状态**: ✅ 已解决
+
+### 问题21: Admin状态显示异常 ⚠️ 已解决
+- **描述**: 用户状态正常却显示已封号，并且经常性反复横跳
+- **根本原因**: 代码错误地将 `status = 0`（离线）当作已封禁判断
+- **修复方案**: 正确使用 `ban_status === 'banned'` 进行封禁判断
+- **涉及文件**:
+  - `backend/src/services/UserService.js` - login, getProfile 函数
+  - `backend/src/services/AdminService.js` - getUsers 函数
+  - `backend/src/middleware/auth.js` - 认证中间件
+- **状态**: ✅ 已解决
+
+### 问题22: 消息发送失败 ⚠️ 已解决
+- **描述**: 消息发送返回错误
+- **根本原因**: MessageService 异常处理和数据库表结构问题
+- **修复方案**: 修复异常处理逻辑，确保正确返回格式
+- **涉及文件**:
+  - `backend/src/services/MessageService.js`
+  - `database/migrate_add_recalled_type.sql`
+- **状态**: ✅ 已解决
+
+### 问题23: 已注销用户显示"账户已注销" ⚠️ 已解决
+- **描述**: 删除的用户显示为"Unknown"
+- **根本原因**: 前端未处理用户已删除的情况
+- **修复方案**: 当用户昵称为空或特定标记时显示"账户已注销"
+- **涉及文件**:
+  - `frontend/src/app/pages/Chat.tsx` - 消息发送者显示
+  - `frontend/src/app/pages/GroupChat.tsx` - 群成员显示
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 会话列表显示
+- **状态**: ✅ 已解决
+
+### 问题24: 乐观消息发送逻辑 ⚠️ 已解决
+- **描述**: 需要实现乐观消息发送（发送即显示）
+- **根本原因**: 原逻辑需要等服务器响应才显示消息
+- **修复方案**: 发送消息时先在本地显示 pending 状态，后台上传
+- **涉及文件**:
+  - `frontend/src/app/pages/Chat.tsx` - 消息发送逻辑
+- **状态**: ✅ 已解决
+
+### 问题25: 朋友圈图片嵌入 ⚠️ 已解决
+- **描述**: 朋友圈上传图片后，图片链接未正确嵌入文本
+- **根本原因**: 上传时未将图片URL一起带入文本
+- **修复方案**: 使用 [IMG] 标签在文本中嵌入图片URL
+- **涉及文件**:
+  - `frontend/src/app/pages/Moments.tsx` - 图片上传和显示逻辑
+- **状态**: ✅ 已解决
+
+### 问题26: IP记录功能 ⚠️ 已解决
+- **描述**: 需要记录用户登录和访问的IP
+- **根本原因**: 新功能需求
+- **修复方案**: 
+  - 创建 user_ip_log 表记录IP
+  - 在登录和进入网页时记录IP
+  - Admin后台显示用户IP
+- **涉及文件**:
+  - `backend/src/services/UserService.js` - login 函数
+  - `backend/src/services/IPBanService.js` - IP记录服务
+  - `frontend/src/app/pages/Admin.tsx` - IP显示
+- **状态**: ✅ 已解决
+
+### 问题27: ban_status字段混淆 ⚠️ 已解决
+- **描述**: status 和 ban_status 字段混淆使用
+- **根本原因**: 
+  - `status` = 在线状态 (0:离线, 1:在线)
+  - `ban_status` = 封禁状态 (active/banned)
+- **修复方案**: 明确区分两个字段的使用场景
+- **涉及文件**:
+  - `backend/src/services/UserService.js`
+  - `backend/src/services/AdminService.js`
+  - `database/migrate_ban_system.sql`
+- **状态**: ✅ 已解决
+
+---
+
+## 项目文档
+
+### 最新文档列表
+| 文档 | 说明 | 更新日期 |
+|------|------|---------|
+| README.md | 项目主文档 | 2026-04-10 |
+| PROJECT_REPORT.md | 项目报告 | 2026-04-10 |
+| DEVELOPMENT_PLAN.md | 开发计划 | 2026-04-10 |
+| MODIFICATION_REPORT_v2.md | v2修改记录 | 2026-04-04 |
 
 ---
 

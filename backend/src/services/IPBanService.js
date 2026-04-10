@@ -18,7 +18,7 @@ export const IPBanService = {
           };
         }
       } catch (tableError) {
-        console.log('ip_ban表不存在或查询失败:', tableError.message);
+        console.log('ip_ban表不存在:', tableError.message);
       }
 
       return { isBanned: false };
