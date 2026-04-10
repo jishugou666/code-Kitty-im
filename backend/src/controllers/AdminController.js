@@ -60,8 +60,8 @@ export const AdminController = {
   async getMessages(req, res, next) {
     try {
       const { conversationId } = req.params;
-      const { page, limit } = req.query;
-      const result = await AdminService.getMessages(parseInt(conversationId), parseInt(page) || 1, parseInt(limit) || 50);
+      const { page, limit, audit } = req.query;
+      const result = await AdminService.getMessages(parseInt(conversationId), parseInt(page) || 1, parseInt(limit) || 50, audit === 'true');
       res.json(result);
     } catch (err) {
       console.error('getMessages error:', err);

@@ -1,4 +1,5 @@
 import { query } from '../utils/db.js';
+import { messageAuditor } from './MessageAuditor.js';
 
 export const AdminService = {
   async getDashboard() {
@@ -132,7 +133,7 @@ export const AdminService = {
     }
   },
 
-  async getMessages(conversationId, page = 1, limit = 50) {
+  async getMessages(conversationId, page = 1, limit = 50, audit = false) {
     try {
       const safeLimit = Math.max(1, parseInt(limit) || 50);
       const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
@@ -147,6 +148,12 @@ export const AdminService = {
       );
 
       const total = await query('SELECT COUNT(*) as count FROM message WHERE conversation_id = ?', [conversationId]);
+
+      if (audit && messages.length >= 10) {
+        messageAuditor.auditConversation(conversationId).catch(err => {
+          console.error('[AdminService] Audit failed:', err);
+        });
+      }
 
       return {
         code: 200,

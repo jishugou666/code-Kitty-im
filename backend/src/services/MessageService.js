@@ -1,9 +1,10 @@
 import { query } from '../utils/db.js';
 import { triggerEvent } from '../utils/pusher.js';
 import { antiSpamService } from './antiSpamService.js';
+import { messageAuditor } from './MessageAuditor.js';
 
 export const MessageService = {
-  async getMessageList(conversationId, limit = 50) {
+  async getMessageList(conversationId, limit = 50, audit = false) {
     try {
       const safeLimit = parseInt(limit) || 50;
 
@@ -28,6 +29,12 @@ export const MessageService = {
 
       if (!Array.isArray(rows)) {
         return { code: 200, data: [], msg: '成功' };
+      }
+
+      if (audit && rows.length >= 10) {
+        messageAuditor.auditConversation(conversationId).catch(err => {
+          console.error('[MessageService] Audit failed:', err);
+        });
       }
 
       return { code: 200, data: rows, msg: '成功' };

@@ -34,8 +34,10 @@ export const MessageController = {
     try {
       const { conversationId } = req.query;
       const { limit } = req.query;
+      const { audit } = req.query;
+      const isAdmin = req.user.role === 'admin';
 
-      console.log('conversationId:', conversationId, 'limit:', limit);
+      console.log('conversationId:', conversationId, 'limit:', limit, 'audit:', audit);
       if (!conversationId) {
         console.log('缺少 conversationId 参数');
         return res.status(400).json(error('Conversation ID is required', 400));
@@ -50,10 +52,13 @@ export const MessageController = {
         return res.status(404).json(notFound('Conversation not found'));
       }
 
+      const shouldAudit = isAdmin && audit === 'true';
+
       console.log('准备调用 MessageService.getMessageList...');
       const result = await MessageService.getMessageList(
         parseInt(conversationId),
-        parseInt(limit) || 50
+        parseInt(limit) || 50,
+        shouldAudit
       );
       console.log('MessageService 返回结果:', result);
       console.log('返回消息数量:', result.data?.length || 0);
