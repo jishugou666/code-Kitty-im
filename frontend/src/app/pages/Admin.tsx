@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu, Cpu, Zap, ShieldCheck, Activity } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu, Cpu, Zap, ShieldCheck, Activity, Bell, CheckCircle, XCircle, AlertOctagon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
@@ -10,7 +10,7 @@ import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useIsMobile } from '../components/ui/use-mobile';
 
-type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai';
+type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai' | 'aiFeedback';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5856D6'];
 
@@ -45,6 +45,15 @@ export function Admin() {
   const [banDuration, setBanDuration] = useState('7');
   const [banReason, setBanReason] = useState('');
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
+  const [aiFeedbackList, setAIFeedbackList] = useState<any[]>([]);
+  const [aiFeedbackTotal, setAIFeedbackTotal] = useState(0);
+  const [aiFeedbackPage, setAIFeedbackPage] = useState(1);
+  const [aiFeedbackFilter, setAIFeedbackFilter] = useState<{ status?: string; type?: string }>({});
+  const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
+  const [feedbackDetailModal, setFeedbackDetailModal] = useState(false);
+  const [handleModal, setHandleModal] = useState<{ id: number; action: 'approve' | 'reject' } | null>(null);
+  const [handleResult, setHandleResult] = useState('');
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -179,6 +188,61 @@ export function Admin() {
     }
   };
 
+  const loadAIFeedback = async () => {
+    setIsLoading(true);
+    try {
+      const res = await aiApi.getFeedbackList({
+        status: aiFeedbackFilter.status,
+        type: aiFeedbackFilter.type,
+        page: aiFeedbackPage,
+        limit: 20
+      });
+      if (res.code === 200) {
+        setAIFeedbackList(res.data.list);
+        setAIFeedbackTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to load AI feedback:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAIFeedback = async () => {
+    if (!handleModal) return;
+    try {
+      const res = await aiApi.handleFeedback(handleModal.id, handleModal.action, handleResult);
+      if (res.code === 200) {
+        toast(handleModal.action === 'approve' ? '已通过，内容已删除' : '已驳回', 'success');
+        setHandleModal(null);
+        setHandleResult('');
+        loadAIFeedback();
+      }
+    } catch (error) {
+      toast(t('common.error'), 'error');
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-500 bg-red-100 dark:bg-red-900/30';
+      case 'high': return 'text-orange-500 bg-orange-100 dark:bg-orange-900/30';
+      case 'medium': return 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30';
+      case 'low': return 'text-blue-500 bg-blue-100 dark:bg-blue-900/30';
+      default: return 'text-gray-500 bg-gray-100 dark:bg-gray-900/30';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30';
+      case 'approved': return 'text-green-500 bg-green-100 dark:bg-green-900/30';
+      case 'rejected': return 'text-gray-500 bg-gray-100 dark:bg-gray-900/30';
+      case 'expired': return 'text-gray-400 bg-gray-100 dark:bg-gray-900/30';
+      default: return 'text-gray-500 bg-gray-100 dark:bg-gray-900/30';
+    }
+  };
+
   const loadGroupMembers = async (groupId: number) => {
     try {
       const res = await adminApi.getGroupMembers(groupId);
@@ -259,6 +323,9 @@ export function Admin() {
         break;
       case 'ai':
         await loadAiStats();
+        break;
+      case 'aiFeedback':
+        await loadAIFeedback();
         break;
     }
   };
@@ -366,7 +433,8 @@ export function Admin() {
     { key: 'moments' as TabType, icon: Globe, label: '朋友圈' },
     { key: 'tables' as TabType, icon: Database, label: '数据库' },
     { key: 'groups' as TabType, icon: UserPlus, label: '群组管理' },
-    { key: 'ai' as TabType, icon: Cpu, label: 'AI调度' }
+    { key: 'ai' as TabType, icon: Cpu, label: 'AI调度' },
+    { key: 'aiFeedback' as TabType, icon: Bell, label: 'AI反馈' }
   ];
 
   return (
@@ -972,13 +1040,13 @@ export function Admin() {
         {activeTab === 'ai' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-black dark:text-white">AI智能调度中心</h2>
+              <h2 className="text-xl font-bold text-black dark:text-white">{t('aiServices.title')}</h2>
               <button
                 onClick={loadAiStats}
                 className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
               >
                 <Activity size={16} />
-                刷新数据
+                {t('admin.refresh')}
               </button>
             </div>
 
@@ -991,8 +1059,8 @@ export function Admin() {
                         <Zap size={20} className="text-blue-500" />
                       </div>
                       <div>
-                        <p className="text-sm text-black/60 dark:text-white/60">服务运行时间</p>
-                        <p className="text-lg font-bold text-black dark:text-white">{Math.floor(aiStats.uptime / 60)}分钟</p>
+                        <p className="text-sm text-black/60 dark:text-white/60">{t('admin.uptime')}</p>
+                        <p className="text-lg font-bold text-black dark:text-white">{Math.floor(aiStats.uptime / 60)}{t('common.minutes')}</p>
                       </div>
                     </div>
                   </div>
@@ -1002,7 +1070,7 @@ export function Admin() {
                         <Activity size={20} className="text-green-500" />
                       </div>
                       <div>
-                        <p className="text-sm text-black/60 dark:text-white/60">全局负载</p>
+                        <p className="text-sm text-black/60 dark:text-white/60">{t('admin.globalLoad')}</p>
                         <p className="text-lg font-bold text-black dark:text-white">{aiStats.services.rateLimiter?.details?.globalLoad || 0}</p>
                       </div>
                     </div>
@@ -1013,7 +1081,7 @@ export function Admin() {
                         <ShieldCheck size={20} className="text-purple-500" />
                       </div>
                       <div>
-                        <p className="text-sm text-black/60 dark:text-white/60">活跃请求</p>
+                        <p className="text-sm text-black/60 dark:text-white/60">{t('admin.activeRequests')}</p>
                         <p className="text-lg font-bold text-black dark:text-white">{aiStats.services.rateLimiter?.details?.activeRequests || 0}</p>
                       </div>
                     </div>
@@ -1037,16 +1105,16 @@ export function Admin() {
                               {key === 'loadBalancer' && <Activity size={20} className="text-orange-500" />}
                             </div>
                             <div>
-                              <h3 className="font-semibold text-black dark:text-white">{service.name}</h3>
+                              <h3 className="font-semibold text-black dark:text-white">{t(service.nameKey)}</h3>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 service.status === 'running' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'
                               }`}>
-                                {service.status === 'running' ? '运行中' : '空闲'}
+                                {service.status === 'running' ? t('admin.running') : t('admin.idle')}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <p className="mt-2 text-sm text-black/60 dark:text-white/60">{service.description}</p>
+                        <p className="mt-2 text-sm text-black/60 dark:text-white/60">{t(service.descKey)}</p>
                       </div>
                       <div className="p-4 space-y-3">
                         {service.details && Object.entries(service.details).map(([dk, dv]: [string, any]) => (
@@ -1057,7 +1125,7 @@ export function Admin() {
                         ))}
                         {service.config && (
                           <div className="pt-3 border-t border-black/5 dark:border-white/10">
-                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">配置参数:</p>
+                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">{t('admin.configParams')}:</p>
                             {Object.entries(service.config).map(([ck, cv]: [string, any]) => (
                               <div key={ck} className="flex items-center justify-between text-xs">
                                 <span className="text-black/40 dark:text-white/40">{ck}:</span>
@@ -1068,11 +1136,11 @@ export function Admin() {
                         )}
                         {service.features && (
                           <div className="pt-3 border-t border-black/5 dark:border-white/10">
-                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">功能特性:</p>
+                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">{t('admin.features')}:</p>
                             <div className="flex flex-wrap gap-1">
                               {service.features.map((f: string, i: number) => (
                                 <span key={i} className="px-2 py-0.5 bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#007AFF]/20 dark:text-[#007AFF] text-xs rounded">
-                                  {f}
+                                  {t(f)}
                                 </span>
                               ))}
                             </div>
@@ -1088,9 +1156,187 @@ export function Admin() {
             {!aiStats && !isLoading && (
               <div className="text-center text-black/40 dark:text-white/40 py-12">
                 <Cpu size={48} className="mx-auto mb-4 opacity-50" />
-                <p>点击"刷新数据"加载AI服务状态</p>
+                <p>{t('admin.refresh')}</p>
               </div>
             )}
+
+            {isLoading && (
+              <div className="text-center text-black/40 dark:text-white/40 py-12">
+                <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p>{t('common.loading')}...</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'aiFeedback' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-black dark:text-white">AI反馈管理</h2>
+              <button
+                onClick={loadAIFeedback}
+                className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
+              >
+                <Activity size={16} />
+                刷新
+              </button>
+            </div>
+
+            <div className="flex gap-4 flex-wrap">
+              <select
+                value={aiFeedbackFilter.status || ''}
+                onChange={(e) => setAIFeedbackFilter({ ...aiFeedbackFilter, status: e.target.value || undefined })}
+                className="px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#1A1D21] text-black dark:text-white"
+              >
+                <option value="">全部状态</option>
+                <option value="pending">待处理</option>
+                <option value="approved">已通过</option>
+                <option value="rejected">已驳回</option>
+                <option value="expired">已过期</option>
+              </select>
+              <select
+                value={aiFeedbackFilter.type || ''}
+                onChange={(e) => setAIFeedbackFilter({ ...aiFeedbackFilter, type: e.target.value || undefined })}
+                className="px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#1A1D21] text-black dark:text-white"
+              >
+                <option value="">全部类型</option>
+                <option value="spam">垃圾信息</option>
+                <option value="malicious">恶意攻击</option>
+                <option value="suspicious">可疑行为</option>
+                <option value="flood">刷屏</option>
+                <option value="repeat">重复消息</option>
+                <option value="sensitive">敏感内容</option>
+              </select>
+            </div>
+
+            <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5">
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">类型</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">严重程度</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">用户</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">内容摘要</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">AI置信度</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">状态</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">时间</th>
+                      <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aiFeedbackList.length > 0 ? (
+                      aiFeedbackList.map((fb) => (
+                        <tr key={fb.id} className="border-b border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-4">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                              {fb.type === 'spam' ? '垃圾' : fb.type === 'malicious' ? '恶意' : fb.type === 'suspicious' ? '可疑' : fb.type === 'flood' ? '刷屏' : fb.type === 'repeat' ? '重复' : '敏感'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityColor(fb.severity)}`}>
+                              {fb.severity === 'critical' ? '严重' : fb.severity === 'high' ? '高' : fb.severity === 'medium' ? '中' : '低'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xs font-medium">
+                                {fb.nickname?.[0]?.toUpperCase() || 'U'}
+                              </div>
+                              <span className="text-sm text-black dark:text-white">{fb.nickname || fb.username || `用户#${fb.user_id}`}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 max-w-[200px]">
+                            <p className="text-sm text-black/60 dark:text-white/60 truncate">{fb.content || '-'}</p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${fb.ai_confidence >= 80 ? 'bg-red-500' : fb.ai_confidence >= 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                                  style={{ width: `${fb.ai_confidence}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-black/60 dark:text-white/60">{fb.ai_confidence}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(fb.status)}`}>
+                              {fb.status === 'pending' ? '待处理' : fb.status === 'approved' ? '已通过' : fb.status === 'rejected' ? '已驳回' : '已过期'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-black/40 dark:text-white/40 whitespace-nowrap">
+                            {new Date(fb.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => { setSelectedFeedback(fb); setFeedbackDetailModal(true); }}
+                                className="p-2 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors text-blue-500"
+                                title="查看详情"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              {fb.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => setHandleModal({ id: fb.id, action: 'approve' })}
+                                    className="p-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors text-green-500"
+                                    title="通过"
+                                  >
+                                    <CheckCircle size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => setHandleModal({ id: fb.id, action: 'reject' })}
+                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500"
+                                    title="驳回"
+                                  >
+                                    <XCircle size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-12 text-center text-black/40 dark:text-white/40">
+                          暂无AI反馈记录
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {aiFeedbackTotal > 20 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-black/5 dark:border-white/10">
+                  <p className="text-sm text-black/60 dark:text-white/60">
+                    共 {aiFeedbackTotal} 条记录
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAIFeedbackPage(Math.max(1, aiFeedbackPage - 1))}
+                      disabled={aiFeedbackPage === 1}
+                      className="px-3 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 disabled:opacity-50"
+                    >
+                      上一页
+                    </button>
+                    <span className="px-3 py-1 text-sm text-black/60 dark:text-white/60">
+                      第 {aiFeedbackPage} 页
+                    </span>
+                    <button
+                      onClick={() => setAIFeedbackPage(aiFeedbackPage + 1)}
+                      disabled={aiFeedbackPage * 20 >= aiFeedbackTotal}
+                      className="px-3 py-1 rounded-lg bg-black/5 dark:bg-white/5 text-black/60 dark:text-white/60 disabled:opacity-50"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {isLoading && (
               <div className="text-center text-black/40 dark:text-white/40 py-12">
@@ -1163,6 +1409,183 @@ export function Admin() {
                   className={`px-4 py-2 text-sm text-white rounded-xl transition-colors ${banModal.isBanned ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
                 >
                   {banModal.isBanned ? '确认解封' : '确认封禁'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {feedbackDetailModal && selectedFeedback && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setFeedbackDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-black dark:text-white">AI反馈详情</h3>
+                <button onClick={() => setFeedbackDetailModal(false)} className="p-2 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">类型</p>
+                    <p className="font-medium text-black dark:text-white">{selectedFeedback.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">严重程度</p>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityColor(selectedFeedback.severity)}`}>
+                      {selectedFeedback.severity}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">用户</p>
+                    <p className="font-medium text-black dark:text-white">{selectedFeedback.nickname || selectedFeedback.username || `用户#${selectedFeedback.user_id}`}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">状态</p>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedFeedback.status)}`}>
+                      {selectedFeedback.status === 'pending' ? '待处理' : selectedFeedback.status === 'approved' ? '已通过' : selectedFeedback.status === 'rejected' ? '已驳回' : '已过期'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">AI置信度</p>
+                    <p className="font-medium text-black dark:text-white">{selectedFeedback.ai_confidence}%</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60">创建时间</p>
+                    <p className="font-medium text-black dark:text-white">{new Date(selectedFeedback.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-black/60 dark:text-white/60 mb-1">问题内容摘要</p>
+                  <div className="bg-black/5 dark:bg-white/5 rounded-xl p-3">
+                    <p className="text-black dark:text-white text-sm">{selectedFeedback.content || '-'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-black/60 dark:text-white/60 mb-1">完整内容</p>
+                  <div className="bg-black/5 dark:bg-white/5 rounded-xl p-3 max-h-40 overflow-y-auto">
+                    <p className="text-black dark:text-white text-sm whitespace-pre-wrap">{selectedFeedback.content_full || '-'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-black/60 dark:text-white/60 mb-1">AI分析结果</p>
+                  <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{selectedFeedback.ai_analysis || '-'}</p>
+                  </div>
+                </div>
+
+                {selectedFeedback.metadata && (
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60 mb-1">元数据</p>
+                    <div className="bg-black/5 dark:bg-white/5 rounded-xl p-3 font-mono text-xs">
+                      <pre>{JSON.stringify(selectedFeedback.metadata, null, 2)}</pre>
+                    </div>
+                  </div>
+                )}
+
+                {selectedFeedback.handle_result && (
+                  <div>
+                    <p className="text-sm text-black/60 dark:text-white/60 mb-1">处理结果</p>
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
+                      <p className="text-green-600 dark:text-green-400 text-sm">{selectedFeedback.handle_result}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={() => setFeedbackDetailModal(false)}
+                  className="px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  关闭
+                </button>
+                {selectedFeedback.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => { setFeedbackDetailModal(false); setHandleModal({ id: selectedFeedback.id, action: 'reject' }); }}
+                      className="px-4 py-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-colors"
+                    >
+                      驳回
+                    </button>
+                    <button
+                      onClick={() => { setFeedbackDetailModal(false); setHandleModal({ id: selectedFeedback.id, action: 'approve' }); }}
+                      className="px-4 py-2 text-sm text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors"
+                    >
+                      通过并删除
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {handleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setHandleModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+                {handleModal.action === 'approve' ? '通过并删除内容' : '驳回'}
+              </h3>
+              <p className="text-sm text-black/60 dark:text-white/60 mb-4">
+                {handleModal.action === 'approve'
+                  ? '确定要通过此反馈吗？内容将被删除。'
+                  : '确定要驳回此反馈吗？内容将保留。'}
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">处理备注</label>
+                <textarea
+                  value={handleResult}
+                  onChange={(e) => setHandleResult(e.target.value)}
+                  placeholder="请输入处理备注（可选）"
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white resize-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setHandleModal(null)}
+                  className="px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleAIFeedback}
+                  className={`px-4 py-2 text-sm text-white rounded-xl transition-colors ${handleModal.action === 'approve' ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}`}
+                >
+                  确认{handleModal.action === 'approve' ? '通过' : '驳回'}
                 </button>
               </div>
             </motion.div>

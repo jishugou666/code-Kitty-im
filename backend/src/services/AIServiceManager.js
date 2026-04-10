@@ -23,9 +23,9 @@ export const AIServiceManager = {
   getCacheStats() {
     const stats = getAIStats();
     return {
-      name: '智能缓存服务',
+      nameKey: 'aiServices.intelligentCache',
       status: 'running',
-      description: 'AI驱动的智能缓存系统，自动管理会话和消息缓存',
+      descKey: 'aiServices.intelligentCacheDesc',
       details: {
         currentSize: stats.cache.size,
         maxSize: stats.cache.maxSize,
@@ -35,10 +35,10 @@ export const AIServiceManager = {
         memoryUsage: this.formatBytes(stats.cache.memoryUsage)
       },
       features: [
-        '自动LRU淘汰',
-        'TTL过期管理',
-        '模式匹配失效',
-        '命中率统计'
+        'aiServices.autoLRU',
+        'aiServices.ttlExpiration',
+        'aiServices.patternInvalidation',
+        'aiServices.hitRateStats'
       ]
     };
   },
@@ -46,24 +46,24 @@ export const AIServiceManager = {
   getQueryStats() {
     const stats = getAIStats();
     const slowQueries = stats.queries.slowQueries > 0
-      ? stats.queries.slowQueries + ' 慢查询'
-      : '无慢查询';
+      ? stats.queries.slowQueries
+      : 0;
 
     return {
-      name: '查询优化服务',
+      nameKey: 'aiServices.queryOptimizer',
       status: stats.queries.uniqueQueries > 0 ? 'running' : 'idle',
-      description: 'AI分析SQL查询模式，自动识别和优化慢查询',
+      descKey: 'aiServices.queryOptimizerDesc',
       details: {
         uniqueQueries: stats.queries.uniqueQueries,
         totalExecutions: stats.queries.totalExecutions,
         slowQueries: slowQueries,
-        avgTime: stats.queries.avgTime
+        avgTime: stats.queries.avgTime + 'ms'
       },
       features: [
-        '查询模式分析',
-        '慢查询识别',
-        '优化建议',
-        '执行统计'
+        'aiServices.queryPatternAnalysis',
+        'aiServices.slowQueryDetection',
+        'aiServices.optimizationSuggestions',
+        'aiServices.executionStats'
       ]
     };
   },
@@ -71,9 +71,9 @@ export const AIServiceManager = {
   getPrefetcherStats() {
     const stats = getAIStats();
     return {
-      name: '数据预取服务',
+      nameKey: 'aiServices.dataPrefetcher',
       status: 'running',
-      description: 'AI预测用户行为，预取可能需要的数据',
+      descKey: 'aiServices.dataPrefetcherDesc',
       details: {
         accessHistory: stats.patterns?.length || 0,
         recentPatterns: (stats.patterns || []).slice(0, 3).map(p => ({
@@ -82,24 +82,24 @@ export const AIServiceManager = {
         }))
       },
       features: [
-        '访问模式学习',
-        '下一步预测',
-        '智能预取',
-        '模式可视化'
+        'aiServices.accessPatternLearning',
+        'aiServices.nextStepPrediction',
+        'aiServices.smartPrefetch',
+        'aiServices.patternVisualization'
       ]
     };
   },
 
   getAntiSpamStats() {
     return {
-      name: 'AI反垃圾服务',
+      nameKey: 'aiServices.antiSpam',
       status: 'running',
-      description: 'AI实时分析消息内容，识别垃圾信息和恶意行为',
+      descKey: 'aiServices.antiSpamDesc',
       details: {
-        messageTracking: 'active',
-        ipTracking: 'active',
-        cooldownUsers: 'managed',
-        cooldownIPs: 'managed'
+        messageTracking: 'Active',
+        ipTracking: 'Active',
+        cooldownUsers: 'Managed',
+        cooldownIPs: 'Managed'
       },
       config: {
         maxMessagesPerWindow: 10,
@@ -109,11 +109,11 @@ export const AIServiceManager = {
         maxConcurrent: 5
       },
       features: [
-        '消息频率检测',
-        '内容相似度分析',
-        'IP多账户检测',
-        '实时冷却机制',
-        '置信度评分'
+        'aiServices.messageFrequencyDetection',
+        'aiServices.contentSimilarityAnalysis',
+        'aiServices.ipMultiAccountDetection',
+        'aiServices.realTimeCooldown',
+        'aiServices.confidenceScore'
       ]
     };
   },
@@ -121,9 +121,9 @@ export const AIServiceManager = {
   getRateLimiterStats() {
     const stats = getRateLimitStats();
     return {
-      name: '请求限流服务',
+      nameKey: 'aiServices.rateLimiter',
       status: 'running',
-      description: '保护后端服务，防止过载和DDoS攻击',
+      descKey: 'aiServices.rateLimiterDesc',
       details: {
         activeRequests: stats.activeRequests,
         blockedIPs: stats.blocked,
@@ -136,28 +136,28 @@ export const AIServiceManager = {
         blockDurationMs: 30000
       },
       features: [
-        'IP级别限流',
-        '全局负载检测',
-        '临时IP封禁',
-        '自适应限流'
+        'aiServices.ipLevelRateLimit',
+        'aiServices.globalLoadDetection',
+        'aiServices.temporaryIPBlock',
+        'aiServices.adaptiveRateLimit'
       ]
     };
   },
 
   getLoadBalancerStats() {
     return {
-      name: '负载均衡服务',
+      nameKey: 'aiServices.loadBalancer',
       status: 'running',
-      description: '多服务器环境下的请求分配和负载管理',
+      descKey: 'aiServices.loadBalancerDesc',
       details: {
-        mode: '单服务器模式',
-        note: '多服务器部署时可扩展'
+        mode: 'aiServices.singleServerMode',
+        note: 'aiServices.multiServerExpandable'
       },
       features: [
-        '请求计数',
-        '最少连接优先',
-        '服务器健康检查',
-        '自动清理'
+        'aiServices.requestCounting',
+        'aiServices.leastConnectionFirst',
+        'aiServices.serverHealthCheck',
+        'aiServices.autoCleanup'
       ]
     };
   },

@@ -1282,3 +1282,35 @@ await smartScheduler.schedule(getConversationsApi, 'normal', 2);
 ```
 
 ### 状态: ✅ 已解决
+
+---
+
+## 项目文档更新记录
+
+### 问题32: Admin页面AI调度部分硬编码中文 ⚠️ 已解决
+- **描述**: Admin页面的AI调度菜单中存在硬编码的中文文本，无法切换中英文
+- **根本原因**: 后端返回硬编码中文，前端也直接使用硬编码文本
+- **解决方案**:
+  1. 更新 `zh-CN.json` 和 `en-US.json` 添加AI服务相关翻译
+  2. 后端 AIServiceManager 返回 `nameKey` 和 `descKey` 而非硬编码文本
+  3. 前端使用 `t()` 函数获取翻译
+- **涉及文件**:
+  - `frontend/src/i18n/locales/zh-CN.json` - 中文翻译
+  - `frontend/src/i18n/locales/en-US.json` - 英文翻译
+  - `backend/src/services/AIServiceManager.js` - 返回翻译key
+  - `frontend/src/app/pages/Admin.tsx` - 使用t()获取翻译
+- **状态**: ✅ 已解决
+
+### 问题33: 缺乏i18n开发规范 ⚠️ 已解决
+- **描述**: 开发规范中缺少国际化相关要求，导致新开发内容未使用i18n
+- **解决方案**: 在 `guidelines/Guidelines.md` 中添加国际化规范
+- **涉及文件**:
+  - `guidelines/Guidelines.md` - 新增i18n规范章节
+- **规范内容**:
+  1. 所有用户可见文本必须使用i18n
+  2. 后端返回翻译key而非硬编码文本
+  3. 翻译key命名规范：`模块.具体内容`
+  4. 新增翻译流程
+- **状态**: ✅ 已解决
+
+---

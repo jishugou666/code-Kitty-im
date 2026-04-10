@@ -4,6 +4,7 @@ import { query } from './db.js';
 import config from '../config/index.js';
 
 const clients = new Map();
+const adminClients = new Set();
 
 let wss = null;
 
@@ -14,6 +15,7 @@ export function initWebSocket(server) {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
       const token = url.searchParams.get('token');
+      const isAdminChannel = url.searchParams.get('channel') === 'admin';
 
       if (!token) {
         ws.close(4001, 'No token provided');
@@ -27,8 +29,15 @@ export function initWebSocket(server) {
       }
 
       const userId = decoded.id;
+      const role = decoded.role;
+
       clients.set(userId, ws);
       ws.userId = userId;
+      ws.isAdmin = role === 'admin';
+
+      if (ws.isAdmin && isAdminChannel) {
+        adminClients.add(userId);
+      }
 
       await query('UPDATE user SET status = 1 WHERE id = ?', [userId]);
 
@@ -45,6 +54,7 @@ export function initWebSocket(server) {
 
       ws.on('close', async () => {
         clients.delete(userId);
+        adminClients.delete(userId);
         await query('UPDATE user SET status = 0 WHERE id = ?', [userId]);
         broadcastUserStatus(userId, 'offline');
       });
@@ -52,6 +62,7 @@ export function initWebSocket(server) {
       ws.on('error', (err) => {
         console.error('WebSocket error:', err);
         clients.delete(userId);
+        adminClients.delete(userId);
       });
 
       ws.send(JSON.stringify({ type: 'connected', userId }));
@@ -108,6 +119,13 @@ async function handleMessage(userId, message) {
         });
       }
       break;
+
+    case 'subscribe_ai_status':
+      if (clients.get(userId)?.isAdmin) {
+        adminClients.add(userId);
+        ws.send(JSON.stringify({ type: 'ai_status_subscribed' }));
+      }
+      break;
   }
 }
 
@@ -128,6 +146,16 @@ function broadcastUserStatus(userId, status) {
   });
 }
 
+export function broadcastToAdmins(message) {
+  const msgStr = JSON.stringify(message);
+  adminClients.forEach((userId) => {
+    const ws = clients.get(userId);
+    if (ws && ws.readyState === 1) {
+      ws.send(msgStr);
+    }
+  });
+}
+
 export function sendToUser(userId, message) {
   const ws = clients.get(userId);
   if (ws && ws.readyState === 1) {
@@ -143,4 +171,5 @@ export function closeWebSocket() {
     wss = null;
   }
   clients.clear();
+  adminClients.clear();
 }
