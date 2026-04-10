@@ -25,8 +25,9 @@ export const AdminController = {
 
   async updateUserStatus(req, res, next) {
     try {
-      const { userId, status } = req.body;
-      const result = await AdminService.updateUserStatus(userId, status);
+      const { userId, status, reason, durationDays } = req.body;
+      const adminId = req.user?.id;
+      const result = await AdminService.updateUserStatus(userId, status, adminId, reason, durationDays ? parseInt(durationDays) : null);
       res.json(result);
     } catch (err) {
       console.error('updateUserStatus error:', err);

@@ -165,8 +165,8 @@ export function ChatsSidebar() {
             <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2 flex items-center gap-1", isActive ? "text-white" : "text-black dark:text-white")}>
               {displayName}
               {isTechGod && (
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center gap-0.5">
-                  <Pin size={8} />{t('chat.siteOwner')}
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+                  {t('chat.siteOwner')}
                 </span>
               )}
               {tempConversations.has(chat.id) && (

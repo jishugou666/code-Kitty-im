@@ -41,6 +41,7 @@ export function Admin() {
   const [actionMenu, setActionMenu] = useState<number | null>(null);
   const [banModal, setBanModal] = useState<{ userId: number; username: string; isBanned: boolean } | null>(null);
   const [banDuration, setBanDuration] = useState('7');
+  const [banReason, setBanReason] = useState('');
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   useEffect(() => {
@@ -254,11 +255,22 @@ export function Admin() {
     if (!banModal) return;
     try {
       const newStatus = banModal.isBanned ? 1 : 0;
-      const res = await adminApi.updateUserStatus({ userId: banModal.userId, status: newStatus });
+      const durationDays = banModal.isBanned ? null : (banDuration === '365' ? null : parseInt(banDuration));
+      const res = await adminApi.updateUserStatus({
+        userId: banModal.userId,
+        status: newStatus,
+        reason: banModal.isBanned ? null : banReason,
+        durationDays
+      });
       if (res.code === 200) {
-        setUsers(prev => prev.map(u => u.id === banModal.userId ? { ...u, status: newStatus } : u));
-        toast(banModal.isBanned ? '已解封' : `已封禁 ${banDuration} 天`, 'success');
+        setUsers(prev => prev.map(u => u.id === banModal.userId ? {
+          ...u,
+          status: newStatus,
+          ban_status: newStatus === 0 ? 'banned' : 'active'
+        } : u));
+        toast(banModal.isBanned ? '已解封' : `已封禁 ${banDuration === '365' ? '永久' : banDuration + ' 天'}`, 'success');
         setBanModal(null);
+        setBanReason('');
       }
     } catch (error) {
       toast(t('common.error'), 'error');
@@ -518,6 +530,7 @@ export function Admin() {
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">邮箱</th>
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">角色</th>
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">状态</th>
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">IP</th>
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">动态</th>
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">消息</th>
                     <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">操作</th>
@@ -549,11 +562,13 @@ export function Admin() {
                       </td>
                       <td className="px-4 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          u.ban_status === 'banned' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                           u.status === 1 ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'
                         }`}>
-                          {u.status === 1 ? '正常' : '已封禁'}
+                          {u.ban_status === 'banned' ? '已封禁' : u.status === 1 ? '正常' : '已封禁'}
                         </span>
                       </td>
+                      <td className="px-4 py-4 text-sm text-black/60 dark:text-white/60 font-mono">{u.last_ip || '-'}</td>
                       <td className="px-4 py-4 text-sm text-black/60 dark:text-white/60">{u.moments_count || 0}</td>
                       <td className="px-4 py-4 text-sm text-black/60 dark:text-white/60">{u.message_count || 0}</td>
                       <td className="px-4 py-4">
@@ -964,6 +979,18 @@ export function Admin() {
                     <option value="30">30 天</option>
                     <option value="365">永久</option>
                   </select>
+                </div>
+              )}
+              {!banModal.isBanned && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">封禁原因</label>
+                  <input
+                    type="text"
+                    value={banReason}
+                    onChange={(e) => setBanReason(e.target.value)}
+                    placeholder="请输入封禁原因"
+                    className="w-full px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white"
+                  />
                 </div>
               )}
               <div className="flex gap-3 justify-end">

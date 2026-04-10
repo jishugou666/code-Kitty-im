@@ -126,6 +126,29 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false
           });
+
+          if (response.data?.isBanned) {
+            localStorage.removeItem('auth-storage');
+            set({ user: null, token: null, isAuthenticated: false });
+            window.location.href = '/?banned=1';
+            return;
+          }
+
+          try {
+            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v2/data/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                action: 'ip_log',
+                payload: btoa(JSON.stringify({ ts: Date.now() }))
+              })
+            });
+          } catch (ipError) {
+            console.error('IP记录失败:', ipError);
+          }
         } catch (error) {
           set({
             user: null,

@@ -29,10 +29,11 @@ export const AdminService = {
       const safeLimit = Math.max(1, parseInt(limit) || 20);
       const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
       const users = await query(
-        `SELECT id, username, nickname, avatar, email, role, status, created_at,
-         (SELECT COUNT(*) FROM message WHERE sender_id = user.id) as message_count,
-         (SELECT COUNT(*) FROM moments WHERE user_id = user.id) as moments_count
-         FROM user
+        `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status, u.ban_status, u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
+         (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
+         (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count,
+         (SELECT ip_address FROM user_ip_log WHERE user_id = u.id ORDER BY login_time DESC LIMIT 1) as last_ip
+         FROM user u
          ORDER BY created_at DESC
          LIMIT ${safeLimit} OFFSET ${safeOffset}`
       );
@@ -55,9 +56,22 @@ export const AdminService = {
     }
   },
 
-  async updateUserStatus(userId, status) {
+  async updateUserStatus(userId, status, adminId = null, reason = null, durationDays = null) {
     try {
-      await query('UPDATE user SET status = ? WHERE id = ?', [status, userId]);
+      if (status === 0) {
+        const expiresAt = durationDays
+          ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
+          : null;
+        await query(
+          `UPDATE user SET status = ?, ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
+          [status, expiresAt, reason, adminId, userId]
+        );
+      } else {
+        await query(
+          `UPDATE user SET status = ?, ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
+          [status, userId]
+        );
+      }
       return { code: 200, data: null, msg: '更新成功' };
     } catch (err) {
       console.error('updateUserStatus error:', err);
