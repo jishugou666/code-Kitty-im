@@ -1105,7 +1105,7 @@ export function Admin() {
                               {key === 'loadBalancer' && <Activity size={20} className="text-orange-500" />}
                             </div>
                             <div>
-                              <h3 className="font-semibold text-black dark:text-white">{t(service.nameKey)}</h3>
+                              <h3 className="font-semibold text-black dark:text-white">{service.nameCn || t(service.nameKey)}</h3>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 service.status === 'running' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'
                               }`}>
@@ -1114,7 +1114,7 @@ export function Admin() {
                             </div>
                           </div>
                         </div>
-                        <p className="mt-2 text-sm text-black/60 dark:text-white/60">{t(service.descKey)}</p>
+                        <p className="mt-2 text-sm text-black/60 dark:text-white/60">{service.descCn || t(service.descKey)}</p>
                       </div>
                       <div className="p-4 space-y-3">
                         {service.details && Object.entries(service.details).map(([dk, dv]: [string, any]) => (
