@@ -40,7 +40,10 @@ class MessageAuditor {
          WHERE conversation_id = ? AND type = 'text' AND content IS NOT NULL AND content != ''
          ORDER BY created_at ASC`,
         [conversationId]
-      );
+      ).catch(err => {
+        console.error('[MessageAuditor] Failed to fetch messages:', err);
+        return [];
+      });
 
       if (!messages || messages.length === 0) {
         return result;
@@ -51,17 +54,25 @@ class MessageAuditor {
       const userMessages = this.groupByUser(messages);
 
       for (const [userId, userMsgs] of Object.entries(userMessages)) {
-        const userIssues = this.analyzeUserMessages(userId, userMsgs);
-        if (userIssues.length > 0) {
-          result.suspiciousUsers.push({
-            userId: parseInt(userId),
-            messageCount: userMsgs.length,
-            issues: userIssues
-          });
+        try {
+          const userIssues = this.analyzeUserMessages(userId, userMsgs);
+          if (userIssues.length > 0) {
+            result.suspiciousUsers.push({
+              userId: parseInt(userId),
+              messageCount: userMsgs.length,
+              issues: userIssues
+            });
 
-          for (const issue of userIssues) {
-            await this.reportIssue(userId, conversationId, issue, userMsgs);
+            for (const issue of userIssues) {
+              try {
+                await this.reportIssue(userId, conversationId, issue, userMsgs);
+              } catch (reportErr) {
+                console.error('[MessageAuditor] reportIssue failed:', reportErr);
+              }
+            }
           }
+        } catch (analyzeErr) {
+          console.error('[MessageAuditor] analyzeUserMessages failed:', analyzeErr);
         }
       }
 

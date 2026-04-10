@@ -35,9 +35,9 @@ export const MessageController = {
       const { conversationId } = req.query;
       const { limit } = req.query;
       const { audit } = req.query;
-      const isAdmin = req.user.role === 'admin';
+      const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'tech_god');
 
-      console.log('conversationId:', conversationId, 'limit:', limit, 'audit:', audit);
+      console.log('conversationId:', conversationId, 'limit:', limit, 'audit:', audit, 'isAdmin:', isAdmin);
       if (!conversationId) {
         console.log('缺少 conversationId 参数');
         return res.status(400).json(error('Conversation ID is required', 400));

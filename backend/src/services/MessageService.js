@@ -31,10 +31,14 @@ export const MessageService = {
         return { code: 200, data: [], msg: '成功' };
       }
 
-      if (audit && rows.length >= 10) {
-        messageAuditor.auditConversation(conversationId).catch(err => {
-          console.error('[MessageService] Audit failed:', err);
-        });
+      if (audit === true && rows.length >= 10) {
+        setTimeout(() => {
+          try {
+            messageAuditor.auditConversation(conversationId);
+          } catch (err) {
+            console.error('[MessageService] Audit failed:', err);
+          }
+        }, 100);
       }
 
       return { code: 200, data: rows, msg: '成功' };
