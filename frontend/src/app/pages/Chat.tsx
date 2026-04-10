@@ -110,12 +110,18 @@ export function Chat() {
         }
       });
 
+      if (!response.ok) {
+        console.error('消息加载失败，状态码:', response.status);
+        setMessages([]);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.code === 200 && Array.isArray(data.data)) {
         setMessages(data.data || []);
-        storeFetchMessages(conversationId);
       } else {
+        console.error('消息加载失败:', data.msg);
         setMessages([]);
       }
     } catch (error) {
