@@ -1,6 +1,5 @@
 import { MessageService } from '../services/MessageService.js';
 import { ConversationService } from '../services/ConversationService.js';
-import { antiSpamService } from '../services/antiSpamService.js';
 import { success, error, notFound } from '../utils/response.js';
 
 export const MessageController = {
@@ -12,22 +11,6 @@ export const MessageController = {
       }
 
       const userId = req.user.id;
-      const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
-
-      const analysis = antiSpamService.analyzeMessagePattern(userId, clientIP, content);
-
-      if (antiSpamService.shouldBlock(analysis)) {
-        console.warn(`[AntiSpam] Blocked message from user ${userId}, IP ${clientIP}. Reasons:`, analysis.reasons);
-        return res.status(429).json({
-          code: 429,
-          data: {
-            blocked: true,
-            reasons: analysis.reasons,
-            retryAfter: 60
-          },
-          msg: '发送过于频繁，请稍后再试'
-        });
-      }
 
       try {
         await ConversationService.getConversation(conversationId, userId);

@@ -37,12 +37,17 @@ export const MessageService = {
   },
 
   async sendMessage(conversationId, senderId, content, type = 'text') {
+    console.log('=== sendMessage 被调用 ===');
+    console.log('conversationId:', conversationId, 'senderId:', senderId, 'content:', content, 'type:', type);
+
     try {
       if (!conversationId || !senderId) {
+        console.log('缺少必要参数');
         return { code: 400, data: null, msg: '缺少必要参数' };
       }
 
       if (!content && type !== 'image') {
+        console.log('消息内容为空');
         return { code: 400, data: null, msg: '消息内容不能为空' };
       }
 
@@ -50,8 +55,10 @@ export const MessageService = {
         'INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, ?)',
         [conversationId, senderId, content || '', type || 'text']
       );
+      console.log('INSERT result:', result);
 
       if (!result || !result.insertId) {
+        console.log('INSERT失败，没有insertId');
         return { code: 200, data: null, msg: '发送失败' };
       }
 
@@ -70,18 +77,21 @@ export const MessageService = {
          WHERE m.id = ?`,
         [result.insertId]
       );
+      console.log('SELECT messages result:', messages);
 
       await query('UPDATE conversation SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [conversationId]);
 
       if (!Array.isArray(messages) || messages.length === 0) {
+        console.log('查询消息失败');
         return { code: 200, data: null, msg: '发送成功' };
       }
 
       triggerEvent(`chat-${conversationId}`, 'new-message', messages[0]);
 
+      console.log('发送成功:', messages[0]);
       return { code: 200, data: messages[0], msg: '发送成功' };
     } catch (err) {
-      console.error('sendMessage error:', err);
+      console.error('sendMessage 捕获到错误:', err);
       return { code: 200, data: null, msg: '发送失败' };
     }
   },

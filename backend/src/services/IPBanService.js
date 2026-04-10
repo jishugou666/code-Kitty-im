@@ -1,4 +1,39 @@
-import { query } from '../utils/db.js';
+sendMessage error: TypeError: Cannot read properties of undefined (reading 'user-agent')
+Menu
+    at AntiSpamService.generateFingerprint (file:///opt/render/project/src/backend/src/services/antiSpamService.js:23:34)
+    at AntiSpamService.analyzeMessagePattern (file:///opt/render/project/src/backend/src/services/antiSpamService.js:51:30)
+    at sendMessage (file:///opt/render/project/src/backend/src/controllers/MessageController.js:17:40)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /opt/render/project/src/backend/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:346:12)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:280:10)
+sendMessage error: TypeError: Cannot read properties of undefined (reading 'user-agent')
+    at AntiSpamService.generateFingerprint (file:///opt/render/project/src/backend/src/services/antiSpamService.js:23:34)
+    at AntiSpamService.analyzeMessagePattern (file:///opt/render/project/src/backend/src/services/antiSpamService.js:51:30)
+    at sendMessage (file:///opt/render/project/src/backend/src/controllers/MessageController.js:17:40)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /opt/render/project/src/backend/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:346:12)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:280:10)
+sendMessage error: TypeError: Cannot read properties of undefined (reading 'user-agent')
+    at AntiSpamService.generateFingerprint (file:///opt/render/project/src/backend/src/services/antiSpamService.js:23:34)
+    at AntiSpamService.analyzeMessagePattern (file:///opt/render/project/src/backend/src/services/antiSpamService.js:51:30)
+    at sendMessage (file:///opt/render/project/src/backend/src/controllers/MessageController.js:17:40)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/opt/render/project/src/backend/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/opt/render/project/src/backend/node_modules/express/lib/router/layer.js:95:5)
+    at /opt/render/project/src/backend/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:346:12)
+    at next (/opt/render/project/src/backend/node_modules/express/lib/router/index.js:280:10)
+==> Detected service running on port 3000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-bindingimport { query } from '../utils/db.js';
 
 export const IPBanService = {
   async checkIPBan(ipAddress) {
