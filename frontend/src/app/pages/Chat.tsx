@@ -53,7 +53,7 @@ export function Chat() {
     if (conversationId && token) {
       loadMessages();
       markAsRead();
-      checkTempConversation();
+      setTimeout(() => checkTempConversation(), 1000);
     }
   }, [conversationId, token]);
 
