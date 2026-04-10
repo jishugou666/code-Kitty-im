@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { conversationApi, Conversation } from '../api/conversation';
 import { messageApi, Message } from '../api/message';
 
@@ -6,6 +7,7 @@ interface ChatState {
   conversations: Conversation[];
   currentConversation: Conversation | null;
   messages: Record<number, Message[]>;
+  readStatus: Record<number, string>; // conversationId -> last read timestamp
   isLoading: boolean;
   error: string | null;
 
@@ -14,13 +16,20 @@ interface ChatState {
   fetchMessages: (conversationId: number) => Promise<void>;
   sendMessage: (conversationId: number, content: string) => Promise<void>;
   addMessage: (conversationId: number, message: Message) => void;
+  setConversations: (conversations: Conversation[]) => void;
+  setMessages: (conversationId: number, messages: Message[]) => void;
+  markAsRead: (conversationId: number) => Promise<void>;
+  setReadStatus: (conversationId: number, timestamp: string) => void;
   clearError: () => void;
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set, get) => ({
   conversations: [],
   currentConversation: null,
   messages: {},
+  readStatus: {},
   isLoading: false,
   error: null,
 
@@ -98,7 +107,56 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
   },
 
+  setConversations: (conversations: Conversation[]) => {
+    set({ conversations });
+  },
+
+  setMessages: (conversationId: number, messages: Message[]) => {
+    set((state) => ({
+      messages: {
+        ...state.messages,
+        [conversationId]: messages
+      }
+    }));
+  },
+
+  markAsRead: async (conversationId: number) => {
+    try {
+      await messageApi.markAsRead(conversationId);
+      const timestamp = new Date().toISOString();
+      set((state) => ({
+        readStatus: {
+          ...state.readStatus,
+          [conversationId]: timestamp
+        }
+      }));
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to mark as read' });
+      throw error;
+    }
+  },
+
+  setReadStatus: (conversationId: number, timestamp: string) => {
+    set((state) => ({
+      readStatus: {
+        ...state.readStatus,
+        [conversationId]: timestamp
+      }
+    }));
+  },
+
   clearError: () => {
     set({ error: null });
   }
-}));
+    }),
+    {
+      name: 'chat-storage',
+      partialize: (state) => ({
+        conversations: state.conversations,
+        currentConversation: state.currentConversation,
+        messages: state.messages,
+        readStatus: state.readStatus
+      })
+    }
+  )
+);

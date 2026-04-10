@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
+import { useContactStore } from '../store/contactStore';
 import { userApi } from '../api/user';
 
 const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
@@ -48,6 +49,10 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   }, [addMessage]);
 
   const handleMessageRead = useCallback((data: any) => {
+    if (data && data.conversationId) {
+      const { setReadStatus } = useChatStore.getState();
+      setReadStatus(data.conversationId, new Date().toISOString());
+    }
   }, []);
 
   const handleMessageRecalled = useCallback((data: any) => {
@@ -55,6 +60,13 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
       fetchMessages(data.conversationId);
     }
   }, [fetchMessages]);
+
+  const handleUserStatusChange = useCallback((data: any) => {
+    if (data && data.userId && data.status !== undefined) {
+      const { updateUserStatus } = useContactStore.getState();
+      updateUserStatus(data.userId, data.status);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -102,8 +114,11 @@ export function useGlobalWebSocket() {
       fetchConversations();
     });
 
+    userChannel.bind('user-status-change', handleUserStatusChange);
+
     return () => {
+      userChannel.unbind('user-status-change', handleUserStatusChange);
       pusher.unsubscribe(`user-${user?.id}`);
     };
-  }, [isAuthenticated, token, user?.id, fetchConversations]);
+  }, [isAuthenticated, token, user?.id, fetchConversations, handleUserStatusChange]);
 }

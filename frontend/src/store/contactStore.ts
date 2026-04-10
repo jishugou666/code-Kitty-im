@@ -4,6 +4,7 @@ import { contactApi, Contact } from '../api/contact';
 interface ContactState {
   contacts: Contact[];
   pendingRequests: Contact[];
+  userStatus: Record<number, number>; // userId -> status (1=online, 0=offline)
   isLoading: boolean;
   error: string | null;
 
@@ -13,12 +14,14 @@ interface ContactState {
   acceptContact: (userId: number) => Promise<void>;
   rejectContact: (userId: number) => Promise<void>;
   deleteContact: (userId: number) => Promise<void>;
+  updateUserStatus: (userId: number, status: number) => void;
   clearError: () => void;
 }
 
 export const useContactStore = create<ContactState>((set) => ({
   contacts: [],
   pendingRequests: [],
+  userStatus: {},
   isLoading: false,
   error: null,
 
@@ -91,6 +94,15 @@ export const useContactStore = create<ContactState>((set) => ({
       set({ error: error.message || 'Failed to delete contact' });
       throw error;
     }
+  },
+
+  updateUserStatus: (userId: number, status: number) => {
+    set((state) => ({
+      userStatus: {
+        ...state.userStatus,
+        [userId]: status
+      }
+    }));
   },
 
   clearError: () => {

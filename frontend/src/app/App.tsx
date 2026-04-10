@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { BanOverlay } from './components/BanOverlay';
+import { SyncService } from '../services/syncService';
 
 export default function App() {
   const [showBanOverlay, setShowBanOverlay] = useState(false);
@@ -11,6 +12,14 @@ export default function App() {
     if (params.get('banned') === '1') {
       setShowBanOverlay(true);
     }
+  }, []);
+
+  useEffect(() => {
+    SyncService.startSync();
+
+    return () => {
+      SyncService.stopSync();
+    };
   }, []);
 
   if (showBanOverlay) {

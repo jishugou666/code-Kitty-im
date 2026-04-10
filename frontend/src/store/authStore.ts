@@ -135,6 +135,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           try {
+            // 上报IP和设备信息
             await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v2/data/sync`, {
               method: 'POST',
               headers: {
@@ -144,6 +145,22 @@ export const useAuthStore = create<AuthState>()(
               body: JSON.stringify({
                 action: 'ip_log',
                 payload: btoa(JSON.stringify({ ts: Date.now() }))
+              })
+            });
+
+            // 上报设备信息
+            const { DeviceManager } = await import('../utils/deviceManager');
+            const deviceInfo = DeviceManager.getDeviceInfo();
+            DeviceManager.updateLastActive();
+
+            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/sync/device`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                deviceInfo
               })
             });
           } catch (ipError) {
