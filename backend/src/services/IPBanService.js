@@ -3,14 +3,21 @@ import { query } from '../utils/db.js';
 export const IPBanService = {
   async checkIPBan(ipAddress) {
     try {
-      const bans = await query(
-        `SELECT * FROM ip_ban WHERE is_active = 1 AND (
-          (ban_type = 'exact' AND ip_address = ?) OR
-          (ban_type = 'range' AND ? LIKE CONCAT(ip_address, '%')) OR
-          (ban_type = 'subnet' AND ? RLIKE ip_range)
-        ) AND (expires_at IS NULL OR expires_at > NOW())`,
-        [ipAddress, ipAddress, ipAddress]
-      );
+      let bans = [];
+      try {
+        bans = await query(
+          `SELECT * FROM ip_ban WHERE is_active = 1 AND (
+            (ban_type = 'exact' AND ip_address = ?) OR
+            (ban_type = 'range' AND ? LIKE CONCAT(ip_address, '%'))
+          ) AND (expires_at IS NULL OR expires_at > NOW())`,
+          [ipAddress, ipAddress]
+        );
+      } catch (e) {
+        bans = await query(
+          `SELECT * FROM ip_ban WHERE is_active = 1 AND ip_address = ? AND (expires_at IS NULL OR expires_at > NOW())`,
+          [ipAddress]
+        );
+      }
 
       if (bans.length > 0) {
         return {

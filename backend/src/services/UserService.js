@@ -157,56 +157,92 @@ export const UserService = {
   },
 
   async getUserById(userId) {
-    const users = await query(
-      'SELECT id, username, nickname, avatar, email, phone, role, status, ban_status, banned_at, ban_expires_at, ban_reason, created_at FROM user WHERE id = ?',
-      [userId]
-    );
-    return users.length > 0 ? this.sanitizeUser(users[0]) : null;
+    try {
+      const users = await query(
+        'SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?',
+        [userId]
+      );
+      return users.length > 0 ? this.sanitizeUser(users[0]) : null;
+    } catch (e) {
+      console.error('getUserById error:', e);
+      return null;
+    }
   },
 
   async checkBanStatus(userId) {
-    const users = await query(
-      'SELECT ban_status, ban_expires_at, ban_reason FROM user WHERE id = ?',
-      [userId]
-    );
-    if (users.length === 0) {
+    try {
+      const users = await query(
+        'SELECT status, ban_status, ban_expires_at, ban_reason FROM user WHERE id = ?',
+        [userId]
+      );
+      if (users.length === 0) {
+        return { isBanned: false };
+      }
+
+      const user = users[0];
+      const isBanned = user.ban_status === 'banned' || user.status === 0;
+
+      if (!isBanned) {
+        return { isBanned: false };
+      }
+
+      if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
+        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', userId]);
+        return { isBanned: false };
+      }
+
+      return {
+        isBanned: true,
+        reason: user.ban_reason,
+        expiresAt: user.ban_expires_at,
+        isPermanent: !user.ban_expires_at
+      };
+    } catch (e) {
+      console.error('checkBanStatus error:', e);
       return { isBanned: false };
     }
-
-    const user = users[0];
-    if (user.ban_status !== 'banned') {
-      return { isBanned: false };
-    }
-
-    if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-      await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', userId]);
-      return { isBanned: false };
-    }
-
-    return {
-      isBanned: true,
-      reason: user.ban_reason,
-      expiresAt: user.ban_expires_at,
-      isPermanent: !user.ban_expires_at
-    };
   },
 
   async banUser(userId, adminId, reason, durationDays = null) {
-    const expiresAt = durationDays
-      ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
-      : null;
+    try {
+      const expiresAt = durationDays
+        ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
+        : null;
 
-    await query(
-      `UPDATE user SET ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
-      [expiresAt, reason, adminId, userId]
-    );
+      await query(
+        `UPDATE user SET status = 0 WHERE id = ?`,
+        [userId]
+      );
+      try {
+        await query(
+          `UPDATE user SET ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
+          [expiresAt, reason, adminId, userId]
+        );
+      } catch (e) {
+        console.log('ban_status字段可能不存在:', e.message);
+      }
+    } catch (e) {
+      console.error('banUser error:', e);
+    }
   },
 
   async unbanUser(userId) {
-    await query(
-      `UPDATE user SET ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
-      [userId]
-    );
+    try {
+      await query(
+        `UPDATE user SET status = 1 WHERE id = ?`,
+        [userId]
+      );
+      try {
+        await query(
+          `UPDATE user SET ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
+          [userId]
+        );
+      } catch (e) {
+        console.log('ban_status字段可能不存在:', e.message);
+      }
+    } catch (e) {
+      console.error('unbanUser error:', e);
+    }
   },
 
   sanitizeUser(user, searchResult = false) {

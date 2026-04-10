@@ -28,17 +28,32 @@ export const AdminService = {
     try {
       const safeLimit = Math.max(1, parseInt(limit) || 20);
       const safeOffset = Math.max(0, (parseInt(page) - 1) * safeLimit);
-      const users = await query(
-        `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
-         COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
-         u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
-         (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
-         (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count,
-         (SELECT ip_address FROM user_ip_log WHERE user_id = u.id ORDER BY login_time DESC LIMIT 1) as last_ip
-         FROM user u
-         ORDER BY created_at DESC
-         LIMIT ${safeLimit} OFFSET ${safeOffset}`
-      );
+      let users = [];
+      try {
+        users = await query(
+          `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
+           COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
+           u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
+           (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
+           (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count,
+           (SELECT ip_address FROM user_ip_log WHERE user_id = u.id ORDER BY login_time DESC LIMIT 1) as last_ip
+           FROM user u
+           ORDER BY created_at DESC
+           LIMIT ${safeLimit} OFFSET ${safeOffset}`
+        );
+      } catch (e) {
+        console.error('getUsers with IP failed, trying without:', e.message);
+        users = await query(
+          `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
+           COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
+           u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
+           (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
+           (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count
+           FROM user u
+           ORDER BY created_at DESC
+           LIMIT ${safeLimit} OFFSET ${safeOffset}`
+        );
+      }
 
       const total = await query('SELECT COUNT(*) as count FROM user');
 

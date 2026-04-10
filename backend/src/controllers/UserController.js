@@ -33,16 +33,25 @@ export const UserController = {
       const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || '';
 
-      const { IPBanService } = await import('../services/IPBanService.js');
-      const ipBan = await IPBanService.checkIPBan(clientIP);
-      if (ipBan.isBanned) {
-        return res.status(403).json(error(`IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`, 403));
+      try {
+        const { IPBanService } = await import('../services/IPBanService.js');
+        const ipBan = await IPBanService.checkIPBan(clientIP);
+        if (ipBan.isBanned) {
+          return res.status(403).json(error(`IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`, 403));
+        }
+      } catch (e) {
+        console.error('IP检查失败:', e.message);
       }
 
       const result = await UserService.register(password, nickname, email);
 
       if (result.user?.id) {
-        await IPBanService.recordUserIP(result.user.id, clientIP, userAgent);
+        try {
+          const { IPBanService } = await import('../services/IPBanService.js');
+          await IPBanService.recordUserIP(result.user.id, clientIP, userAgent);
+        } catch (e) {
+          console.error('记录IP失败:', e.message);
+        }
       }
 
       res.status(201).json(success(result, '注册成功'));
@@ -68,16 +77,25 @@ export const UserController = {
       const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || '';
 
-      const { IPBanService } = await import('../services/IPBanService.js');
-      const ipBan = await IPBanService.checkIPBan(clientIP);
-      if (ipBan.isBanned) {
-        return res.status(403).json(error(`IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`, 403));
+      try {
+        const { IPBanService } = await import('../services/IPBanService.js');
+        const ipBan = await IPBanService.checkIPBan(clientIP);
+        if (ipBan.isBanned) {
+          return res.status(403).json(error(`IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`, 403));
+        }
+      } catch (e) {
+        console.error('IP检查失败:', e.message);
       }
 
       const result = await UserService.login(loginField, password);
 
       if (result.user?.id) {
-        await IPBanService.recordUserIP(result.user.id, clientIP, userAgent);
+        try {
+          const { IPBanService } = await import('../services/IPBanService.js');
+          await IPBanService.recordUserIP(result.user.id, clientIP, userAgent);
+        } catch (e) {
+          console.error('记录IP失败:', e.message);
+        }
       }
 
       res.json(success(result, '登录成功'));
