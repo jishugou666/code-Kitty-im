@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu, Cpu, Zap, ShieldCheck, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
+import { aiApi, AIStatsResponse } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useIsMobile } from '../components/ui/use-mobile';
 
-type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups';
+type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5856D6'];
 
@@ -35,6 +36,7 @@ export function Admin() {
   const [selectedMoment, setSelectedMoment] = useState<any>(null);
   const [momentComments, setMomentComments] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [aiStats, setAiStats] = useState<AIStatsResponse | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -163,6 +165,20 @@ export function Admin() {
     }
   };
 
+  const loadAiStats = async () => {
+    setIsLoading(true);
+    try {
+      const res = await aiApi.getStats();
+      if (res.code === 200) {
+        setAiStats(res.data);
+      }
+    } catch (error) {
+      console.error('Failed to load AI stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loadGroupMembers = async (groupId: number) => {
     try {
       const res = await adminApi.getGroupMembers(groupId);
@@ -240,6 +256,9 @@ export function Admin() {
         break;
       case 'groups':
         await loadGroups();
+        break;
+      case 'ai':
+        await loadAiStats();
         break;
     }
   };
@@ -346,7 +365,8 @@ export function Admin() {
     { key: 'conversations' as TabType, icon: MessageSquare, label: '消息管理' },
     { key: 'moments' as TabType, icon: Globe, label: '朋友圈' },
     { key: 'tables' as TabType, icon: Database, label: '数据库' },
-    { key: 'groups' as TabType, icon: UserPlus, label: '群组管理' }
+    { key: 'groups' as TabType, icon: UserPlus, label: '群组管理' },
+    { key: 'ai' as TabType, icon: Cpu, label: 'AI调度' }
   ];
 
   return (
@@ -946,6 +966,138 @@ export function Admin() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'ai' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-black dark:text-white">AI智能调度中心</h2>
+              <button
+                onClick={loadAiStats}
+                className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
+              >
+                <Activity size={16} />
+                刷新数据
+              </button>
+            </div>
+
+            {aiStats && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-lg">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Zap size={20} className="text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-black/60 dark:text-white/60">服务运行时间</p>
+                        <p className="text-lg font-bold text-black dark:text-white">{Math.floor(aiStats.uptime / 60)}分钟</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-lg">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <Activity size={20} className="text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-black/60 dark:text-white/60">全局负载</p>
+                        <p className="text-lg font-bold text-black dark:text-white">{aiStats.services.rateLimiter?.details?.globalLoad || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-lg">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <ShieldCheck size={20} className="text-purple-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-black/60 dark:text-white/60">活跃请求</p>
+                        <p className="text-lg font-bold text-black dark:text-white">{aiStats.services.rateLimiter?.details?.activeRequests || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {Object.entries(aiStats.services).map(([key, service]: [string, any]) => (
+                    <div key={key} className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
+                      <div className="p-4 border-b border-black/5 dark:border-white/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              service.status === 'running' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-900/30'
+                            }`}>
+                              {key === 'intelligentCache' && <Cpu size={20} className="text-blue-500" />}
+                              {key === 'queryOptimizer' && <Database size={20} className="text-green-500" />}
+                              {key === 'dataPrefetcher' && <Zap size={20} className="text-yellow-500" />}
+                              {key === 'antiSpam' && <ShieldCheck size={20} className="text-red-500" />}
+                              {key === 'rateLimiter' && <Shield size={20} className="text-purple-500" />}
+                              {key === 'loadBalancer' && <Activity size={20} className="text-orange-500" />}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-black dark:text-white">{service.name}</h3>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                service.status === 'running' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-900/30 dark:text-gray-400'
+                              }`}>
+                                {service.status === 'running' ? '运行中' : '空闲'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-sm text-black/60 dark:text-white/60">{service.description}</p>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {service.details && Object.entries(service.details).map(([dk, dv]: [string, any]) => (
+                          <div key={dk} className="flex items-center justify-between text-sm">
+                            <span className="text-black/60 dark:text-white/60">{dk}:</span>
+                            <span className="font-medium text-black dark:text-white">{String(dv)}</span>
+                          </div>
+                        ))}
+                        {service.config && (
+                          <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">配置参数:</p>
+                            {Object.entries(service.config).map(([ck, cv]: [string, any]) => (
+                              <div key={ck} className="flex items-center justify-between text-xs">
+                                <span className="text-black/40 dark:text-white/40">{ck}:</span>
+                                <span className="text-black/60 dark:text-white/60">{String(cv)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {service.features && (
+                          <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">功能特性:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {service.features.map((f: string, i: number) => (
+                                <span key={i} className="px-2 py-0.5 bg-[#007AFF]/10 text-[#007AFF] dark:bg-[#007AFF]/20 dark:text-[#007AFF] text-xs rounded">
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!aiStats && !isLoading && (
+              <div className="text-center text-black/40 dark:text-white/40 py-12">
+                <Cpu size={48} className="mx-auto mb-4 opacity-50" />
+                <p>点击"刷新数据"加载AI服务状态</p>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="text-center text-black/40 dark:text-white/40 py-12">
+                <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p>加载中...</p>
+              </div>
+            )}
           </div>
         )}
       </div>
