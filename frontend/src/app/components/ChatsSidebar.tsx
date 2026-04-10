@@ -1,13 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare, AlertTriangle, Users, MessageCircle } from "lucide-react";
+import { Search, Edit, CheckCheck, MessageSquare, Users, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
-import { tempConversationApi } from '../../api/tempConversation';
 import { CreateGroupModal } from './CreateGroupModal';
 import { useIsMobile } from './ui/use-mobile';
 
@@ -20,7 +19,6 @@ export function ChatsSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [tempConversations, setTempConversations] = useState<Set<number>>(new Set());
   const [collapsedPrivate, setCollapsedPrivate] = useState(false);
   const [collapsedGroup, setCollapsedGroup] = useState(false);
 
@@ -33,26 +31,6 @@ export function ChatsSidebar() {
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
-
-  useEffect(() => {
-    const checkTempConversations = async () => {
-      if (!token || conversations.length === 0) return;
-      const tempSet = new Set<number>();
-      for (const chat of conversations) {
-        if (chat.type === 'single') {
-          try {
-            const result = await tempConversationApi.check(chat.id);
-            if (result.isTemp) {
-              tempSet.add(chat.id);
-            }
-          } catch (e) {
-          }
-        }
-      }
-      setTempConversations(tempSet);
-    };
-    checkTempConversations();
-  }, [conversations, token]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -168,9 +146,6 @@ export function ChatsSidebar() {
                 <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
                   {t('chat.siteOwner')}
                 </span>
-              )}
-              {tempConversations.has(chat.id) && (
-                <AlertTriangle size={isMobile ? 10 : 12} className="text-yellow-500 flex-shrink-0" />
               )}
             </h2>
             <div className="flex items-center gap-1 flex-shrink-0">
