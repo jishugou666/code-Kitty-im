@@ -32,7 +32,7 @@ export async function authMiddleware(req, res, next) {
     }
 
     const users = await query(
-      'SELECT id, username, nickname, avatar, email, phone, status, role FROM user WHERE id = ?',
+      'SELECT id, username, nickname, avatar, email, phone, status, role, COALESCE(ban_status, "active") as ban_status FROM user WHERE id = ?',
       [decoded.id]
     );
     if (users.length === 0) {
@@ -41,13 +41,14 @@ export async function authMiddleware(req, res, next) {
 
     const user = users[0];
 
-    if (user.status === 0) {
+    if (user.ban_status === 'banned') {
       return res.status(403).json({
         code: 403,
         data: {
           isBanned: true,
-          reason: '违规操作',
-          isPermanent: true
+          reason: user.ban_reason || '违规操作',
+          expiresAt: user.ban_expires_at,
+          isPermanent: !user.ban_expires_at
         },
         msg: '账户已被封禁'
       });

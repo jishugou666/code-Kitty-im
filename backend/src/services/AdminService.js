@@ -32,7 +32,7 @@ export const AdminService = {
       try {
         users = await query(
           `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
-           COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
+           COALESCE(u.ban_status, 'active') as ban_status,
            u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
            (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
            (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count,
@@ -45,7 +45,7 @@ export const AdminService = {
         console.error('getUsers with IP failed, trying without:', e.message);
         users = await query(
           `SELECT u.id, u.username, u.nickname, u.avatar, u.email, u.role, u.status,
-           COALESCE(u.ban_status, CASE WHEN u.status = 0 THEN 'banned' ELSE 'active' END) as ban_status,
+           COALESCE(u.ban_status, 'active') as ban_status,
            u.banned_at, u.ban_expires_at, u.ban_reason, u.created_at,
            (SELECT COUNT(*) FROM message WHERE sender_id = u.id) as message_count,
            (SELECT COUNT(*) FROM moments WHERE user_id = u.id) as moments_count

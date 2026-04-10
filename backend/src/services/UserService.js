@@ -48,11 +48,11 @@ export const UserService = {
       throw new Error('Invalid email/username or password');
     }
 
-    if (user.ban_status === 'banned' || user.status === 0) {
+    const banStatus = user.ban_status || 'active';
+    if (banStatus === 'banned') {
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', user.id]);
-        user.ban_status = 'active';
-        user.status = 1;
+        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', user.id]);
+        banStatus = 'active';
       } else {
         const expiresText = user.ban_expires_at
           ? `，将于 ${new Date(user.ban_expires_at).toLocaleString()} 解封`
@@ -72,17 +72,16 @@ export const UserService = {
   },
 
   async getProfile(userId) {
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, ban_status, banned_at, ban_expires_at, ban_reason, created_at FROM user WHERE id = ?', [userId]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, COALESCE(ban_status, "active") as ban_status, ban_expires_at, ban_reason, created_at FROM user WHERE id = ?', [userId]);
     if (users.length === 0) {
       throw new Error('User not found');
     }
     const user = users[0];
 
-    if (user.ban_status === 'banned' || user.status === 0) {
+    if (user.ban_status === 'banned') {
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', userId]);
+        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', userId]);
         user.ban_status = 'active';
-        user.status = 1;
       } else {
         const banInfo = {
           isBanned: true,
@@ -172,7 +171,7 @@ export const UserService = {
   async checkBanStatus(userId) {
     try {
       const users = await query(
-        'SELECT status, ban_status, ban_expires_at, ban_reason FROM user WHERE id = ?',
+        'SELECT status, COALESCE(ban_status, "active") as ban_status, ban_expires_at, ban_reason FROM user WHERE id = ?',
         [userId]
       );
       if (users.length === 0) {
@@ -180,14 +179,14 @@ export const UserService = {
       }
 
       const user = users[0];
-      const isBanned = user.ban_status === 'banned' || user.status === 0;
+      const banStatus = user.ban_status || 'active';
 
-      if (!isBanned) {
+      if (banStatus !== 'banned') {
         return { isBanned: false };
       }
 
       if (user.ban_expires_at && new Date(user.ban_expires_at) < new Date()) {
-        await query('UPDATE user SET ban_status = ?, status = 1 WHERE id = ?', ['active', userId]);
+        await query('UPDATE user SET ban_status = ? WHERE id = ?', ['active', userId]);
         return { isBanned: false };
       }
 
@@ -209,10 +208,6 @@ export const UserService = {
         ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ')
         : null;
 
-      await query(
-        `UPDATE user SET status = 0 WHERE id = ?`,
-        [userId]
-      );
       try {
         await query(
           `UPDATE user SET ban_status = 'banned', banned_at = NOW(), ban_expires_at = ?, ban_reason = ?, banned_by = ? WHERE id = ?`,
@@ -228,10 +223,6 @@ export const UserService = {
 
   async unbanUser(userId) {
     try {
-      await query(
-        `UPDATE user SET status = 1 WHERE id = ?`,
-        [userId]
-      );
       try {
         await query(
           `UPDATE user SET ban_status = 'active', banned_at = NULL, ban_expires_at = NULL, ban_reason = NULL, banned_by = NULL WHERE id = ?`,
