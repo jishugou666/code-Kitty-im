@@ -1,41 +1,23 @@
-import { Request, Response, NextFunction } from 'express';
-
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-  blocked: boolean;
-  blockedUntil: number;
-}
-
-interface RateLimitConfig {
-  windowMs: number;
-  maxRequests: number;
-  maxConcurrent: number;
-  blockDurationMs: number;
-}
-
-const DEFAULT_CONFIG: RateLimitConfig = {
-  windowMs: 60000,
-  maxRequests: 100,
-  maxConcurrent: 20,
-  blockDurationMs: 30000
-};
-
 class AdvancedRateLimiter {
-  private requests: Map<string, RateLimitEntry> = new Map();
-  private config: RateLimitConfig;
-  private globalRequestCount = 0;
-  private lastGlobalReset = Date.now();
+  constructor(config = {}) {
+    this.config = {
+      windowMs: config.windowMs || 60000,
+      maxRequests: config.maxRequests || 100,
+      maxConcurrent: config.maxConcurrent || 30,
+      blockDurationMs: config.blockDurationMs || 30000
+    };
 
-  constructor(config: Partial<RateLimitConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.requests = new Map();
+    this.globalRequestCount = 0;
+    this.lastGlobalReset = Date.now();
+
     this.startCleanup();
   }
 
-  private startCleanup(): void {
+  startCleanup() {
     setInterval(() => {
       const now = Date.now();
-      for (const [key, entry] of this.entries()) {
+      for (const [key, entry] of this.requests.entries()) {
         if (entry.resetTime < now && !entry.blocked) {
           this.requests.delete(key);
         }
@@ -47,11 +29,7 @@ class AdvancedRateLimiter {
     }, 10000);
   }
 
-  private entries(): Map<string, RateLimitEntry> {
-    return this.requests;
-  }
-
-  isAllowed(identifier: string): { allowed: boolean; retryAfter?: number; reason?: string } {
+  isAllowed(identifier) {
     const now = Date.now();
 
     if (this.globalRequestCount > this.config.maxConcurrent * 2) {
@@ -108,11 +86,11 @@ class AdvancedRateLimiter {
     let activeRequests = 0;
     let blocked = 0;
 
-    for (const entry of this.entries()) {
-      if (entry[1].count > 0 && entry[1].resetTime > now) {
+    for (const entry of this.requests.values()) {
+      if (entry.count > 0 && entry.resetTime > now) {
         activeRequests++;
       }
-      if (entry[1].blocked && entry[1].blockedUntil > now) {
+      if (entry.blocked && entry.blockedUntil > now) {
         blocked++;
       }
     }
@@ -132,7 +110,7 @@ const rateLimiter = new AdvancedRateLimiter({
   blockDurationMs: 30000
 });
 
-export function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function rateLimitMiddleware(req, res, next) {
   const identifier = req.ip || req.socket.remoteAddress || 'unknown';
 
   const result = rateLimiter.isAllowed(identifier);
@@ -157,7 +135,7 @@ export function rateLimitMiddleware(req: Request, res: Response, next: NextFunct
   next();
 }
 
-export function globalRateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function globalRateLimitMiddleware(req, res, next) {
   const stats = rateLimiter.getStats();
 
   res.setHeader('X-Global-Load', String(stats.globalLoad));

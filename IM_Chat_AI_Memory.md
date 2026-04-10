@@ -1176,3 +1176,109 @@ IM-Chat-App/
 - 检查浏览器控制台错误信息
 
 ---
+
+## 智能调度系统
+
+### 问题31: 后端负载激增导致502错误 ⚠️ 已解决
+- **描述**: 刷新页面时大量请求同时发送，导致后端负载过高返回502错误
+- **症状**:
+  - `502 Bad Gateway` 错误
+  - 多个临时会话检查请求同时失败
+  - 级联式请求失败
+- **根本原因**:
+  1. **同步请求风暴**: 页面加载时多个组件同时发起API请求
+  2. **缺乏请求合并**: 每个会话单独发起临时会话检查请求
+  3. **缺少限流保护**: 后端没有请求速率限制
+  4. **没有熔断机制**: 请求失败后没有退避策略
+- **教训**:
+  1. 需要智能调度来控制并发请求数量
+  2. 需要熔断器模式防止级联失败
+  3. 需要后端限流保护
+
+### 解决方案：AI智能调度系统
+
+#### 1. 前端智能调度器 (Smart Scheduler)
+**文件**: `frontend/src/lib/smartScheduler.ts`
+
+**核心功能**:
+- **优先级队列**: critical > high > normal > low
+- **熔断器模式**: 连续失败5次后进入"熔断"状态，60秒内不再尝试
+- **自适应限流**: 每个端点独立限流令牌桶
+- **指数退避重试**: 失败后自动重试，延迟递增
+- **请求去重**: 相同请求在窗口期内合并
+
+**配置参数**:
+```typescript
+{
+  maxConcurrent: 3,           // 最大并发数
+  maxQueueSize: 50,          // 队列最大长度
+  baseDelay: 1000,           // 基础重试延迟
+  maxDelay: 30000,           // 最大延迟
+  circuitBreakerThreshold: 5, // 熔断阈值
+  circuitBreakerResetTime: 60000 // 熔断恢复时间
+}
+```
+
+#### 2. 增强版API客户端 (Smart API Client)
+**文件**: `frontend/src/lib/smartApiClient.ts`
+
+**功能**:
+- 集成智能调度器
+- 请求优先级自动标记
+- 慢请求警告（>5秒）
+- 自动重试与退避
+
+#### 3. 智能聊天存储 (Smart Chat Store)
+**文件**: `frontend/src/store/smartChatStore.ts`
+
+**功能**:
+- 请求冷却时间（5秒内不重复获取）
+- 优先级标记（获取消息=high，发送消息=critical）
+- 智能缓存避免重复请求
+
+#### 4. 后端限流保护 (Rate Limiter)
+**文件**: `backend/src/middleware/rateLimiter.js`
+
+**功能**:
+- **IP级别限流**: 每IP每分钟最多100请求
+- **全局负载检测**: 超过阈值时拒绝非关键请求
+- **临时封禁**: 超过限制的IP被临时封禁30秒
+- **服务状态监控**: `/api/stats` 端点监控服务状态
+
+**配置**:
+```javascript
+{
+  windowMs: 60000,        // 时间窗口
+  maxRequests: 100,       // 最大请求数
+  maxConcurrent: 30,      // 最大并发
+  blockDurationMs: 30000  // 封禁时长
+}
+```
+
+### 涉及文件
+**新增文件**:
+- `frontend/src/lib/smartScheduler.ts` - 前端智能调度器
+- `frontend/src/lib/smartApiClient.ts` - 增强版API客户端
+- `frontend/src/store/smartChatStore.ts` - 智能聊天存储
+- `backend/src/middleware/rateLimiter.js` - 后端限流中间件
+
+**修改文件**:
+- `backend/src/app.js` - 集成限流中间件
+- `frontend/src/app/components/ChatsSidebar.tsx` - 移除循环检查
+- `frontend/src/app/pages/Chat.tsx` - 优化消息加载
+
+### 使用示例
+```typescript
+import { smartScheduler } from './smartScheduler';
+
+// 关键请求（发送消息）
+await smartScheduler.schedule(sendMessageApi, 'critical', 3);
+
+// 高优先级请求（获取消息）
+await smartScheduler.schedule(getMessagesApi, 'high', 2);
+
+// 普通请求（获取会话列表）
+await smartScheduler.schedule(getConversationsApi, 'normal', 2);
+```
+
+### 状态: ✅ 已解决
