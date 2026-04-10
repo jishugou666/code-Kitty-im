@@ -3,29 +3,22 @@ import { query } from '../utils/db.js';
 export const IPBanService = {
   async checkIPBan(ipAddress) {
     try {
-      let bans = [];
       try {
-        bans = await query(
-          `SELECT * FROM ip_ban WHERE is_active = 1 AND (
-            (ban_type = 'exact' AND ip_address = ?) OR
-            (ban_type = 'range' AND ? LIKE CONCAT(ip_address, '%'))
-          ) AND (expires_at IS NULL OR expires_at > NOW())`,
-          [ipAddress, ipAddress]
-        );
-      } catch (e) {
-        bans = await query(
+        const bans = await query(
           `SELECT * FROM ip_ban WHERE is_active = 1 AND ip_address = ? AND (expires_at IS NULL OR expires_at > NOW())`,
           [ipAddress]
         );
-      }
 
-      if (bans.length > 0) {
-        return {
-          isBanned: true,
-          reason: bans[0].ban_reason,
-          expiresAt: bans[0].expires_at,
-          isPermanent: !bans[0].expires_at
-        };
+        if (bans && bans.length > 0) {
+          return {
+            isBanned: true,
+            reason: bans[0].ban_reason,
+            expiresAt: bans[0].expires_at,
+            isPermanent: !bans[0].expires_at
+          };
+        }
+      } catch (tableError) {
+        console.log('ip_ban表不存在或查询失败:', tableError.message);
       }
 
       return { isBanned: false };

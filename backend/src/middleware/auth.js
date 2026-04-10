@@ -1,7 +1,6 @@
 import { verifyToken } from '../utils/crypto.js';
 import { unauthorized } from '../utils/response.js';
 import { query } from '../utils/db.js';
-import { IPBanService } from '../services/IPBanService.js';
 
 export async function authMiddleware(req, res, next) {
   try {
@@ -16,46 +15,15 @@ export async function authMiddleware(req, res, next) {
       return res.status(401).json(unauthorized('Invalid or expired token'));
     }
 
-    const clientIP = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
-
-    try {
-      const ipBan = await IPBanService.checkIPBan(clientIP);
-      if (ipBan.isBanned) {
-        return res.status(403).json({
-          code: 403,
-          data: null,
-          msg: `IP已被封禁${ipBan.reason ? '，原因：' + ipBan.reason : ''}`
-        });
-      }
-    } catch (e) {
-      console.error('IP检查失败，继续:', e.message);
-    }
-
     const users = await query(
-      'SELECT id, username, nickname, avatar, email, phone, status, role, COALESCE(ban_status, "active") as ban_status FROM user WHERE id = ?',
+      'SELECT id, username, nickname, avatar, email, phone, status, role FROM user WHERE id = ?',
       [decoded.id]
     );
     if (users.length === 0) {
       return res.status(401).json(unauthorized('User not found'));
     }
 
-    const user = users[0];
-
-    if (user.ban_status === 'banned') {
-      return res.status(403).json({
-        code: 403,
-        data: {
-          isBanned: true,
-          reason: user.ban_reason || '违规操作',
-          expiresAt: user.ban_expires_at,
-          isPermanent: !user.ban_expires_at
-        },
-        msg: '账户已被封禁'
-      });
-    }
-
-    req.user = user;
-    req.clientIP = clientIP;
+    req.user = users[0];
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
