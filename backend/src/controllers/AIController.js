@@ -90,7 +90,7 @@ export const AIController = {
       const rows = await query(
         `SELECT f.*, u.username, u.nickname, u.avatar
          FROM ai_feedback f
-         LEFT JOIN users u ON f.user_id = u.id
+         LEFT JOIN user u ON f.user_id = u.id
          WHERE ${whereClause}
          ORDER BY f.created_at DESC
          LIMIT ? OFFSET ?`,
@@ -123,7 +123,7 @@ export const AIController = {
       const rows = await query(
         `SELECT f.*, u.username, u.nickname, u.avatar, u.email
          FROM ai_feedback f
-         LEFT JOIN users u ON f.user_id = u.id
+         LEFT JOIN user u ON f.user_id = u.id
          WHERE f.id = ?`,
         [id]
       );
