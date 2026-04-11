@@ -63,6 +63,12 @@ export function Admin() {
     loadDashboard();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'aiFeedback') {
+      loadAIFeedback();
+    }
+  }, [aiFeedbackPage, aiFeedbackFilter]);
+
   const loadDashboard = async () => {
     setIsLoading(true);
     try {
