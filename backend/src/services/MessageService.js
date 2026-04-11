@@ -58,10 +58,21 @@ export const MessageService = {
         return { code: 400, data: null, msg: '消息内容不能为空' };
       }
 
+      const result = await query(
+        'INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, ?)',
+        [conversationId, senderId, content || '', type || 'text']
+      );
+      console.log('INSERT result:', result);
+
+      if (!result || !result.insertId) {
+        console.log('INSERT失败，没有insertId');
+        return { code: 200, data: null, msg: '发送失败' };
+      }
+
       let spamAnalysis = null;
       try {
         const ip = 'unknown';
-        spamAnalysis = antiSpamService.analyzeMessagePattern(senderId, ip, content, null, conversationId);
+        spamAnalysis = antiSpamService.analyzeMessagePattern(senderId, ip, content, result.insertId, conversationId);
 
         console.log('=== AI反垃圾分析结果 ===');
         console.log('isSpam:', spamAnalysis.isSpam);
@@ -72,6 +83,7 @@ export const MessageService = {
 
         if (spamAnalysis.isSpam && spamAnalysis.confidence >= 65) {
           console.log('=== 检测到恶意刷屏，拦截消息 ===');
+          await query('DELETE FROM message WHERE id = ?', [result.insertId]);
           return {
             code: 429,
             data: {
@@ -84,17 +96,6 @@ export const MessageService = {
         }
       } catch (spamErr) {
         console.error('[MessageService] AntiSpam analysis failed:', spamErr);
-      }
-
-      const result = await query(
-        'INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, ?)',
-        [conversationId, senderId, content || '', type || 'text']
-      );
-      console.log('INSERT result:', result);
-
-      if (!result || !result.insertId) {
-        console.log('INSERT失败，没有insertId');
-        return { code: 200, data: null, msg: '发送失败' };
       }
 
       const messages = await query(
