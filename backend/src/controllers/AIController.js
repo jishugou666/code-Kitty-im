@@ -171,11 +171,12 @@ export const AIController = {
       if (action === 'approve') {
         if (feedback.target_type === 'message' && feedback.target_id) {
           try {
-            const msgRows = await query(`SELECT conversation_id FROM message WHERE id = ?`, [feedback.target_id]);
-            await query(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
-            console.log(`[AIFeedback] 删除消息: ${feedback.target_id}`);
+            const msgRows = await query(`SELECT conversation_id FROM message WHERE id = ?`, [feedback.target_id]).catch(e => { console.error('[AIFeedback] SELECT失败:', e); return []; });
 
-            if (msgRows && msgRows.length > 0) {
+            const delResult = await query(`DELETE FROM message WHERE id = ?`, [feedback.target_id]).catch(e => { console.error('[AIFeedback] DELETE失败:', e); return { affectedRows: 0 }; });
+            console.log(`[AIFeedback] 删除消息: ${feedback.target_id}, 影响行数: ${delResult.affectedRows}`);
+
+            if (msgRows && msgRows.length > 0 && delResult.affectedRows > 0) {
               const conversationId = msgRows[0].conversation_id;
               triggerEvent(`chat-${conversationId}`, 'message-deleted', { messageId: feedback.target_id });
             }
@@ -185,11 +186,13 @@ export const AIController = {
         } else if (feedback.target_type === 'conversation' && feedback.target_id && feedback.user_id) {
           try {
             const deleteResult = await query(
-              `DELETE FROM messages WHERE conversation_id = ? AND sender_id = ?`,
+              `DELETE FROM message WHERE conversation_id = ? AND sender_id = ?`,
               [feedback.target_id, feedback.user_id]
             );
             console.log(`[AIFeedback] 删除会话${feedback.target_id}中用户${feedback.user_id}的消息: ${deleteResult.affectedRows}条`);
-            triggerEvent(`chat-${feedback.target_id}`, 'messages-deleted', { userId: feedback.user_id, count: deleteResult.affectedRows });
+            if (deleteResult.affectedRows > 0) {
+              triggerEvent(`chat-${feedback.target_id}`, 'messages-deleted', { userId: feedback.user_id, count: deleteResult.affectedRows });
+            }
           } catch (e) {
             console.error('[AIFeedback] 删除会话消息失败:', e);
           }
