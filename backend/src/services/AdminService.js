@@ -149,10 +149,9 @@ export const AdminService = {
 
       const total = await query('SELECT COUNT(*) as count FROM message WHERE conversation_id = ?', [conversationId]);
 
-      if (audit && messages.length >= 10) {
-        messageAuditor.auditConversation(conversationId).catch(err => {
-          console.error('[AdminService] Audit failed:', err);
-        });
+      if (audit === true && messages.length >= 5) {
+        console.log(`[AdminService] 管理员触发会话${conversationId}审计`);
+        messageAuditor.addTask(conversationId, 'high');
       }
 
       return {

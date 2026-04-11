@@ -2,91 +2,141 @@ import { query } from '../utils/db.js';
 import { antiSpamService } from './antiSpamService.js';
 
 const AUDIT_CONFIG = {
-  batchSize: 50,
+  batchSize: 20,
+  maxConcurrentBatches: 2,
+  processDelayMs: 100,
   similarityThreshold: 0.7,
   floodWindowMs: 10000,
   floodThreshold: 5,
-  repeatThreshold: 2
+  repeatThreshold: 2,
+  scoreThresholds: {
+    flood: 40,
+    repeat: 45,
+    similarity: 30,
+    longContent: 20
+  }
 };
 
-class MessageAuditor {
+class AuditTaskQueue {
   constructor() {
-    this.auditCache = new Map();
+    this.pendingTasks = new Map();
+    this.processingTasks = new Set();
+    this.completedTasks = new Map();
+    this.workerPool = [];
+    this.maxWorkers = AUDIT_CONFIG.maxConcurrentBatches;
+    this.isProcessing = false;
   }
 
-  async auditConversation(conversationId) {
-    const cacheKey = `audit:${conversationId}`;
-    const now = Date.now();
+  addTask(conversationId, priority = 'normal') {
+    const taskId = `audit_${conversationId}_${Date.now()}`;
+    const existingTask = this.pendingTasks.get(conversationId);
 
-    if (this.auditCache.has(cacheKey)) {
-      const cached = this.auditCache.get(cacheKey);
-      if (now - cached.timestamp < 30000) {
-        return cached.result;
-      }
+    if (existingTask && Date.now() - existingTask.timestamp < 60000) {
+      return existingTask.taskId;
     }
 
-    const result = {
+    this.pendingTasks.set(conversationId, {
+      taskId,
       conversationId,
-      scannedAt: new Date().toISOString(),
-      totalMessages: 0,
-      suspiciousUsers: [],
-      issues: []
-    };
+      priority,
+      timestamp: Date.now(),
+      status: 'pending',
+      retryCount: 0
+    });
 
+    this.scheduleProcessing();
+    return taskId;
+  }
+
+  async scheduleProcessing() {
+    if (this.isProcessing || this.workerPool.length >= this.maxWorkers) {
+      return;
+    }
+
+    this.isProcessing = true;
+
+    while (this.pendingTasks.size > 0 && this.workerPool.length < this.maxWorkers) {
+      const entries = Array.from(this.pendingTasks.entries());
+      const [conversationId, task] = entries[0];
+
+      this.pendingTasks.delete(conversationId);
+      this.processingTasks.add(task.taskId);
+
+      this.workerPool.push(this.processTask(task));
+    }
+
+    await Promise.all(this.workerPool);
+    this.workerPool = [];
+    this.isProcessing = false;
+  }
+
+  async processTask(task) {
     try {
-      const messages = await query(
-        `SELECT id, sender_id, content, created_at, type
-         FROM message
-         WHERE conversation_id = ? AND type = 'text' AND content IS NOT NULL AND content != ''
-         ORDER BY created_at ASC`,
-        [conversationId]
-      ).catch(err => {
-        console.error('[MessageAuditor] Failed to fetch messages:', err);
-        return [];
+      console.log(`[AuditQueue] 开始处理审计任务: ${task.taskId}, 会话: ${task.conversationId}`);
+
+      const result = await this.processConversationAudit(task.conversationId);
+
+      this.completedTasks.set(task.taskId, {
+        ...task,
+        status: 'completed',
+        completedAt: Date.now(),
+        result
       });
 
-      if (!messages || messages.length === 0) {
-        return result;
-      }
+      this.processingTasks.delete(task.taskId);
 
-      result.totalMessages = messages.length;
-
-      const userMessages = this.groupByUser(messages);
-
-      for (const [userId, userMsgs] of Object.entries(userMessages)) {
-        try {
-          const userIssues = this.analyzeUserMessages(userId, userMsgs);
-          if (userIssues.length > 0) {
-            result.suspiciousUsers.push({
-              userId: parseInt(userId),
-              messageCount: userMsgs.length,
-              issues: userIssues
-            });
-
-            for (const issue of userIssues) {
-              try {
-                await this.reportIssue(userId, conversationId, issue, userMsgs);
-              } catch (reportErr) {
-                console.error('[MessageAuditor] reportIssue failed:', reportErr);
-              }
-            }
-          }
-        } catch (analyzeErr) {
-          console.error('[MessageAuditor] analyzeUserMessages failed:', analyzeErr);
-        }
-      }
-
-      this.auditCache.set(cacheKey, { timestamp: now, result });
-
-      setTimeout(() => {
-        this.auditCache.delete(cacheKey);
-      }, 30000);
+      console.log(`[AuditQueue] 审计任务完成: ${task.taskId}, 发现问题: ${result.issuesFound}`);
 
     } catch (error) {
-      console.error('[MessageAuditor] Audit failed:', error);
+      console.error(`[AuditQueue] 审计任务失败: ${task.taskId}`, error);
+
+      task.retryCount++;
+      if (task.retryCount < 3) {
+        this.pendingTasks.set(task.conversationId, task);
+      } else {
+        this.completedTasks.set(task.taskId, {
+          ...task,
+          status: 'failed',
+          error: error.message
+        });
+        this.processingTasks.delete(task.taskId);
+      }
     }
 
-    return result;
+    await this.delay(AUDIT_CONFIG.processDelayMs);
+  }
+
+  async processConversationAudit(conversationId) {
+    const messages = await query(
+      `SELECT id, sender_id, content, created_at, type
+       FROM message
+       WHERE conversation_id = ? AND type = 'text' AND content IS NOT NULL AND content != ''
+       ORDER BY created_at ASC`,
+      [conversationId]
+    ).catch(err => {
+      console.error('[AuditQueue] 查询消息失败:', err);
+      return [];
+    });
+
+    if (!messages || messages.length === 0) {
+      return { conversationId, totalMessages: 0, issuesFound: 0 };
+    }
+
+    const userMessages = this.groupByUser(messages);
+    let issuesFound = 0;
+
+    for (const [userId, userMsgs] of Object.entries(userMessages)) {
+      if (userMsgs.length < 2) continue;
+
+      const issues = this.analyzeUserMessages(userId, userMsgs);
+
+      for (const issue of issues) {
+        const submitted = await this.submitIssue(userId, conversationId, issue, userMsgs);
+        if (submitted) issuesFound++;
+      }
+    }
+
+    return { conversationId, totalMessages: messages.length, issuesFound };
   }
 
   groupByUser(messages) {
@@ -103,117 +153,55 @@ class MessageAuditor {
   analyzeUserMessages(userId, messages) {
     const issues = [];
 
-    if (messages.length >= AUDIT_CONFIG.floodThreshold) {
-      const floodResult = this.detectFlood(messages);
-      if (floodResult.detected) {
-        issues.push({
-          type: 'flood',
-          severity: floodResult.severity,
-          score: floodResult.score,
-          details: {
-            messageCount: messages.length,
-            timeWindow: floodResult.timeWindow,
-            avgInterval: floodResult.avgInterval,
-            evidence: floodResult.evidence
-          }
-        });
-      }
-    }
+    const floodIssue = this.detectFlood(messages);
+    if (floodIssue) issues.push(floodIssue);
 
-    const repeatResult = this.detectRepeat(messages);
-    if (repeatResult.detected) {
-      issues.push({
-        type: 'repeat',
-        severity: repeatResult.severity,
-        score: repeatResult.score,
-        details: {
-          repeatCount: repeatResult.repeatCount,
-          repeatedContent: repeatResult.repeatedContent,
-          evidence: repeatResult.evidence
-        }
-      });
-    }
+    const repeatIssue = this.detectRepeat(messages);
+    if (repeatIssue) issues.push(repeatIssue);
 
-    const similarityResult = this.detectSimilarity(messages);
-    if (similarityResult.detected) {
-      issues.push({
-        type: 'similarity',
-        severity: similarityResult.severity,
-        score: similarityResult.score,
-        details: {
-          similarPairs: similarityResult.similarPairs,
-          evidence: similarityResult.evidence
-        }
-      });
-    }
+    const similarityIssue = this.detectSimilarity(messages);
+    if (similarityIssue) issues.push(similarityIssue);
 
-    const longContentResult = this.detectLongContent(messages);
-    if (longContentResult.detected) {
-      issues.push({
-        type: 'longContent',
-        severity: longContentResult.severity,
-        score: longContentResult.score,
-        details: {
-          avgLength: longContentResult.avgLength,
-          maxLength: longContentResult.maxLength,
-          evidence: longContentResult.evidence
-        }
-      });
-    }
+    const longContentIssue = this.detectLongContent(messages);
+    if (longContentIssue) issues.push(longContentIssue);
 
     return issues;
   }
 
   detectFlood(messages) {
-    const result = { detected: false, severity: 'low', score: 0, timeWindow: 0, avgInterval: 0, evidence: [] };
-
-    if (messages.length < AUDIT_CONFIG.floodThreshold) {
-      return result;
-    }
+    if (messages.length < AUDIT_CONFIG.floodThreshold) return null;
 
     const now = Date.now();
-    const timeWindow = Math.min(
-      now - new Date(messages[0].created_at).getTime(),
-      AUDIT_CONFIG.floodWindowMs
-    );
-
     const recentMessages = messages.filter(m => {
       const msgTime = new Date(m.created_at).getTime();
       return now - msgTime < AUDIT_CONFIG.floodWindowMs;
     });
 
-    if (recentMessages.length < AUDIT_CONFIG.floodThreshold) {
-      return result;
-    }
+    if (recentMessages.length < AUDIT_CONFIG.floodThreshold) return null;
 
-    result.detected = true;
-    result.timeWindow = timeWindow;
-    result.avgInterval = Math.round(timeWindow / recentMessages.length);
+    const timeWindow = recentMessages.length > 0
+      ? now - new Date(recentMessages[0].created_at).getTime()
+      : 0;
+    const avgInterval = recentMessages.length > 1 ? timeWindow / recentMessages.length : 0;
 
-    const intensity = recentMessages.length / (timeWindow / 1000);
-    if (intensity > 2) {
-      result.severity = 'critical';
-      result.score = 80;
-    } else if (intensity > 1) {
-      result.severity = 'high';
-      result.score = 60;
-    } else {
-      result.severity = 'medium';
-      result.score = 40;
-    }
-
-    result.evidence = recentMessages.slice(0, 3).map(m => ({
-      id: m.id,
-      content: m.content?.substring(0, 100),
-      created_at: m.created_at
-    }));
-
-    return result;
+    return {
+      type: 'flood',
+      score: AUDIT_CONFIG.scoreThresholds.flood + (recentMessages.length > 8 ? 20 : 0),
+      severity: recentMessages.length > 8 ? 'high' : 'medium',
+      details: {
+        messageCount: recentMessages.length,
+        timeWindow,
+        avgInterval,
+        evidence: recentMessages.slice(0, 3).map(m => ({
+          id: m.id,
+          content: m.content?.substring(0, 50),
+          created_at: m.created_at
+        }))
+      }
+    };
   }
 
   detectRepeat(messages) {
-    const result = { detected: false, severity: 'low', score: 0, repeatCount: 0, repeatedContent: '', evidence: [] };
-
     const contentCount = {};
     for (const msg of messages) {
       const content = msg.content?.trim();
@@ -223,202 +211,149 @@ class MessageAuditor {
     }
 
     const repeats = Object.entries(contentCount).filter(([, count]) => count >= AUDIT_CONFIG.repeatThreshold);
+    if (repeats.length === 0) return null;
 
-    if (repeats.length === 0) {
-      return result;
-    }
-
-    result.detected = true;
     const maxRepeat = Math.max(...repeats.map(([, count]) => count));
-    result.repeatCount = maxRepeat;
-    result.repeatedContent = repeats.find(([, count]) => count === maxRepeat)?.[0] || '';
+    const repeatedContent = repeats.find(([, count]) => count === maxRepeat)?.[0] || '';
 
-    if (maxRepeat >= 10) {
-      result.severity = 'critical';
-      result.score = 85;
-    } else if (maxRepeat >= 5) {
-      result.severity = 'high';
-      result.score = 65;
-    } else {
-      result.severity = 'medium';
-      result.score = 45;
-    }
-
-    result.evidence = messages
-      .filter(m => m.content?.trim() === result.repeatedContent)
-      .slice(0, 3)
-      .map(m => ({
-        id: m.id,
-        content: m.content?.substring(0, 100),
-        created_at: m.created_at
-      }));
-
-    return result;
+    return {
+      type: 'repeat',
+      score: AUDIT_CONFIG.scoreThresholds.repeat + (maxRepeat > 5 ? 15 : 0),
+      severity: maxRepeat > 5 ? 'high' : 'medium',
+      details: {
+        repeatCount: maxRepeat,
+        repeatedContent: repeatedContent.substring(0, 100),
+        evidence: messages
+          .filter(m => m.content?.trim() === repeatedContent)
+          .slice(0, 3)
+          .map(m => ({
+            id: m.id,
+            content: m.content?.substring(0, 50),
+            created_at: m.created_at
+          }))
+      }
+    };
   }
 
   detectSimilarity(messages) {
-    const result = { detected: false, severity: 'low', score: 0, similarPairs: 0, evidence: [] };
-
     const similarPairs = [];
 
     for (let i = 0; i < messages.length; i++) {
-      for (let j = i + 1; j < messages.length; j++) {
-        const sim = this.calculateSimilarity(messages[i].content, messages[j].content);
+      for (let j = i + 1; j < Math.min(i + 10, messages.length); j++) {
+        const sim = this.calculateSimilarity(
+          messages[i].content || '',
+          messages[j].content || ''
+        );
         if (sim >= AUDIT_CONFIG.similarityThreshold) {
           similarPairs.push({ i, j, similarity: sim });
         }
       }
     }
 
-    if (similarPairs.length === 0) {
-      return result;
-    }
+    if (similarPairs.length < 3) return null;
 
-    result.detected = true;
-    result.similarPairs = similarPairs.length;
-
-    if (similarPairs.length >= 10) {
-      result.severity = 'critical';
-      result.score = 75;
-    } else if (similarPairs.length >= 5) {
-      result.severity = 'high';
-      result.score = 55;
-    } else {
-      result.severity = 'medium';
-      result.score = 35;
-    }
-
-    result.evidence = similarPairs.slice(0, 3).map(pair => ({
-      id1: messages[pair.i].id,
-      id2: messages[pair.j].id,
-      content1: messages[pair.i].content?.substring(0, 50),
-      content2: messages[pair.j].content?.substring(0, 50),
-      similarity: Math.round(pair.similarity * 100) + '%'
-    }));
-
-    return result;
+    return {
+      type: 'similarity',
+      score: AUDIT_CONFIG.scoreThresholds.similarity + Math.floor(similarPairs.length / 2),
+      severity: similarPairs.length > 8 ? 'high' : 'medium',
+      details: {
+        similarPairs: similarPairs.length,
+        evidence: similarPairs.slice(0, 3).map(pair => ({
+          id1: messages[pair.i].id,
+          id2: messages[pair.j].id,
+          content1: messages[pair.i].content?.substring(0, 50),
+          similarity: Math.round(pair.similarity * 100) + '%'
+        }))
+      }
+    };
   }
 
   detectLongContent(messages) {
-    const result = { detected: false, severity: 'low', score: 0, avgLength: 0, maxLength: 0, evidence: [] };
+    const longMessages = messages.filter(m => (m.content?.length || 0) > 1000);
+    if (longMessages.length === 0) return null;
 
-    const lengths = messages.map(m => m.content?.length || 0);
-    const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-    const maxLength = Math.max(...lengths);
+    const maxLength = Math.max(...longMessages.map(m => m.content?.length || 0));
+    const avgLength = longMessages.reduce((sum, m) => sum + (m.content?.length || 0), 0) / longMessages.length;
 
-    if (maxLength < 1000) {
-      return result;
-    }
-
-    result.detected = true;
-    result.avgLength = Math.round(avgLength);
-    result.maxLength = maxLength;
-
-    if (maxLength > 5000) {
-      result.severity = 'critical';
-      result.score = 70;
-    } else if (maxLength > 2000) {
-      result.severity = 'high';
-      result.score = 50;
-    } else {
-      result.severity = 'medium';
-      result.score = 30;
-    }
-
-    result.evidence = messages
-      .filter(m => (m.content?.length || 0) > 1000)
-      .slice(0, 2)
-      .map(m => ({
-        id: m.id,
-        length: m.content?.length,
-        preview: m.content?.substring(0, 100)
-      }));
-
-    return result;
+    return {
+      type: 'longContent',
+      score: AUDIT_CONFIG.scoreThresholds.longContent + Math.floor(maxLength / 500),
+      severity: maxLength > 3000 ? 'high' : 'medium',
+      details: {
+        count: longMessages.length,
+        avgLength: Math.round(avgLength),
+        maxLength,
+        evidence: longMessages.slice(0, 2).map(m => ({
+          id: m.id,
+          length: m.content?.length,
+          preview: m.content?.substring(0, 80)
+        }))
+      }
+    };
   }
 
   calculateSimilarity(str1, str2) {
     if (!str1 || !str2) return 0;
     if (str1 === str2) return 1;
 
-    const len1 = str1.length;
-    const len2 = str2.length;
-    const maxLen = Math.max(len1, len2);
-
-    if (maxLen === 0) return 1;
-    if (len1 > 1000 || len2 > 1000) {
-      return this.quickSimilarity(str1, str2);
-    }
-
-    const matrix = [];
-    for (let i = 0; i <= len1; i++) {
-      matrix[i] = [i];
-    }
-    for (let j = 0; j <= len2; j++) {
-      matrix[0][j] = j;
-    }
-
-    for (let i = 1; i <= len1; i++) {
-      for (let j = 1; j <= len2; j++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + cost
-        );
-      }
-    }
-
-    return 1 - matrix[len1][len2] / maxLen;
-  }
-
-  quickSimilarity(str1, str2) {
-    const s1Words = str1.split(/\s+/).slice(0, 20);
-    const s2Words = str2.split(/\s+/).slice(0, 20);
+    const s1Words = str1.split(/\s+/).slice(0, 15);
+    const s2Words = str2.split(/\s+/).slice(0, 15);
     const intersection = s1Words.filter(w => s2Words.includes(w)).length;
     const union = new Set([...s1Words, ...s2Words]).size;
+
     return union > 0 ? intersection / union : 0;
   }
 
-  async reportIssue(userId, conversationId, issue, messages) {
+  async submitIssue(userId, conversationId, issue, messages) {
     const severityMap = { critical: 'critical', high: 'high', medium: 'medium', low: 'low' };
     const severity = severityMap[issue.severity] || 'medium';
 
-    let contentPreview = '';
-    if (issue.details.evidence && issue.details.evidence.length > 0) {
-      contentPreview = issue.details.evidence[0]?.content || issue.details.evidence[0]?.preview || '';
-    }
-
-    let fullContent = messages.map(m => m.content).join('\n').substring(0, 5000);
+    const contentPreview = issue.details.evidence?.[0]?.content ||
+                           issue.details.evidence?.[0]?.preview || '';
+    const fullContent = messages.slice(0, 50).map(m => m.content).join('\n').substring(0, 5000);
 
     const metadata = {
       conversationId,
       issueType: issue.type,
+      messageCount: messages.length,
       ...issue.details
     };
 
-    await antiSpamService.saveAIFeedback(
-      issue.type === 'longContent' ? 'malicious' : issue.type,
-      severity,
-      userId,
-      'conversation',
-      conversationId,
-      contentPreview,
-      fullContent,
-      metadata,
-      issue.score,
-      `历史消息审计检测: ${issue.type} - ${issue.details.messageCount || issue.details.repeatCount || issue.details.similarPairs || issue.details.maxLength || 0}`
-    );
+    const aiAnalysis = `${issue.type}: ${issue.details.messageCount || issue.details.repeatCount || issue.details.similarPairs || issue.details.maxLength || 0}`;
+
+    try {
+      await antiSpamService.saveAIFeedback(
+        issue.type === 'longContent' ? 'malicious' : issue.type,
+        severity,
+        parseInt(userId),
+        'conversation',
+        conversationId,
+        contentPreview,
+        fullContent,
+        metadata,
+        issue.score,
+        aiAnalysis
+      );
+      return true;
+    } catch (err) {
+      console.error('[AuditQueue] 提交问题失败:', err);
+      return false;
+    }
   }
 
-  clearCache(conversationId) {
-    this.auditCache.delete(`audit:${conversationId}`);
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  clearAllCache() {
-    this.auditCache.clear();
+  getStatus() {
+    return {
+      pending: this.pendingTasks.size,
+      processing: this.processingTasks.size,
+      completed: this.completedTasks.size,
+      workers: this.workerPool.length
+    };
   }
 }
 
-export const messageAuditor = new MessageAuditor();
+export const messageAuditor = new AuditTaskQueue();
 export default messageAuditor;

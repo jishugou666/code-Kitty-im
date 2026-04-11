@@ -1,6 +1,7 @@
 import { query } from '../utils/db.js';
 import { getAIStats } from './AIService.js';
 import { antiSpamService } from './antiSpamService.js';
+import { messageAuditor } from './MessageAuditor.js';
 import { getRateLimitStats } from '../middleware/rateLimiter.js';
 
 const ANTI_SPAM_I18N = {
@@ -10,7 +11,10 @@ const ANTI_SPAM_I18N = {
     threatsBlocked: '已拦截威胁',
     activeUsers: '活跃用户',
     cooldownUsers: '冷却中用户',
-    cooldownIPs: '冷却中IP'
+    cooldownIPs: '冷却中IP',
+    auditQueuePending: '待处理审计',
+    auditQueueProcessing: '进行中审计',
+    auditCompleted: '已完成审计'
   },
   config: {
     maxMessagesPerWindow: '窗口内最大消息数',
@@ -253,6 +257,7 @@ export const AIServiceManager = {
 
   getAntiSpamStats() {
     const realStats = antiSpamService.getServiceStats();
+    const auditQueueStats = messageAuditor.getStatus();
 
     const details = {
       monitoredConversations: realStats.monitoredConversations,
@@ -260,7 +265,10 @@ export const AIServiceManager = {
       threatsBlocked: realStats.threatsBlocked,
       activeUsers: realStats.activeUsers,
       cooldownUsers: realStats.cooldownUsers,
-      cooldownIPs: realStats.cooldownIPs
+      cooldownIPs: realStats.cooldownIPs,
+      auditQueuePending: auditQueueStats.pending,
+      auditQueueProcessing: auditQueueStats.processing,
+      auditCompleted: auditQueueStats.completed
     };
 
     const config = {
