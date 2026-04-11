@@ -1146,6 +1146,25 @@ export function Admin() {
                             </div>
                           </div>
                         )}
+                        {service.auditTasks && (service.auditTasks.pending?.length > 0 || service.auditTasks.processing?.length > 0) && (
+                          <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                            <p className="text-xs text-black/40 dark:text-white/40 mb-2">审计任务:</p>
+                            <div className="space-y-2">
+                              {service.auditTasks.processing?.map((task: any, idx: number) => (
+                                <div key={`proc-${idx}`} className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                                  <span className="text-xs text-yellow-700 dark:text-yellow-400">会话 #{task.conversationId} 审计中...</span>
+                                </div>
+                              ))}
+                              {service.auditTasks.pending?.slice(0, 5).map((task: any, idx: number) => (
+                                <div key={`pend-${idx}`} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">会话 #{task.conversationId} 等待中</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

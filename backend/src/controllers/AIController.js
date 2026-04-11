@@ -85,6 +85,8 @@ export const AIController = {
         params.push(severity);
       }
 
+      console.log('[AIController] getFeedbackList params:', { whereClause, params, limit: parseInt(limit), offset: parseInt(offset) });
+
       const rows = await query(
         `SELECT f.*, u.username, u.nickname, u.avatar
          FROM ai_feedback f
@@ -95,20 +97,22 @@ export const AIController = {
         [...params, parseInt(limit), parseInt(offset)]
       );
 
+      console.log('[AIController] getFeedbackList rows:', rows?.length);
+
       const countResult = await query(
         `SELECT COUNT(*) as total FROM ai_feedback f WHERE ${whereClause}`,
         params
       );
 
       res.json(success({
-        list: rows,
-        total: countResult[0].total,
+        list: rows || [],
+        total: countResult?.[0]?.total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
       }, 'AI反馈列表获取成功'));
     } catch (err) {
       console.error('获取AI反馈列表失败:', err);
-      next(err);
+      res.status(500).json({ success: false, message: '获取AI反馈列表失败', error: err.message });
     }
   },
 

@@ -346,11 +346,30 @@ class AuditTaskQueue {
   }
 
   getStatus() {
+    const pendingList = Array.from(this.pendingTasks.values()).map(t => ({
+      conversationId: t.conversationId,
+      priority: t.priority,
+      timestamp: t.timestamp,
+      status: 'pending'
+    }));
+
+    const processingList = Array.from(this.processingTasks).map(taskId => {
+      const task = this.completedTasks.get(taskId);
+      return {
+        taskId,
+        conversationId: task?.conversationId,
+        status: task?.status || 'processing',
+        startedAt: task?.timestamp
+      };
+    }).filter(t => t.conversationId);
+
     return {
       pending: this.pendingTasks.size,
       processing: this.processingTasks.size,
       completed: this.completedTasks.size,
-      workers: this.workerPool.length
+      workers: this.workerPool.length,
+      pendingList,
+      processingList
     };
   }
 }

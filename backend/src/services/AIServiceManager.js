@@ -281,6 +281,11 @@ export const AIServiceManager = {
       feedbackConfidence: 65
     };
 
+    const auditTasks = {
+      pending: auditQueueStats.pendingList || [],
+      processing: auditQueueStats.processingList || []
+    };
+
     return {
       nameKey: 'aiServices.antiSpam',
       nameCn: 'AI反垃圾服务',
@@ -295,7 +300,8 @@ export const AIServiceManager = {
         'aiServices.ipMultiAccountDetection',
         'aiServices.realTimeCooldown',
         'aiServices.confidenceScore'
-      ])
+      ]),
+      auditTasks
     };
   },
 
