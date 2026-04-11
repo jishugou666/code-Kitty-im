@@ -47,6 +47,12 @@ apiClient.interceptors.response.use(
         case 404:
           console.error('Resource not found');
           break;
+        case 429:
+          console.warn('Rate limit exceeded');
+          window.dispatchEvent(new CustomEvent('show-rate-limit', {
+            detail: { retryAfter: 30, message: '请求频率过快，正在重新加载...' }
+          }));
+          break;
         case 500:
           console.error('Server error');
           break;
