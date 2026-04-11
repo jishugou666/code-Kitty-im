@@ -330,6 +330,33 @@ class AuditTaskQueue {
 
     const aiAnalysis = this.generateDetailedAnalysis(issue, messages, primaryMessage);
 
+    try {
+      const existingRecord = await this.checkExistingFeedback(userId, targetMessageId, issue.type);
+      if (existingRecord) {
+        console.log(`[AuditQueue] 跳过重复提交: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
+        return false;
+      }
+
+      await antiSpamService.saveAIFeedback(
+        issue.type === 'longContent' ? 'malicious' : issue.type,
+        severity,
+        parseInt(userId),
+        'message',
+        targetMessageId,
+        contentPreview,
+        fullContentFinal,
+        metadata,
+        issue.score,
+        aiAnalysis
+      );
+      console.log(`[AuditQueue] 提交成功: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
+      return true;
+    } catch (err) {
+      console.error('[AuditQueue] 提交问题失败:', err);
+      return false;
+    }
+  }
+
   generateDetailedAnalysis(issue, messages, primaryMessage) {
     const lines = [];
     lines.push(`【违规类型】${this.getTypeName(issue.type)}`);
@@ -367,33 +394,6 @@ class AuditTaskQueue {
       longContent: '消息过长'
     };
     return names[type] || type;
-  }
-
-    try {
-      const existingRecord = await this.checkExistingFeedback(userId, targetMessageId, issue.type);
-      if (existingRecord) {
-        console.log(`[AuditQueue] 跳过重复提交: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
-        return false;
-      }
-
-      await antiSpamService.saveAIFeedback(
-        issue.type === 'longContent' ? 'malicious' : issue.type,
-        severity,
-        parseInt(userId),
-        'message',
-        targetMessageId,
-        contentPreview,
-        fullContentFinal,
-        metadata,
-        issue.score,
-        aiAnalysis
-      );
-      console.log(`[AuditQueue] 提交成功: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
-      return true;
-    } catch (err) {
-      console.error('[AuditQueue] 提交问题失败:', err);
-      return false;
-    }
   }
 
   async checkExistingFeedback(userId, targetMessageId, issueType) {
