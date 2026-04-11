@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { RateLimitOverlay } from '../components/RateLimitOverlay';
+import { RateLimitOverlay } from '../app/components/RateLimitOverlay';
 
 interface RateLimitContextType {
   showRateLimit: (options?: { retryAfter?: number; reason?: string; onRetry?: () => void }) => void;
