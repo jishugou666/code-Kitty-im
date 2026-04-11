@@ -308,35 +308,110 @@ class AuditTaskQueue {
     const severityMap = { critical: 'critical', high: 'high', medium: 'medium', low: 'low' };
     const severity = severityMap[issue.severity] || 'medium';
 
-    const contentPreview = issue.details.evidence?.[0]?.content ||
-                           issue.details.evidence?.[0]?.preview || '';
-    const fullContent = messages.slice(0, 50).map(m => m.content).join('\n').substring(0, 5000);
+    const evidence = issue.details.evidence || [];
+    const primaryMessage = evidence[0] || messages[0];
+    const targetMessageId = primaryMessage?.id || null;
+
+    const contentPreview = evidence[0]?.content ||
+                           evidence[0]?.preview ||
+                           primaryMessage?.content?.substring(0, 200) || '';
+
+    const fullContent = evidence.map(e => e.content || e.preview).filter(Boolean).join('\n') ||
+                        messages.slice(0, 10).map(m => m.content).join('\n');
+    const fullContentFinal = fullContent.substring(0, 5000);
 
     const metadata = {
       conversationId,
       issueType: issue.type,
       messageCount: messages.length,
+      evidenceMessageIds: evidence.map(e => e.id).filter(Boolean),
       ...issue.details
     };
 
-    const aiAnalysis = `${issue.type}: ${issue.details.messageCount || issue.details.repeatCount || issue.details.similarPairs || issue.details.maxLength || 0}`;
+    const aiAnalysis = this.generateDetailedAnalysis(issue, messages, primaryMessage);
+
+  generateDetailedAnalysis(issue, messages, primaryMessage) {
+    const lines = [];
+    lines.push(`【违规类型】${this.getTypeName(issue.type)}`);
+    lines.push(`【严重程度】${issue.severity}`);
+    lines.push(`【风险评分】${issue.score}/100`);
+
+    if (issue.type === 'flood') {
+      lines.push(`【违规详情】在${(issue.details.timeWindow / 1000).toFixed(1)}秒内发送了${issue.details.messageCount}条消息`);
+      lines.push(`【平均间隔】${(issue.details.avgInterval / 1000).toFixed(2)}秒/条`);
+      lines.push(`【违规原因】消息发送频率过高，超过正常聊天行为`);
+    } else if (issue.type === 'repeat') {
+      lines.push(`【违规详情】重复发送相同内容${issue.details.repeatCount}次`);
+      lines.push(`【重复内容】"${issue.details.repeatedContent?.substring(0, 50)}..."`);
+      lines.push(`【违规原因】短时间内多次发送完全相同的内容`);
+    } else if (issue.type === 'similarity') {
+      lines.push(`【违规详情】发现${issue.details.similarPairs}对高度相似的消息`);
+      lines.push(`【违规原因】发送内容存在大量重复模式`);
+    } else if (issue.type === 'longContent') {
+      lines.push(`【违规详情】单条消息长度达${issue.details.maxLength}字符`);
+      lines.push(`【平均长度】${issue.details.avgLength}字符`);
+      lines.push(`【违规原因】消息内容过长，可能存在恶意刷屏行为`);
+    }
+
+    lines.push(`【涉及消息】共分析${messages.length}条用户消息`);
+    lines.push(`【首条证据】"${primaryMessage?.content?.substring(0, 80)}..."`);
+
+    return lines.join('\n');
+  }
+
+  getTypeName(type) {
+    const names = {
+      flood: '刷屏行为',
+      repeat: '重复消息',
+      similarity: '内容相似',
+      longContent: '消息过长'
+    };
+    return names[type] || type;
+  }
 
     try {
+      const existingRecord = await this.checkExistingFeedback(userId, targetMessageId, issue.type);
+      if (existingRecord) {
+        console.log(`[AuditQueue] 跳过重复提交: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
+        return false;
+      }
+
       await antiSpamService.saveAIFeedback(
         issue.type === 'longContent' ? 'malicious' : issue.type,
         severity,
         parseInt(userId),
-        'conversation',
-        conversationId,
+        'message',
+        targetMessageId,
         contentPreview,
-        fullContent,
+        fullContentFinal,
         metadata,
         issue.score,
         aiAnalysis
       );
+      console.log(`[AuditQueue] 提交成功: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
       return true;
     } catch (err) {
       console.error('[AuditQueue] 提交问题失败:', err);
+      return false;
+    }
+  }
+
+  async checkExistingFeedback(userId, targetMessageId, issueType) {
+    if (!targetMessageId) return false;
+
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      const existing = await query(
+        `SELECT id FROM ai_feedback
+         WHERE user_id = ? AND target_id = ? AND type = ? AND created_at > ?
+         LIMIT 1`,
+        [parseInt(userId), targetMessageId, issueType, oneHourAgo]
+      );
+
+      return existing && existing.length > 0;
+    } catch (err) {
+      console.error('[AuditQueue] 检查重复记录失败:', err);
       return false;
     }
   }

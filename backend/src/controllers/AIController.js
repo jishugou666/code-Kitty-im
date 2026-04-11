@@ -167,11 +167,24 @@ export const AIController = {
         [newStatus, adminId, handleResult || '', id]
       );
 
-      if (action === 'approve' && feedback.target_type === 'message' && feedback.target_id) {
-        try {
-          await query(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
-        } catch (e) {
-          console.error('[AIFeedback] Failed to delete message:', e);
+      if (action === 'approve') {
+        if (feedback.target_type === 'message' && feedback.target_id) {
+          try {
+            await query(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
+            console.log(`[AIFeedback] 删除消息: ${feedback.target_id}`);
+          } catch (e) {
+            console.error('[AIFeedback] 删除消息失败:', e);
+          }
+        } else if (feedback.target_type === 'conversation' && feedback.target_id && feedback.user_id) {
+          try {
+            const deleteResult = await query(
+              `DELETE FROM messages WHERE conversation_id = ? AND sender_id = ?`,
+              [feedback.target_id, feedback.user_id]
+            );
+            console.log(`[AIFeedback] 删除会话${feedback.target_id}中用户${feedback.user_id}的消息: ${deleteResult.affectedRows}条`);
+          } catch (e) {
+            console.error('[AIFeedback] 删除会话消息失败:', e);
+          }
         }
       }
 
