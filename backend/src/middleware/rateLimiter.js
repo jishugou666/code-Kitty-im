@@ -10,8 +10,29 @@ class AdvancedRateLimiter {
     this.requests = new Map();
     this.globalRequestCount = 0;
     this.lastGlobalReset = Date.now();
+    this.skipPaths = ['/api/rate-limit/unblock'];
 
     this.startCleanup();
+  }
+
+  unblockUser(identifier) {
+    const entry = this.requests.get(identifier);
+    if (entry) {
+      entry.blocked = false;
+      entry.blockedUntil = 0;
+      entry.count = 0;
+      console.log(`[RateLimit] Unblocked user: ${identifier}`);
+      return true;
+    }
+    return false;
+  }
+
+  unblockByIp(ip) {
+    return this.unblockUser(ip);
+  }
+
+  isSkipPath(path) {
+    return this.skipPaths.some(skipPath => path.includes(skipPath));
   }
 
   startCleanup() {
@@ -113,6 +134,10 @@ const rateLimiter = new AdvancedRateLimiter({
 export function rateLimitMiddleware(req, res, next) {
   const identifier = req.ip || req.socket.remoteAddress || 'unknown';
 
+  if (rateLimiter.isSkipPath(req.path)) {
+    return next();
+  }
+
   const result = rateLimiter.isAllowed(identifier);
 
   res.setHeader('X-RateLimit-Remaining', '100');
@@ -159,6 +184,14 @@ export function globalRateLimitMiddleware(req, res, next) {
 
 export function getRateLimitStats() {
   return rateLimiter.getStats();
+}
+
+export function unblockByIp(ip) {
+  return rateLimiter.unblockByIp(ip);
+}
+
+export function unblockUser(identifier) {
+  return rateLimiter.unblockUser(identifier);
 }
 
 export default rateLimiter;

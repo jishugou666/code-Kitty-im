@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -9,6 +9,10 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+let pendingRetryConfig: AxiosRequestConfig | null = null;
+let retryResolve: ((value: unknown) => void) | null = null;
+let retryReject: ((reason: unknown) => void) | null = null;
 
 apiClient.interceptors.request.use(
   (config) => {
@@ -32,7 +36,7 @@ apiClient.interceptors.response.use(
     }
     return res;
   },
-  (error) => {
+  (error: AxiosError) => {
     if (error.response) {
       const { status, data } = error.response;
       switch (status) {
@@ -40,6 +44,25 @@ apiClient.interceptors.response.use(
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
+          break;
+        case 429:
+          pendingRetryConfig = error.config || null;
+          window.dispatchEvent(new CustomEvent('showRateLimit', {
+            detail: {
+              retryAfter: 5,
+              reason: (data as { msg?: string })?.msg || '请求过于频繁，请稍后再试',
+              onRetry: () => {
+                if (pendingRetryConfig && retryResolve) {
+                  const resolver = retryResolve;
+                  const config = pendingRetryConfig;
+                  pendingRetryConfig = null;
+                  retryResolve = null;
+                  retryReject = null;
+                  resolver(apiClient(config));
+                }
+              }
+            }
+          }));
           break;
         case 403:
           console.error('Access forbidden');
@@ -51,7 +74,7 @@ apiClient.interceptors.response.use(
           console.error('Server error');
           break;
         default:
-          console.error('API Error:', data.msg || 'Unknown error');
+          console.error('API Error:', (data as { msg?: string })?.msg || 'Unknown error');
       }
     } else if (error.request) {
       console.error('Network error - no response received');
@@ -61,5 +84,13 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function createRetryPromise(config: AxiosRequestConfig): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    pendingRetryConfig = config;
+    retryResolve = resolve;
+    retryReject = reject;
+  });
+}
 
 export default apiClient;

@@ -76,6 +76,17 @@ app.get('/api/health', (req, res) => {
   res.json({ code: 200, data: { status: 'ok', timestamp: new Date().toISOString() }, msg: 'OK' });
 });
 
+app.get('/api/rate-limit/unblock', (req, res) => {
+  const { unblockByIp } = require('./middleware/rateLimiter.js');
+  const ip = req.ip || req.socket.remoteAddress || req.query.ip;
+  const success = unblockByIp(ip);
+  res.json({
+    code: 200,
+    data: { success, ip },
+    msg: success ? 'Unblocked successfully' : 'IP not found or not blocked'
+  });
+});
+
 app.get('/api/stats', (req, res) => {
   const rateLimitStats = getRateLimitStats ? getRateLimitStats() : {};
   res.json({
