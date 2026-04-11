@@ -26,10 +26,18 @@ class AntiSpamService {
     this.threatsBlocked = 0;
   }
 
-  generateFingerprint(req) {
-    const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
-    const userAgent = req.headers['user-agent'] || 'unknown';
-    return `${ip}:${userAgent.substring(0, 50)}`;
+  generateFingerprint(reqOrIp) {
+    let ip = 'unknown';
+    let userAgent = 'unknown';
+
+    if (typeof reqOrIp === 'string') {
+      ip = reqOrIp;
+    } else if (reqOrIp && typeof reqOrIp === 'object') {
+      ip = reqOrIp.ip || reqOrIp.headers?.['x-forwarded-for'] || reqOrIp.connection?.remoteAddress || 'unknown';
+      userAgent = reqOrIp.headers?.['user-agent'] || 'unknown';
+    }
+
+    return `${ip}:${String(userAgent).substring(0, 50)}`;
   }
 
   isUserInCooldown(userId) {

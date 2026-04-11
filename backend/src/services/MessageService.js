@@ -72,28 +72,32 @@ export const MessageService = {
         return { code: 400, data: null, msg: '消息内容不能为空' };
       }
 
-      const ip = 'unknown';
+      let spamAnalysis = null;
+      try {
+        const ip = 'unknown';
+        spamAnalysis = antiSpamService.analyzeMessagePattern(senderId, ip, content, null, conversationId);
 
-      const analysis = antiSpamService.analyzeMessagePattern(senderId, ip, content, null, conversationId);
+        console.log('=== AI反垃圾分析结果 ===');
+        console.log('isSpam:', spamAnalysis.isSpam);
+        console.log('score:', spamAnalysis.score);
+        console.log('confidence:', spamAnalysis.confidence);
+        console.log('reasons:', spamAnalysis.reasons);
+        console.log('shouldBlock:', spamAnalysis.shouldBlock);
 
-      console.log('=== AI反垃圾分析结果 ===');
-      console.log('isSpam:', analysis.isSpam);
-      console.log('score:', analysis.score);
-      console.log('confidence:', analysis.confidence);
-      console.log('reasons:', analysis.reasons);
-      console.log('shouldBlock:', analysis.shouldBlock);
-
-      if (analysis.isSpam && analysis.confidence >= 65) {
-        console.log('=== 检测到恶意刷屏，拦截消息 ===');
-        return {
-          code: 429,
-          data: {
-            blocked: true,
-            reason: '消息发送过于频繁，请稍后再试',
-            details: analysis.reasons.join('; ')
-          },
-          msg: '消息发送过于频繁，请稍后再试'
-        };
+        if (spamAnalysis.isSpam && spamAnalysis.confidence >= 65) {
+          console.log('=== 检测到恶意刷屏，拦截消息 ===');
+          return {
+            code: 429,
+            data: {
+              blocked: true,
+              reason: '消息发送过于频繁，请稍后再试',
+              details: spamAnalysis.reasons.join('; ')
+            },
+            msg: '消息发送过于频繁，请稍后再试'
+          };
+        }
+      } catch (spamErr) {
+        console.error('[MessageService] AntiSpam analysis failed:', spamErr);
       }
 
       const result = await query(
