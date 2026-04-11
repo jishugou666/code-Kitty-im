@@ -60,6 +60,10 @@ export function GroupChat() {
           ? { ...m, type: 'recalled', content: '此消息已撤回' }
           : m
       ));
+    } else if (newMessage.type === 'message-deleted') {
+      setMessages(prev => prev.filter(m => m.id !== newMessage.messageId));
+    } else if (newMessage.type === 'messages-deleted') {
+      setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
     } else {
       setMessages(prev => {
         if (prev.some(m => m.id === newMessage.id)) {

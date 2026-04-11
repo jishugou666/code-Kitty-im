@@ -2,6 +2,7 @@ import { AIServiceManager } from '../services/AIServiceManager.js';
 import { antiSpamService } from '../services/antiSpamService.js';
 import { query } from '../utils/db.js';
 import { success } from '../utils/response.js';
+import { triggerEvent } from '../utils/pusher.js';
 
 export const AIController = {
   async getStats(req, res, next) {
@@ -170,8 +171,14 @@ export const AIController = {
       if (action === 'approve') {
         if (feedback.target_type === 'message' && feedback.target_id) {
           try {
+            const msgRows = await query(`SELECT conversation_id FROM message WHERE id = ?`, [feedback.target_id]);
             await query(`DELETE FROM messages WHERE id = ?`, [feedback.target_id]);
             console.log(`[AIFeedback] 删除消息: ${feedback.target_id}`);
+
+            if (msgRows && msgRows.length > 0) {
+              const conversationId = msgRows[0].conversation_id;
+              triggerEvent(`chat-${conversationId}`, 'message-deleted', { messageId: feedback.target_id });
+            }
           } catch (e) {
             console.error('[AIFeedback] 删除消息失败:', e);
           }
@@ -182,6 +189,7 @@ export const AIController = {
               [feedback.target_id, feedback.user_id]
             );
             console.log(`[AIFeedback] 删除会话${feedback.target_id}中用户${feedback.user_id}的消息: ${deleteResult.affectedRows}条`);
+            triggerEvent(`chat-${feedback.target_id}`, 'messages-deleted', { userId: feedback.user_id, count: deleteResult.affectedRows });
           } catch (e) {
             console.error('[AIFeedback] 删除会话消息失败:', e);
           }

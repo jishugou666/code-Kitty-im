@@ -41,12 +41,24 @@ export function Chat() {
   const conversation = conversations.find(c => c.id === conversationId);
 
   useWebSocket(conversationId || undefined, (newMessage) => {
-    setMessages(prev => {
-      if (prev.some(m => m.id === newMessage.id)) {
-        return prev;
-      }
-      return [...prev, newMessage];
-    });
+    if (newMessage.type === 'recalled') {
+      setMessages(prev => prev.map(m =>
+        m.id === newMessage.id
+          ? { ...m, type: 'recalled', content: '此消息已撤回' }
+          : m
+      ));
+    } else if (newMessage.type === 'message-deleted') {
+      setMessages(prev => prev.filter(m => m.id !== newMessage.messageId));
+    } else if (newMessage.type === 'messages-deleted') {
+      setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
+    } else {
+      setMessages(prev => {
+        if (prev.some(m => m.id === newMessage.id)) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
+    }
   });
 
   useEffect(() => {
