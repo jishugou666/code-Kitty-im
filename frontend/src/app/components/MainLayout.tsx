@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { MessageCircle, Users, Settings, Globe, Shield } from "lucide-react";
 import { clsx } from "clsx";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { ChatsSidebar } from "./ChatsSidebar";
 import { ContactsSidebar } from "./ContactsSidebar";
 import { useAuthStore } from '../../store/authStore';

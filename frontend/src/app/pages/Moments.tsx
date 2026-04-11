@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Image, Send, Heart, MessageCircle, MoreHorizontal, Trash2, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { momentsApi } from '../../api/moments';
 import { uploadApi } from '../../api/upload';

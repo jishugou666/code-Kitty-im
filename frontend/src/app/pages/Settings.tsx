@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, User, Lock, Globe, Moon, Bell, Shield, Info, LogOut, Camera } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { settingsApi } from '../../api/settings';
 import { uploadApi } from '../../api/upload';
