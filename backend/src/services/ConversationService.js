@@ -86,6 +86,8 @@ export const ConversationService = {
 
   async getConversationList(userId) {
     try {
+      console.log('[ConversationService] getConversationList called with userId:', userId);
+
       const techGodResult = await query("SELECT id FROM user WHERE nickname = '技术狗' LIMIT 1");
       const techGodId = techGodResult.length > 0 ? techGodResult[0].id : null;
 
@@ -113,6 +115,9 @@ export const ConversationService = {
          ORDER BY last_message_time DESC`,
         [userId, userId, userId]
       );
+
+      console.log('[ConversationService] Found conversations:', conversations.length);
+      console.log('[ConversationService] Conversation types:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name })));
 
       if (conversations.length === 0) {
         return [];
@@ -154,9 +159,13 @@ export const ConversationService = {
         const otherConversations = conversations.filter(c =>
           !(c.type === 'single' && c.members.some((m) => m.id === techGodId))
         );
+        console.log('[ConversationService] techGod conversations:', techGodConversations.length);
+        console.log('[ConversationService] other conversations:', otherConversations.length);
+        console.log('[ConversationService] Group conversations in others:', otherConversations.filter(c => c.type === 'group').map(c => ({ id: c.id, name: c.name, last_message_time: c.last_message_time })));
         return [...techGodConversations, ...otherConversations];
       }
 
+      console.log('[ConversationService] All conversations:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name, last_message_time: c.last_message_time })));
       return conversations;
     } catch (err) {
       console.error('获取会话列表失败:', err);

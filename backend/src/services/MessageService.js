@@ -53,6 +53,16 @@ export const MessageService = {
         return { code: 400, data: null, msg: '缺少必要参数' };
       }
 
+      const convCheck = await query(
+        'SELECT c.*, cm.user_id as member_user_id FROM conversation c JOIN conversation_member cm ON c.id = cm.conversation_id WHERE c.id = ? AND cm.user_id = ?',
+        [conversationId, senderId]
+      );
+      console.log('[sendMessage] Conversation member check:', convCheck.length > 0 ? 'OK' : 'NOT A MEMBER');
+
+      if (!convCheck || convCheck.length === 0) {
+        return { code: 403, data: null, msg: '您不在此会话中' };
+      }
+
       if (!content && type !== 'image') {
         console.log('消息内容为空');
         return { code: 400, data: null, msg: '消息内容不能为空' };
