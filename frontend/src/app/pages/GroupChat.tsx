@@ -1,6 +1,6 @@
  import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, MoreHorizontal, Plus, Paperclip, BarChart2, Smile, Mic, Phone, Video, Send, Users, X, ChevronRight, Image } from "lucide-react";
+import { ArrowLeft, Plus, Paperclip, Smile, Mic, Send, Users, X, ChevronRight, Image } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
 import { clsx } from "clsx";
@@ -286,17 +286,8 @@ export function GroupChat() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <Phone size={20} />
-          </button>
-          <button className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <Video size={20} />
-          </button>
           <button onClick={() => setShowMembers(!showMembers)} className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
             <Users size={20} />
-          </button>
-          <button className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
-            <MoreHorizontal size={20} />
           </button>
         </div>
       </div>

@@ -49,8 +49,8 @@ apiClient.interceptors.response.use(
           pendingRetryConfig = error.config || null;
           window.dispatchEvent(new CustomEvent('showRateLimit', {
             detail: {
-              retryAfter: 5,
-              reason: (data as { msg?: string })?.msg || '请求过于频繁，请稍后再试',
+              retryAfter: (data as { data?: { retryAfter?: number } })?.data?.retryAfter || 10,
+              reason: (data as { msg?: string })?.msg || '检测到异常请求，请稍后再试',
               onRetry: () => {
                 if (pendingRetryConfig && retryResolve) {
                   const resolver = retryResolve;

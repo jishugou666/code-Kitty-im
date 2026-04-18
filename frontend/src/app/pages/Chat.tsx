@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Info, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Users } from "lucide-react";
+import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
@@ -383,11 +383,7 @@ export function Chat() {
           >
             <Users size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
           </button>
-        ) : (
-          <button className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}>
-            <Info size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
-          </button>
-        )}
+        ) : null}
       </div>
 
       {/* Temp Conversation Warning Banner */}

@@ -144,14 +144,15 @@ export function rateLimitMiddleware(req, res, next) {
   res.setHeader('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
 
   if (!result.allowed) {
-    res.setHeader('Retry-After', String(result.retryAfter || 30));
-    res.setHeader('X-RateLimit-Retry-After', String(result.retryAfter || 30));
+    const retryAfterSeconds = Math.ceil((result.retryAfter || 30));
+    res.setHeader('Retry-After', String(retryAfterSeconds));
+    res.setHeader('X-RateLimit-Retry-After', String(retryAfterSeconds));
 
-    console.log(`[RateLimit] Blocking ${identifier} for ${result.retryAfter}s - ${result.reason}`);
+    console.log(`[RateLimit] Blocking ${identifier} for ${retryAfterSeconds}s - ${result.reason}`);
 
     res.status(429).json({
       code: 429,
-      data: null,
+      data: { retryAfter: retryAfterSeconds },
       msg: result.reason || 'Too many requests, please try again later'
     });
     return;

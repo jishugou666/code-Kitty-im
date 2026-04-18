@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, Edit, CheckCheck, MessageSquare, Users, MessageCircle } from "lucide-react";
+import { Search, CheckCheck, MessageSquare, Users, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
@@ -235,16 +235,11 @@ export function ChatsSidebar() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowCreateGroup(true)}
-              className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full"
-              title={t('chat.createGroup')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007AFF] hover:bg-[#006CE0] text-white rounded-full transition-all text-[13px] font-medium shadow-sm"
             >
-              <Users size={isMobile ? 16 : 18} strokeWidth={2} />
+              <Users size={14} strokeWidth={2.5} />
+              <span className="hidden sm:inline">{t('chat.createGroup')}</span>
             </button>
-            {!isMobile && (
-              <button className="text-black/40 hover:text-[#007AFF] dark:text-white/40 dark:hover:text-[#007AFF] transition-colors bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 p-2 rounded-full">
-                <Edit size={18} strokeWidth={2} />
-              </button>
-            )}
           </div>
         </div>
 
