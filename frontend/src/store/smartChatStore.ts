@@ -20,7 +20,7 @@ interface ChatState {
   clearError: () => void;
 }
 
-const FETCH_COOLDOWN = 5000;
+const FETCH_COOLDOWN = 3000;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],

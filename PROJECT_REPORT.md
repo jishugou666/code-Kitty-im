@@ -1,8 +1,8 @@
 # Code Kitty IM 项目报告
 
 **项目名称**: Code Kitty IM - 即时通讯应用
-**报告日期**: 2026-04-10
-**项目版本**: v2.0.0
+**报告日期**: 2026-04-18
+**项目版本**: v2.0.1
 **项目状态**: 功能已恢复，进入稳定维护阶段
 
 ---
@@ -44,6 +44,7 @@ Code Kitty IM 是一款功能完整的全栈即时通讯应用，采用 React + 
 | 账户封禁 | ✅ | 支持临时/永久封禁 |
 | IP记录 | ✅ | 登录IP追踪 |
 | 注销用户显示 | ✅ | 显示"账户已注销" |
+| 密码强度校验 | ✅ | 至少6位字符 |
 
 ### 2.2 即时通讯 ✅ 完成
 
@@ -77,6 +78,7 @@ Code Kitty IM 是一款功能完整的全栈即时通讯应用，采用 React + 
 | 群管理员 | ✅ | 设置/取消管理员 |
 | 加群审批 | ✅ | 申请审核 |
 | 群信息展示 | ✅ | 成员列表展示 |
+| 禁言功能 | ✅ | 群主/管理员可禁言成员 |
 
 ### 2.5 朋友圈 ✅ 完成
 
@@ -97,6 +99,7 @@ Code Kitty IM 是一款功能完整的全栈即时通讯应用，采用 React + 
 | 朋友圈管理 | ✅ | 动态管理 |
 | 数据表查看 | ✅ | 表结构查看 |
 | SQL执行 | ✅ | 查询执行 |
+| AI智能调度 | ✅ | 服务状态监控 |
 
 ### 2.7 系统设置 ✅ 完成
 
@@ -114,6 +117,7 @@ Code Kitty IM 是一款功能完整的全栈即时通讯应用，采用 React + 
 | AI反垃圾 | ⚠️ | 已实现，待完善数据库表 |
 | IP封禁 | ⚠️ | 已实现，待完善数据库表 |
 | AI智能调度 | ✅ | 已实现，前端缓存策略 |
+| 限流保护 | ✅ | 已实现，IP级别限流 |
 
 ---
 
@@ -125,31 +129,70 @@ Code Kitty IM 是一款功能完整的全栈即时通讯应用，采用 React + 
 frontend/
 ├── src/
 │   ├── api/              # API封装层（Axios + 拦截器）
+│   │   ├── client.ts           # Axios实例配置
+│   │   ├── user.ts             # 用户API
+│   │   ├── conversation.ts     # 会话API
+│   │   ├── message.ts          # 消息API
+│   │   ├── contact.ts          # 联系人API
+│   │   ├── group.ts            # 群组API
+│   │   ├── moments.ts          # 朋友圈API
+│   │   ├── settings.ts         # 设置API
+│   │   ├── admin.ts            # 管理API
+│   │   └── upload.ts          # 上传API
 │   ├── app/
 │   │   ├── components/   # 业务组件
-│   │   │   ├── ui/       # shadcn/ui基础组件
+│   │   │   ├── ui/       # shadcn/ui基础组件 (40+)
 │   │   │   ├── ChatsSidebar.tsx      # 聊天列表
 │   │   │   ├── ContactsSidebar.tsx   # 联系人列表
-│   │   │   ├── GroupInfoSidebar.tsx   # 群信息侧边栏
-│   │   │   └── ...
+│   │   │   ├── GroupInfoSidebar.tsx  # 群信息侧边栏
+│   │   │   ├── CreateGroupModal.tsx  # 创建群组弹窗
+│   │   │   ├── GroupSearchModal.tsx  # 搜索群组弹窗
+│   │   │   ├── SearchModal.tsx       # 搜索弹窗
+│   │   │   ├── MainLayout.tsx        # 主布局
+│   │   │   ├── MobileNav.tsx         # 移动端导航
+│   │   │   ├── BanOverlay.tsx        # 封禁提示
+│   │   │   ├── RateLimitOverlay.tsx  # 限流提示
+│   │   │   └── ImageWithFallback.tsx # 图片加载失败占位
 │   │   └── pages/        # 页面组件
 │   │       ├── Chat.tsx              # 聊天页面
 │   │       ├── GroupChat.tsx         # 群聊页面
 │   │       ├── Login.tsx             # 登录页面
+│   │       ├── Profile.tsx           # 个人资料
 │   │       ├── Moments.tsx          # 朋友圈
-│   │       ├── Admin.tsx             # 管理后台
-│   │       └── ...
+│   │       ├── Settings.tsx         # 设置页面
+│   │       ├── Admin.tsx            # 管理后台
+│   │       └── EmptyState.tsx       # 空状态
 │   ├── hooks/            # 自定义Hooks
 │   │   ├── useWebSocket.ts           # Pusher实时通信
 │   │   ├── useSmartData.ts           # AI智能数据
-│   │   └── ...
+│   │   ├── useRateLimit.ts          # 限流Hook
+│   │   ├── useGlobalRateLimit.tsx   # 全局限流上下文
+│   │   ├── useToast.tsx             # Toast通知
+│   │   └── useConfirmDialog.tsx     # 确认对话框
 │   ├── store/            # Zustand状态管理
 │   │   ├── authStore.ts              # 认证状态
 │   │   ├── chatStore.ts              # 聊天状态
-│   │   └── contactStore.ts           # 联系人状态
+│   │   ├── contactStore.ts           # 联系人状态
+│   │   └── smartChatStore.ts        # 智能聊天存储
+│   ├── lib/              # 库文件
+│   │   ├── aiScheduler.ts            # AI智能调度
+│   │   ├── smartScheduler.ts        # 智能调度器
+│   │   └── smartApiClient.ts        # 增强版API客户端
 │   ├── i18n/             # 国际化
-│   └── lib/
-│       └── aiScheduler.ts            # AI智能调度
+│   │   ├── index.ts                # i18n配置
+│   │   └── locales/
+│   │       ├── zh-CN.json          # 中文翻译
+│   │       └── en-US.json          # 英文翻译
+│   ├── types/            # TypeScript类型
+│   │   └── index.ts
+│   ├── utils/           # 工具函数
+│   │   └── rateLimitCallback.ts
+│   ├── styles/          # 样式文件
+│   │   ├── index.css
+│   │   ├── tailwind.css
+│   │   ├── theme.css
+│   │   └── fonts.css
+│   └── main.tsx         # 前端入口
 ```
 
 ### 3.2 后端架构
@@ -158,34 +201,61 @@ frontend/
 backend/
 ├── src/
 │   ├── config/           # 配置（数据库、JWT等）
+│   │   └── index.js
 │   ├── controllers/     # 控制器层
-│   │   ├── UserController.js
-│   │   ├── MessageController.js
-│   │   ├── ConversationController.js
-│   │   ├── GroupController.js
-│   │   ├── MomentsController.js
-│   │   ├── AdminController.js
-│   │   └── ...
+│   │   ├── UserController.js          # 用户管理
+│   │   ├── MessageController.js       # 消息管理
+│   │   ├── ConversationController.js  # 会话管理
+│   │   ├── ContactController.js       # 联系人管理
+│   │   ├── GroupController.js         # 群组管理
+│   │   ├── MomentsController.js       # 朋友圈管理
+│   │   ├── SettingsController.js      # 设置管理
+│   │   ├── AdminController.js         # 管理员功能
+│   │   ├── TempConversationController.js # 临时会话
+│   │   └── AIController.js            # AI服务
 │   ├── services/        # 业务逻辑层
-│   │   ├── UserService.js
-│   │   ├── MessageService.js
-│   │   ├── ConversationService.js
-│   │   ├── GroupService.js
-│   │   ├── MomentsService.js
-│   │   ├── AdminService.js
-│   │   ├── antiSpamService.js    # AI反垃圾
-│   │   ├── IPBanService.js        # IP封禁
-│   │   └── AIService.js          # AI服务
+│   │   ├── UserService.js             # 用户服务
+│   │   ├── MessageService.js          # 消息服务
+│   │   ├── ConversationService.js     # 会话服务
+│   │   ├── ContactService.js          # 联系人服务
+│   │   ├── GroupService.js            # 群组服务
+│   │   ├── MomentsService.js          # 朋友圈服务
+│   │   ├── SettingsService.js         # 设置服务
+│   │   ├── AdminService.js            # 管理员服务
+│   │   ├── TempConversationService.js # 临时会话服务
+│   │   ├── AIService.js               # AI服务
+│   │   ├── AIServiceManager.js        # AI服务管理器
+│   │   ├── antiSpamService.js         # AI反垃圾服务
+│   │   └── IPBanService.js            # IP封禁服务
 │   ├── middleware/      # 中间件
 │   │   ├── auth.js                 # JWT认证
-│   │   └── errorHandler.js         # 错误处理
+│   │   ├── errorHandler.js         # 错误处理
+│   │   └── rateLimiter.js          # 限流中间件
 │   ├── routes/          # 路由定义
+│   │   ├── user.js
+│   │   ├── message.js
+│   │   ├── conversation.js
+│   │   ├── contact.js
+│   │   ├── group.js
+│   │   ├── moments.js
+│   │   ├── settings.js
+│   │   ├── admin.js
+│   │   ├── tempConversation.js
+│   │   ├── ai.js
+│   │   ├── upload.js
+│   │   └── hidden.js
 │   ├── models/         # 数据模型
+│   │   ├── UserModel.js
+│   │   ├── ConversationModel.js
+│   │   ├── MessageModel.js
+│   │   └── ContactModel.js
 │   ├── utils/          # 工具函数
 │   │   ├── db.js                  # 数据库连接
-│   │   ├── crypto.js              # 加密工具
-│   │   ├── pusher.js              # Pusher广播
-│   │   └── response.js            # 响应封装
+│   │   ├── crypto.js               # 加密工具
+│   │   ├── pusher.js               # Pusher广播
+│   │   ├── response.js             # 响应封装
+│   │   ├── websocket.js            # WebSocket处理
+│   │   └── imgbb.js                # 图片上传
 │   └── app.js          # 主入口
 ```
 
@@ -209,187 +279,14 @@ backend/
 - `ip_ban` - IP封禁表
 - `temp_conversation` - 临时会话表
 
-### 3.4 数据库表结构详情
-
-#### user 用户表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| username | VARCHAR(50) | YES | | 用户名 |
-| password | VARCHAR(255) | NO | | 密码哈希 |
-| nickname | VARCHAR(100) | NO | | 昵称 |
-| avatar | VARCHAR(500) | YES | | 头像URL |
-| email | VARCHAR(100) | NO | | 邮箱 |
-| phone | VARCHAR(20) | YES | | 电话 |
-| role | ENUM | YES | user | 角色 |
-| status | TINYINT | YES | 1 | 1在线 0离线 |
-| ban_status | ENUM | YES | active | 账户状态 |
-| banned_at | TIMESTAMP | YES | | 封禁时间 |
-| ban_expires_at | TIMESTAMP | YES | | 封禁到期时间 |
-| ban_reason | VARCHAR(500) | YES | | 封禁原因 |
-| banned_by | INT | YES | | 封禁者ID |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-#### conversation 会话表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| type | ENUM | YES | single | 类型 |
-| name | VARCHAR(100) | YES | | 群聊名称 |
-| avatar | VARCHAR(500) | YES | | 群头像 |
-| created_by | INT | YES | | 创建者ID |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-#### conversation_member 会话成员表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 用户ID |
-| role | ENUM | YES | member | 角色 |
-| joined_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 加入时间 |
-
-#### message 消息表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| sender_id | INT | NO | | 发送者ID |
-| type | ENUM | YES | text | 类型 |
-| content | TEXT | YES | | 消息内容 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-
-#### message_read 消息已读表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 用户ID |
-| seen_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 已读时间 |
-
-#### contact 联系人表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 用户ID |
-| contact_user_id | INT | NO | | 联系人ID |
-| status | ENUM | YES | pending | 状态 |
-| is_friend | TINYINT | YES | 0 | 是否为好友 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 添加时间 |
-| friend_time | TIMESTAMP | YES | | 成为好友时间 |
-
-#### group 群组表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| name | VARCHAR(100) | NO | | 群组名称 |
-| description | TEXT | YES | | 群组介绍 |
-| avatar | VARCHAR(500) | YES | | 群头像 |
-| owner_id | INT | NO | | 群主ID |
-| need_approval | TINYINT | YES | 0 | 是否需要审批 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-#### group_member 群组成员表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| group_id | INT | NO | | 群组ID |
-| user_id | INT | NO | | 用户ID |
-| role | ENUM | YES | member | 角色 |
-| joined_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 加入时间 |
-| muted_until | TIMESTAMP | YES | | 禁言截止时间 |
-
-#### group_join_request 加群申请表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| group_id | INT | NO | | 群组ID |
-| user_id | INT | NO | | 用户ID |
-| status | ENUM | YES | pending | 状态 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 申请时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-#### moments 朋友圈表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 发布者ID |
-| content | TEXT | YES | | 动态内容 |
-| images | JSON | YES | | 图片URL数组 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-
-#### moments_comment 朋友圈评论表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| moment_id | INT | NO | | 动态ID |
-| user_id | INT | NO | | 评论用户ID |
-| content | TEXT | NO | | 评论内容 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 评论时间 |
-
-#### moments_like 朋友圈点赞表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| moment_id | INT | NO | | 动态ID |
-| user_id | INT | NO | | 点赞用户ID |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 点赞时间 |
-
-#### user_settings 用户设置表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 用户ID |
-| language | VARCHAR(10) | YES | zh-CN | 语言设置 |
-| theme | VARCHAR(20) | YES | light | 主题设置 |
-| notification_enabled | TINYINT | YES | 1 | 通知开启 |
-| sound_enabled | TINYINT | YES | 1 | 声音开启 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-#### user_ip_log 用户IP记录表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 用户ID |
-| ip_address | VARCHAR(45) | NO | | IP地址 |
-| user_agent | VARCHAR(500) | YES | | 浏览器UA |
-| login_time | TIMESTAMP | YES | CURRENT_TIMESTAMP | 记录时间 |
-
-#### ip_ban IP封禁表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| ip_address | VARCHAR(45) | NO | | IP地址 |
-| ban_type | ENUM | YES | exact | 封禁类型 |
-| ban_reason | VARCHAR(500) | YES | | 封禁原因 |
-| ban_by | INT | YES | | 封禁者ID |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| expires_at | TIMESTAMP | YES | | 到期时间 |
-| is_active | TINYINT | YES | 1 | 是否生效 |
-
-#### temp_conversation 临时会话表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 发起方用户ID |
-| target_user_id | INT | NO | | 目标用户ID |
-| is_blocked | TINYINT | YES | 0 | 是否被封禁 |
-| warning_count | INT | YES | 0 | 警告次数 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| expires_at | TIMESTAMP | YES | | 过期时间 |
-
 ---
 
 ## 四、Bug修复记录
 
 ### 4.1 已修复Bug
 
-| Bug | 问题描述 | 修复日期 |
-|-----|---------|---------|
+| Bug ID | 问题描述 | 修复日期 |
+|--------|---------|---------|
 | B001 | 注册逻辑缺少唯一性检查 | 2026-04-05 |
 | B002 | 加好友返回409错误 | 2026-04-05 |
 | B003 | Admin接口返回403 | 2026-04-05 |
@@ -411,6 +308,10 @@ backend/
 | B019 | IP记录功能 | 2026-04-09 |
 | B020 | 消息发送失败 | 2026-04-09 |
 | B021 | ban_status状态判断错误 | 2026-04-09 |
+| B022 | CORS配置不完整导致消息无法加载 | 2026-04-10 |
+| B023 | storeFetchMessages未定义 | 2026-04-10 |
+| B024 | GroupService使用错误字段名read_at | 2026-04-10 |
+| B025 | Admin页面AI调度硬编码中文 | 2026-04-10 |
 
 ### 4.2 待完善功能
 
@@ -431,9 +332,9 @@ backend/
 |------|------|
 | 前端页面组件 | 8 |
 | 前端业务组件 | 15+ |
-| 前端UI组件 | 30+ |
+| 前端UI组件 | 40+ |
 | 后端控制器 | 10 |
-| 后端服务 | 12 |
+| 后端服务 | 14 |
 | 数据库迁移脚本 | 8 |
 
 ### 5.2 核心文件
@@ -463,7 +364,8 @@ backend/
 - ✅ 输入验证
 - ✅ 账户封禁系统
 - ✅ IP记录与追踪
-- ✅ 统一错误响应格式
+- ✅ 限流保护（IP级别）
+- ✅ 密码强度校验
 
 ### 6.2 安全配置
 
@@ -481,6 +383,14 @@ bcrypt.hash(password, 10)
 {
   origin: process.env.CORS_ORIGIN,
   credentials: true
+}
+
+// 限流配置
+{
+  windowMs: 60000,
+  maxRequests: 100,
+  maxConcurrent: 30,
+  blockDurationMs: 30000
 }
 ```
 
@@ -559,11 +469,11 @@ bcrypt.hash(password, 10)
 | 联系人管理 | 95% |
 | 群聊功能 | 95% |
 | 朋友圈 | 90% |
-| Admin后台 | 90% |
+| Admin后台 | 95% |
 | 系统设置 | 90% |
-| AI与安全 | 70% |
+| AI与安全 | 80% |
 
-**整体完成度**: ~92%
+**整体完成度**: ~93%
 
 ### 10.2 稳定性评估
 
@@ -579,6 +489,6 @@ bcrypt.hash(password, 10)
 
 ---
 
-**报告生成时间**: 2026-04-10
-**报告版本**: v1.0
+**报告生成时间**: 2026-04-18
+**报告版本**: v2.0.1
 **维护者**: Code Kitty IM Team

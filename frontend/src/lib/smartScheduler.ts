@@ -30,12 +30,12 @@ interface SchedulerConfig {
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
-  maxConcurrent: 3,
-  maxQueueSize: 50,
-  baseDelay: 1000,
-  maxDelay: 30000,
-  circuitBreakerThreshold: 5,
-  circuitBreakerResetTime: 60000
+  maxConcurrent: 10,
+  maxQueueSize: 200,
+  baseDelay: 500,
+  maxDelay: 15000,
+  circuitBreakerThreshold: 20,
+  circuitBreakerResetTime: 30000
 };
 
 class CircuitBreaker {
@@ -334,7 +334,7 @@ export class SmartScheduler {
 
   private getRateLimiter(endpoint: string): AdaptiveRateLimiter {
     if (!this.rateLimiters.has(endpoint)) {
-      this.rateLimiters.set(endpoint, new AdaptiveRateLimiter(10, 5));
+      this.rateLimiters.set(endpoint, new AdaptiveRateLimiter(50, 20));
     }
     return this.rateLimiters.get(endpoint)!;
   }
@@ -348,12 +348,12 @@ export class SmartScheduler {
 }
 
 export const smartScheduler = new SmartScheduler({
-  maxConcurrent: 3,
-  maxQueueSize: 50,
-  baseDelay: 1000,
-  maxDelay: 30000,
-  circuitBreakerThreshold: 5,
-  circuitBreakerResetTime: 60000
+  maxConcurrent: 10,
+  maxQueueSize: 200,
+  baseDelay: 500,
+  maxDelay: 15000,
+  circuitBreakerThreshold: 20,
+  circuitBreakerResetTime: 30000
 });
 
 export function getSchedulerStats() {

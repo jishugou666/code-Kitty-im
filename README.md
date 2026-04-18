@@ -1,6 +1,6 @@
 # Code Kitty IM - 即时通讯应用
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 
@@ -20,6 +20,7 @@
 - ✅ 账户封禁系统（临时/永久封禁）
 - ✅ 用户IP记录与追踪
 - ✅ 已注销用户显示"账户已注销"
+- ✅ 密码强度校验（至少6位字符）
 
 ### 即时通讯
 - ✅ 单聊和群聊
@@ -43,6 +44,7 @@
 - ✅ 群聊信息展示
 - ✅ 群管理员设置
 - ✅ 加群申请审批
+- ✅ 禁言功能（群主/管理员可禁言成员）
 
 ### 朋友圈功能
 - ✅ 发布朋友圈动态
@@ -57,12 +59,19 @@
 - ✅ 朋友圈管理
 - ✅ 数据表查看
 - ✅ SQL查询执行
+- ✅ AI智能调度状态监控
 
 ### 系统设置
 - ✅ 中英文切换（i18n）
 - ✅ 主题切换（浅色/深色）
 - ✅ 隐私设置
 - ✅ 通知设置
+
+### AI与安全
+- ✅ AI智能调度（前端缓存策略）
+- ✅ 后端限流保护（IP级别）
+- ✅ AI反垃圾服务（已实现，待完善数据库表）
+- ✅ IP封禁服务（已实现，待完善数据库表）
 
 ## 技术栈
 
@@ -107,6 +116,7 @@ CDK IM/
 │   │   ├── config/          # 配置文件
 │   │   ├── controllers/     # 控制器
 │   │   │   ├── AdminController.js
+│   │   │   ├── AIController.js
 │   │   │   ├── ContactController.js
 │   │   │   ├── ConversationController.js
 │   │   │   ├── GroupController.js
@@ -117,11 +127,13 @@ CDK IM/
 │   │   │   └── UserController.js
 │   │   ├── middleware/       # 中间件
 │   │   │   ├── auth.js       # JWT认证
-│   │   │   └── errorHandler.js
+│   │   │   ├── errorHandler.js
+│   │   │   └── rateLimiter.js # 限流中间件
 │   │   ├── models/          # 数据模型
 │   │   ├── routes/          # 路由
 │   │   ├── services/        # 业务服务
-│   │   │   ├── AIService.js           # AI智能调度
+│   │   │   ├── AIService.js           # AI服务
+│   │   │   ├── AIServiceManager.js    # AI服务管理器
 │   │   │   ├── AdminService.js        # 管理员服务
 │   │   │   ├── antiSpamService.js     # 反垃圾服务
 │   │   │   ├── ContactService.js
@@ -150,7 +162,7 @@ CDK IM/
 │   │   ├── api/            # API封装
 │   │   ├── app/            # 应用页面和组件
 │   │   │   ├── components/ # 组件
-│   │   │   │   ├── ui/     # UI基础组件
+│   │   │   │   ├── ui/     # UI基础组件 (40+)
 │   │   │   │   ├── BanOverlay.tsx      # 封禁提示组件
 │   │   │   │   ├── ChatsSidebar.tsx    # 聊天列表侧边栏
 │   │   │   │   ├── ContactsSidebar.tsx  # 联系人侧边栏
@@ -159,6 +171,7 @@ CDK IM/
 │   │   │   │   ├── GroupSearchModal.tsx # 群搜索弹窗
 │   │   │   │   ├── MainLayout.tsx       # 主布局
 │   │   │   │   ├── MobileNav.tsx        # 移动端导航
+│   │   │   │   ├── RateLimitOverlay.tsx  # 限流提示
 │   │   │   │   └── SearchModal.tsx      # 搜索弹窗
 │   │   │   └── pages/      # 页面
 │   │   │       ├── Admin.tsx            # 管理后台
@@ -172,8 +185,14 @@ CDK IM/
 │   │   ├── hooks/          # 自定义Hooks
 │   │   ├── i18n/           # 国际化
 │   │   ├── lib/            # 库文件
-│   │   │   └── aiScheduler.ts  # AI智能调度
+│   │   │   ├── aiScheduler.ts  # AI智能调度
+│   │   │   ├── smartScheduler.ts # 智能调度器
+│   │   │   └── smartApiClient.ts # 增强版API客户端
 │   │   ├── store/          # 状态管理
+│   │   │   ├── authStore.ts
+│   │   │   ├── chatStore.ts
+│   │   │   ├── contactStore.ts
+│   │   │   └── smartChatStore.ts
 │   │   ├── styles/         # 样式文件
 │   │   └── types/          # 类型定义
 │   └── package.json
@@ -449,6 +468,8 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | POST | /api/group/:groupId/leave | 退出群组 | 是 |
 | PUT | /api/group/:groupId/admin/:userId | 设置管理员 | 是 |
 | DELETE | /api/group/:groupId/members/:userId | 移除成员 | 是 |
+| GET | /api/group/:groupId/requests | 获取加群申请 | 是 |
+| PUT | /api/group/:groupId/requests/:requestId | 处理加群申请 | 是 |
 
 ### 设置接口
 
@@ -473,6 +494,7 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | GET | /api/admin/tables | 数据表列表 | 是 |
 | GET | /api/admin/tables/:tableName | 表数据 | 是 |
 | POST | /api/admin/query | 执行SQL | 是 |
+| GET | /api/admin/ai-stats | AI服务统计 | 是 |
 
 ## 数据库表结构
 
@@ -507,15 +529,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
 
-### conversation_member 会话成员表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 用户ID |
-| role | ENUM('owner','admin','member') | YES | member | 角色 |
-| joined_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 加入时间 |
-
 ### message 消息表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
 |------|------|------|--------|------|
@@ -525,25 +538,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | type | ENUM('text','image','file','system') | YES | text | 类型 |
 | content | TEXT | YES | | 消息内容 |
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-
-### message_read 消息已读表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 用户ID |
-| seen_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 已读时间 |
-
-### contact 联系人表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 用户ID |
-| contact_user_id | INT | NO | | 联系人ID |
-| status | ENUM('pending','accepted','blocked') | YES | pending | 状态 |
-| is_friend | TINYINT | YES | 0 | 是否为好友 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 添加时间 |
-| friend_time | TIMESTAMP | YES | | 成为好友时间 |
 
 ### group 群组表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
@@ -557,26 +551,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
 
-### group_member 群组成员表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| group_id | INT | NO | | 群组ID |
-| user_id | INT | NO | | 用户ID |
-| role | ENUM('owner','admin','member') | YES | member | 角色 |
-| joined_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 加入时间 |
-| muted_until | TIMESTAMP | YES | | 禁言截止时间 |
-
-### group_join_request 加群申请表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| group_id | INT | NO | | 群组ID |
-| user_id | INT | NO | | 用户ID |
-| status | ENUM('pending','approved','rejected') | YES | pending | 状态 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 申请时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
 ### moments 朋友圈表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
 |------|------|------|--------|------|
@@ -585,23 +559,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | content | TEXT | YES | | 动态内容 |
 | images | JSON | YES | | 图片URL数组 |
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-
-### moments_comment 朋友圈评论表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| moment_id | INT | NO | | 动态ID |
-| user_id | INT | NO | | 评论用户ID |
-| content | TEXT | NO | | 评论内容 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 评论时间 |
-
-### moments_like 朋友圈点赞表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| moment_id | INT | NO | | 动态ID |
-| user_id | INT | NO | | 点赞用户ID |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 点赞时间 |
 
 ### user_settings 用户设置表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
@@ -613,15 +570,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | notification_enabled | TINYINT | YES | 1 | 通知开启 |
 | sound_enabled | TINYINT | YES | 1 | 声音开启 |
 | updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
-
-### user_ip_log 用户IP记录表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| user_id | INT | NO | | 用户ID |
-| ip_address | VARCHAR(45) | NO | | IP地址 |
-| user_agent | VARCHAR(500) | YES | | 浏览器UA |
-| login_time | TIMESTAMP | YES | CURRENT_TIMESTAMP | 记录时间 |
 
 ### ip_ban IP封禁表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
@@ -635,18 +583,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | expires_at | TIMESTAMP | YES | | 到期时间 |
 | is_active | TINYINT | YES | 1 | 是否生效 |
 
-### temp_conversation 临时会话表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| conversation_id | INT | NO | | 会话ID |
-| user_id | INT | NO | | 发起方用户ID |
-| target_user_id | INT | NO | | 目标用户ID |
-| is_blocked | TINYINT | YES | 0 | 是否被封禁 |
-| warning_count | INT | YES | 0 | 警告次数 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| expires_at | TIMESTAMP | YES | | 过期时间 |
-
 ## 安全特性
 
 - ✅ 密码 bcrypt 加密存储
@@ -658,6 +594,7 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 - ✅ 账户封禁系统
 - ✅ IP记录与追踪
 - ✅ AI反垃圾检测服务
+- ✅ 后端限流保护（IP级别）
 
 ## 开发说明
 
@@ -748,6 +685,19 @@ node clean-db.js   # 清空数据库
 6. **MySQL2 分页必须用 `LIMIT ${num} OFFSET ${num}` 拼接，禁止占位符 `?`**
 7. **前端调用 API 后，响应拦截器已返回 `{ code, data, msg }`，直接用 `response.code` 判断**
 
+## 项目文档
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| README | README.md | 项目主文档 |
+| 项目报告 | PROJECT_REPORT.md | 项目详细报告 |
+| 记忆文档 | IM_Chat_AI_Memory.md | AI编程记忆 |
+| 修改报告 | MODIFICATION_REPORT_v2.md | v2更新记录 |
+| 开发计划 | DEVELOPMENT_PLAN.md | 下一步开发计划 |
+| 安全报告 | security/test-report.md | 安全测试 |
+| 修复记录 | security/fix-records.md | 漏洞修复 |
+| 开发指南 | guidelines/Guidelines.md | 开发规范 |
+
 ## 贡献指南
 
 1. Fork 本仓库
@@ -765,3 +715,8 @@ MIT License - 详见 [ATTRIBUTIONS.md](ATTRIBUTIONS.md)
 - 基于 Figma [IM Chat App UI Design](https://www.figma.com/design/TqtOpBvGH9HfmpAsgBlkGj/IM-Chat-App-UI-Design) 构建
 - UI 组件来自 [shadcn/ui](https://ui.shadcn.com/)
 - 图标来自 [MUI Icons](https://mui.com/material-ui/material-icons/)
+
+---
+
+**版本**: v2.0.1
+**更新日期**: 2026-04-18

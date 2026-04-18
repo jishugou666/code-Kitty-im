@@ -53,7 +53,7 @@ class AdvancedRateLimiter {
   isAllowed(identifier) {
     const now = Date.now();
 
-    if (this.globalRequestCount > this.config.maxConcurrent * 2) {
+    if (this.globalRequestCount > this.config.maxConcurrent * 3) {
       return {
         allowed: false,
         retryAfter: Math.ceil((this.config.windowMs - (now - this.lastGlobalReset)) / 1000),
@@ -126,9 +126,9 @@ class AdvancedRateLimiter {
 
 const rateLimiter = new AdvancedRateLimiter({
   windowMs: 60000,
-  maxRequests: 100,
-  maxConcurrent: 30,
-  blockDurationMs: 30000
+  maxRequests: 500,
+  maxConcurrent: 200,
+  blockDurationMs: 10000
 });
 
 export function rateLimitMiddleware(req, res, next) {
@@ -166,7 +166,7 @@ export function globalRateLimitMiddleware(req, res, next) {
   res.setHeader('X-Global-Load', String(stats.globalLoad));
   res.setHeader('X-Active-Requests', String(stats.activeRequests));
 
-  if (stats.globalLoad > 100) {
+  if (stats.globalLoad > 500) {
     console.warn(`[GlobalRateLimit] High load detected: ${stats.globalLoad}`);
 
     if (req.method === 'GET' && !req.path.includes('/message/list')) {

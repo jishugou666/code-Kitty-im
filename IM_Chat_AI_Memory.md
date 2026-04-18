@@ -13,7 +13,7 @@
 | 前端框架 | React + Vite | 18.3.1 / 6.3.5 |
 | 前端UI | TailwindCSS + radix-ui + MUI | 4.1.12 / 7.3.5 |
 | 后端框架 | Node.js + Express | Express 4.21.0 |
-| 数据库 | MySQL | 8.0+ |
+| 数据库 | MySQL | 8.0+ (TiDB Cloud) |
 | 实时通讯 | Pusher Channels | 第三方WebSocket服务 |
 | 认证 | JWT | 9.0.2 |
 | 状态管理 | Zustand | 5.0.0 |
@@ -25,6 +25,9 @@
 3. 会话管理（单聊/群聊）
 4. 联系人管理
 5. 用户资料管理
+6. 朋友圈功能
+7. Admin后台管理
+8. AI智能调度
 
 ### 部署环境（重要 - 永久遵守）
 | 服务 | 平台 | 说明 |
@@ -47,7 +50,7 @@
 | 服务 | 地址 |
 |------|------|
 | 后端 API | https://code-kitty-im-backend.onrender.com |
-| 前端 | https://code-kitty-im-frontend.vercel.app (推测) |
+| 前端 | https://code-kitty-im-frontend.vercel.app |
 
 ### 代码编写铁律（永久遵守）
 1. **所有接口必须加 try-catch，绝不返回 500**
@@ -88,7 +91,6 @@
 - **代码改动关键点**:
   - 创建目录: frontend/src, backend/src, database/, scripts/, security/
   - 迁移文件: package.json, vite.config.ts, index.html, src/ → frontend/src/
-- **问题与修复**: 无
 
 ### 任务2: 后端 Node.js + Express 项目创建
 - **执行时间**: 2026-04-04
@@ -110,13 +112,6 @@
   - 创建 backend/src/controllers/*.js - 控制器
   - 创建 backend/src/routes/*.js - 路由定义
   - 创建 backend/src/app.js - 主入口
-- **接口/数据库变更**:
-  - 新增用户注册/登录/资料接口
-  - 新增会话CRUD接口
-  - 新增消息收发接口
-  - 新增联系人管理接口
-- **测试结果**: ✅ 基础功能已实现
-- **新发现问题**: 需安装 npm 依赖
 
 ### 任务3: 数据库初始化脚本创建
 - **执行时间**: 2026-04-04
@@ -365,6 +360,38 @@
   - 默认头像渐变: `bg-gradient-to-br from-[#007AFF] to-[#5856D6]`
 - **执行结果**: ✅ 完成
 
+### 任务17: AI智能调度系统开发
+- **执行时间**: 2026-04-10
+- **任务内容**:
+  - 实现前端智能调度系统（smartScheduler, smartApiClient, smartChatStore）
+  - 实现后端限流中间件（rateLimiter.js）
+  - 实现 AI 服务管理与统计分析
+- **新增文件**:
+  - `frontend/src/lib/smartScheduler.ts` - 前端智能调度器
+  - `frontend/src/lib/smartApiClient.ts` - 增强版API客户端
+  - `frontend/src/store/smartChatStore.ts` - 智能聊天存储
+  - `backend/src/middleware/rateLimiter.js` - 后端限流中间件
+  - `backend/src/services/AIServiceManager.js` - AI服务管理器
+- **修改文件**:
+  - `backend/src/app.js` - 集成限流中间件
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 移除循环检查
+  - `frontend/src/app/pages/Chat.tsx` - 优化消息加载
+  - `frontend/src/app/pages/Admin.tsx` - AI调度状态监控
+- **执行结果**: ✅ 完成
+
+### 任务18: i18n国际化规范完善
+- **执行时间**: 2026-04-10
+- **任务内容**:
+  - 添加Admin页面AI调度部分的i18n支持
+  - 创建i18n开发规范文档
+- **代码改动关键点**:
+  - `frontend/src/i18n/locales/zh-CN.json` - 添加AI服务相关翻译
+  - `frontend/src/i18n/locales/en-US.json` - 添加AI服务相关翻译
+  - `backend/src/services/AIServiceManager.js` - 返回翻译key
+  - `frontend/src/app/pages/Admin.tsx` - 使用t()获取翻译
+  - `guidelines/Guidelines.md` - 新增i18n规范章节
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
@@ -391,65 +418,145 @@
 - **建议改进**: 前端应检查好友关系后再显示添加按钮，避免用户重复点击
 - **状态**: ✅ 已向用户解释说明
 
+### 问题: CORS配置不完整导致消息无法加载
+- **发现时间**: 2026-04-10
+- **问题描述**: 用户无法加载消息，浏览器报CORS错误
+- **症状**:
+  - `Request header field cache-control is not allowed by Access-Control-Allow-Headers in preflight response`
+  - `Failed to fetch` 错误
+- **根本原因**:
+  1. **修改CORS配置时遗漏了必要的请求头** - 在修改 `allowedHeaders` 时只包含了部分头信息，遗漏了 `Cache-Control`, `Pragma`, `Expires`
+  2. **未充分测试跨域请求** - 每次修改CORS配置后没有在生产环境验证
+  3. **缓存问题** - 旧的CORS配置被浏览器缓存，导致修改后仍然失败
+- **教训**:
+  1. CORS配置是**白名单**机制，任何自定义请求头都必须显式声明
+  2. 修改CORS后需要清除浏览器缓存或使用隐身模式测试
+  3. 应该在 `allowedHeaders` 中包含所有可能用到的请求头
+- **修复方案**:
+  ```javascript
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',  // 缓存控制
+    'Pragma',         // 兼容HTTP/1.0
+    'Expires'         // 过期时间
+  ]
+  ```
+- **涉及文件**:
+  - `backend/src/app.js` - CORS配置
+- **状态**: ✅ 已解决
+
+### 问题: storeFetchMessages未定义导致错误
+- **发现时间**: 2026-04-10
+- **问题描述**: Chat.tsx中调用了storeFetchMessages但该函数从未定义
+- **症状**: JavaScript运行时错误，消息加载逻辑异常
+- **根本原因**:
+  1. **代码传播错误** - 可能是在复制粘贴代码时遗留的错误调用
+  2. **审查不充分** - 没有在修改前检查函数是否存在
+- **教训**:
+  1. 每次添加函数调用前必须确认函数已定义
+  2. 使用IDE的语法检查和lint工具可以提前发现此类问题
+  3. 代码修改后应该进行基本的功能验证
+- **修复方案**: 移除未定义的函数调用
+- **涉及文件**:
+  - `frontend/src/app/pages/Chat.tsx`
+- **状态**: ✅ 已解决
+
+### 问题: GroupService使用错误字段名read_at
+- **发现时间**: 2026-04-10
+- **问题描述**: 数据库报错 `Unknown column 'read_at' in 'where clause'`
+- **根本原因**: 代码中使用的是 `read_at`，但数据库表中实际字段名是 `seen_at`
+- **教训**:
+  1. **数据库文档必须与代码保持同步** - 这次是因为先更新了文档但代码未同步
+  2. **修改数据库结构后必须同步更新所有相关代码**
+  3. **使用ORM或类型安全的数据库访问层可以减少此类错误**
+- **修复方案**: 将所有 `read_at` 改为 `seen_at`
+- **涉及文件**:
+  - `backend/src/services/GroupService.js`
+- **状态**: ✅ 已解决
+
+### 问题: Admin页面AI调度硬编码中文
+- **发现时间**: 2026-04-10
+- **问题描述**: Admin页面的AI调度菜单中存在硬编码的中文文本，无法切换中英文
+- **根本原因**: 后端返回硬编码中文，前端也直接使用硬编码文本
+- **解决方案**:
+  1. 更新 `zh-CN.json` 和 `en-US.json` 添加AI服务相关翻译
+  2. 后端 AIServiceManager 返回 `nameKey` 和 `descKey` 而非硬编码文本
+  3. 前端使用 `t()` 函数获取翻译
+- **涉及文件**:
+  - `frontend/src/i18n/locales/zh-CN.json` - 中文翻译
+  - `frontend/src/i18n/locales/en-US.json` - 英文翻译
+  - `backend/src/services/AIServiceManager.js` - 返回翻译key
+  - `frontend/src/app/pages/Admin.tsx` - 使用t()获取翻译
+- **状态**: ✅ 已解决
+
 ---
 
-## UI设计规范（重要）
+## 项目文档更新记录
 
-### 移动端设计规范
-| 元素 | 样式 | 说明 |
-|------|------|------|
-| 底部导航栏 | `rounded-full` + `backdrop-blur-xl` + `bg-white/70` | 灵动岛胶囊毛玻璃效果 |
-| 导航阴影 | `shadow-[0_8px_32px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.1)]` | 多层阴影营造浮起感 |
-| 按钮触控区 | `p-2.5` (10px) | 最小触控区域 |
-| 输入框高度 | `h-11` | 适合触控的高度 |
-| 输入框字体 | `text-[15px]` | 清晰的文字大小 |
-| 间距 | `gap-2` / `px-3 py-2.5` | 舒适的间距 |
+### 最新文档列表
+| 文档 | 说明 | 更新日期 |
+|------|------|---------|
+| README.md | 项目主文档 | 2026-04-18 |
+| PROJECT_REPORT.md | 项目报告 | 2026-04-18 |
+| DEVELOPMENT_PLAN.md | 开发计划 | 2026-04-18 |
+| MODIFICATION_REPORT_v2.md | v2修改记录 | 2026-04-04 |
 
-### 默认头像样式
-```tsx
-// 蓝紫渐变头像
-className="bg-gradient-to-br from-[#007AFF] to-[#5856D6]"
+---
+
+## 项目目录结构
+
 ```
-- 用于：消息列表、联系人列表、搜索结果、个人资料、朋友圈、设置页
-- 只有用户自定义头像才显示真实图片
-
-### 主题色
-| 用途 | 色值 |
-|------|------|
-| 主色 | `#007AFF` (iOS Blue) |
-| 辅助色 | `#5856D6` (iOS Purple) |
-| 成功色 | `#34C759` (iOS Green) |
-| 警告色 | `#FF9500` (iOS Orange) |
-| 错误色 | `#FF3B30` (iOS Red) |
-
-### 前端依赖 (frontend/package.json)
-| 依赖包 | 版本 | 用途 |
-|--------|------|------|
-| react | 18.3.1 | UI框架 |
-| react-dom | 18.3.1 | DOM渲染 |
-| react-router | 7.13.0 | 路由管理 |
-| @radix-ui/* | 1.x | 无头UI组件库 |
-| @mui/material | 7.3.5 | Material UI组件 |
-| tailwindcss | 4.1.12 | CSS框架 |
-| lucide-react | 0.487.0 | 图标库 |
-| react-hook-form | 7.55.0 | 表单管理 |
-| motion | 12.23.24 | 动画库 |
-| zustand | ^5.0.0 | 状态管理 |
-| axios | ^1.7.7 | HTTP请求 |
-| pusher-js | ^8.0.0 | Pusher实时通信客户端 |
-
-### 后端依赖 (backend/package.json)
-| 依赖包 | 版本 | 用途 |
-|--------|------|------|
-| express | ^4.21.0 | Web框架 |
-| mysql2 | ^3.11.0 | MySQL驱动 |
-| bcrypt | ^5.1.1 | 密码加密 |
-| jsonwebtoken | ^9.0.2 | JWT认证 |
-| cors | ^2.8.5 | 跨域处理 |
-| dotenv | ^16.4.5 | 环境变量 |
-| express-validator | ^7.2.0 | 参数校验 |
-| uuid | ^10.0.0 | UUID生成 |
-| pusher | ^5.0.0 | Pusher实时通信 |
+IM-Chat-App/
+├── frontend/                    # 前端目录
+│   ├── src/
+│   │   ├── api/              # API 请求封装
+│   │   ├── app/              # 主应用代码
+│   │   │   ├── components/  # 组件（UI、业务组件）
+│   │   │   ├── pages/        # 页面组件
+│   │   │   ├── App.tsx       # 应用入口
+│   │   │   └── routes.tsx    # 路由配置
+│   │   ├── hooks/            # 自定义 Hooks
+│   │   ├── store/            # Zustand 状态管理
+│   │   ├── lib/              # 库文件（AI调度）
+│   │   ├── i18n/             # 国际化
+│   │   ├── types/            # TypeScript 类型
+│   │   ├── styles/           # 样式文件
+│   │   └── main.tsx          # 前端入口
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── index.html
+├── backend/                    # 后端目录
+│   ├── src/
+│   │   ├── config/           # 配置文件
+│   │   ├── controllers/     # 控制器
+│   │   ├── services/        # 业务逻辑层
+│   │   ├── models/          # 数据模型
+│   │   ├── routes/          # 路由定义
+│   │   ├── middleware/      # 中间件
+│   │   ├── utils/           # 工具函数
+│   │   └── app.js           # 后端入口
+│   ├── package.json
+│   └── .env                  # 环境变量
+├── database/                   # 数据库相关
+│   ├── init.sql             # 初始化脚本
+│   ├── clean-db.js          # 清理数据库脚本
+│   ├── migrate.js           # 数据库迁移脚本
+│   └── migrate_*.sql        # 各类迁移脚本
+├── scripts/                   # 启动脚本
+│   ├── start-all.bat        # Windows 一键启动
+│   ├── start-all.sh         # Linux/Mac 一键启动
+│   └── clean-db.bat         # 数据库清理脚本
+├── security/                  # 安全相关
+│   ├── test-report.md       # 安全测试报告
+│   └── fix-records.md       # 漏洞修复记录
+├── guidelines/                # 开发指南
+│   └── Guidelines.md
+└── IM_Chat_AI_Memory.md      # AI 编程记忆文档
+```
 
 ---
 
@@ -707,6 +814,7 @@ CREATE TABLE temp_conversation (
 | POST /api/message/send | POST | Chat.tsx | 发送消息 |
 | GET /api/message/list | GET | Chat.tsx | 获取消息历史 |
 | POST /api/message/read | POST | Chat.tsx | 标记已读 |
+| DELETE /api/message/:messageId | DELETE | Chat.tsx | 撤回消息 |
 | GET /api/contact/list | GET | ContactsSidebar.tsx | 获取联系人列表 |
 | GET /api/contact/requests | GET | ContactsSidebar.tsx | 获取待处理请求 |
 | POST /api/contact/add | POST | ContactsSidebar.tsx | 添加联系人 |
@@ -729,6 +837,7 @@ CREATE TABLE temp_conversation (
 | GET /api/admin/groups/:groupId/members | GET | Admin.tsx | 获取群组成员(后台) |
 | DELETE /api/admin/groups/:groupId | DELETE | Admin.tsx | 删除群组(后台) |
 | DELETE /api/message/:messageId | DELETE | Chat.tsx | 撤回消息 |
+| GET /api/admin/ai-stats | GET | Admin.tsx | AI服务统计 |
 
 ---
 
@@ -827,7 +936,7 @@ CREATE TABLE temp_conversation (
 
 ### 问题13: Pusher 密钥硬编码 ⚠️ 已解决
 - **描述**: Pusher API 密钥硬编码在源代码中，存在安全风险
-- **修复方案**: 
+- **修复方案**:
   - 移除前端 `useWebSocket.ts` 中的硬编码 Pusher Key
   - 改为从 `VITE_PUSHER_KEY` 环境变量读取
   - `.env.example` 中的 Pusher 配置改为 placeholder 值
@@ -836,29 +945,6 @@ CREATE TABLE temp_conversation (
   - `frontend/.env.example`
   - `backend/.env.example`
 - **状态**: ✅ 已解决
-
-### AI智能调度系统 ⚠️ 已实现
-- **描述**: 实现网站智能化数据处理系统
-- **前端实现**:
-  - `frontend/src/lib/aiScheduler.ts` - AI智能调度核心算法
-    - 智能缓存管理（LRU + 优先级）
-    - 用户行为预测
-    - 预取机制
-    - 自动清理
-  - `frontend/src/hooks/useSmartData.ts` - 智能数据Hook
-    - `useSmartData` - 智能数据加载
-    - `useSmartCache` - 智能缓存管理
-    - `usePredictivePrefetch` - 预测性预取
-    - `useAIRecommendations` - AI推荐
-- **后端实现**:
-  - `backend/src/services/AIService.js` - AI服务
-    - `IntelligentCache` - 智能缓存（命中率统计、自动淘汰）
-    - `LoadBalancer` - 负载均衡
-    - `QueryOptimizer` - 查询优化（慢查询分析）
-    - `DataPrefetcher` - 数据预取
-  - `backend/src/controllers/AdminController.js` - 添加 `getAIStats` 接口
-  - `backend/src/routes/admin.js` - 添加 `/ai-stats` 路由
-- **状态**: ✅ 已实现
 
 ### 问题14: 朋友圈点赞报错 Cannot read properties of null ⚠️ 已解决
 - **描述**: 朋友圈点赞后全屏报错 `Cannot read properties of null (reading 'liked')`
@@ -870,10 +956,10 @@ CREATE TABLE temp_conversation (
 
 ### 问题15: 群管理员标签刷新后消失 ⚠️ 已解决
 - **描述**: 设置群管理员后当时显示标签，但刷新页面后标签消失
-- **根本原因**: 
+- **根本原因**:
   1. `getGroupMembers` SQL 查询返回 `role` 字段，但前端检查的是 `my_role` 字段（已在后端修复）
   2. `loadGroupInfo` 使用 `conversationApi.getConversation` 而不是 `groupApi.getInfo`，导致无法获取包含 `my_role` 的成员数据
-- **修复方案**: 
+- **修复方案**:
   - 后端 SQL 添加 `gm.role as my_role` 别名（已在 GroupService.js 修复）
   - 前端改用 `groupApi.getInfo` 获取完整的群组成员信息
 - **涉及文件**:
@@ -884,7 +970,7 @@ CREATE TABLE temp_conversation (
 ### 问题16: 群聊成员操作弹窗毛玻璃背景延伸 ⚠️ 已解决
 - **描述**: 成员操作弹窗和禁言弹窗的毛玻璃背景延伸到消息列表区域外
 - **根本原因**: 模态框使用 `absolute inset-0` 覆盖整个容器，且主容器未限制溢出
-- **修复方案**: 
+- **修复方案**:
   - 主容器添加 `overflow-hidden`
   - 模态框使用双层结构（背景层+内容层分离）
 - **涉及文件**:
@@ -972,7 +1058,7 @@ CREATE TABLE temp_conversation (
 ### 问题26: IP记录功能 ⚠️ 已解决
 - **描述**: 需要记录用户登录和访问的IP
 - **根本原因**: 新功能需求
-- **修复方案**: 
+- **修复方案**:
   - 创建 user_ip_log 表记录IP
   - 在登录和进入网页时记录IP
   - Admin后台显示用户IP
@@ -984,7 +1070,7 @@ CREATE TABLE temp_conversation (
 
 ### 问题27: ban_status字段混淆 ⚠️ 已解决
 - **描述**: status 和 ban_status 字段混淆使用
-- **根本原因**: 
+- **根本原因**:
   - `status` = 在线状态 (0:离线, 1:在线)
   - `ban_status` = 封禁状态 (active/banned)
 - **修复方案**: 明确区分两个字段的使用场景
@@ -994,146 +1080,69 @@ CREATE TABLE temp_conversation (
   - `database/migrate_ban_system.sql`
 - **状态**: ✅ 已解决
 
----
-
-## 项目文档
-
-### 最新文档列表
-| 文档 | 说明 | 更新日期 |
-|------|------|---------|
-| README.md | 项目主文档 | 2026-04-10 |
-| PROJECT_REPORT.md | 项目报告 | 2026-04-10 |
-| DEVELOPMENT_PLAN.md | 开发计划 | 2026-04-10 |
-| MODIFICATION_REPORT_v2.md | v2修改记录 | 2026-04-04 |
-
----
-
-## 项目目录结构
-
-```
-IM-Chat-App/
-├── frontend/                    # 前端目录
-│   ├── src/
-│   │   ├── app/               # 主应用代码
-│   │   │   ├── components/    # 组件（UI、业务组件）
-│   │   │   ├── pages/         # 页面组件
-│   │   │   ├── App.tsx        # 应用入口
-│   │   │   └── routes.tsx    # 路由配置
-│   │   ├── api/              # API 请求封装
-│   │   ├── hooks/            # 自定义 Hooks
-│   │   ├── store/            # Zustand 状态管理
-│   │   ├── types/            # TypeScript 类型
-│   │   ├── styles/           # 样式文件
-│   │   └── main.tsx         # 前端入口
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── index.html
-├── backend/                    # 后端目录
-│   ├── src/
-│   │   ├── config/          # 配置文件
-│   │   ├── controllers/     # 控制器
-│   │   ├── services/        # 业务逻辑层
-│   │   ├── models/          # 数据模型
-│   │   ├── routes/          # 路由定义
-│   │   ├── middleware/      # 中间件
-│   │   ├── utils/           # 工具函数
-│   │   └── app.js          # 后端入口
-│   ├── package.json
-│   └── .env                # 环境变量
-├── database/                  # 数据库相关
-│   ├── init.sql            # 初始化脚本
-│   ├── clean-db.js         # 清理数据库脚本
-│   └── migrate.js          # 数据库迁移脚本
-├── scripts/                   # 启动脚本
-│   ├── start-all.bat       # Windows 一键启动
-│   ├── start-all.sh        # Linux/Mac 一键启动
-│   └── clean-db.bat        # 数据库清理脚本
-├── security/                  # 安全相关
-│   ├── test-report.md      # 安全测试报告
-│   └── fix-records.md      # 漏洞修复记录
-└── IM_Chat_AI_Memory.md     # AI 编程记忆文档
-```
-
----
-
-## 安全规范
-
-### 已实施的安全措施
-- [x] 密码 bcrypt 加密存储
-- [x] JWT token 认证
-- [x] 参数化查询防 SQL 注入
-- [x] XSS 转义处理（前端 React 默认转义）
-- [x] 接口权限校验（authMiddleware）
-- [x] 敏感信息脱敏（手机号、邮箱）
-- [x] CORS 跨域配置
-- [x] 统一错误响应格式
-
-### 待测试项
-- [ ] SQL 注入测试
-- [ ] XSS 跨站脚本测试
-- [ ] CSRF 测试
-- [ ] 未授权访问测试
-- [ ] npm audit 依赖漏洞扫描
-
----
-
-## 经验教训总结
-
-### 问题28: CORS配置不完整导致消息无法加载 ⚠️ 已解决
-- **描述**: 用户无法加载消息，浏览器报CORS错误
+### 问题28: 后端负载激增导致502错误 ⚠️ 已解决
+- **描述**: 刷新页面时大量请求同时发送，导致后端负载过高返回502错误
 - **症状**:
-  - `Request header field cache-control is not allowed by Access-Control-Allow-Headers in preflight response`
-  - `Failed to fetch` 错误
+  - `502 Bad Gateway` 错误
+  - 多个临时会话检查请求同时失败
+  - 级联式请求失败
 - **根本原因**:
-  1. **修改CORS配置时遗漏了必要的请求头** - 在修改 `allowedHeaders` 时只包含了部分头信息，遗漏了 `Cache-Control`, `Pragma`, `Expires`
-  2. **未充分测试跨域请求** - 每次修改CORS配置后没有在生产环境验证
-  3. **缓存问题** - 旧的CORS配置被浏览器缓存，导致修改后仍然失败
-- **教训**:
-  1. CORS配置是**白名单**机制，任何自定义请求头都必须显式声明
-  2. 修改CORS后需要清除浏览器缓存或使用隐身模式测试
-  3. 应该在 `allowedHeaders` 中包含所有可能用到的请求头
-- **修复方案**:
-  ```javascript
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Cache-Control',  // 缓存控制
-    'Pragma',         // 兼容HTTP/1.0
-    'Expires'         // 过期时间
-  ]
-  ```
-- **涉及文件**:
-  - `backend/src/app.js` - CORS配置
+  1. **同步请求风暴**: 页面加载时多个组件同时发起API请求
+  2. **缺乏请求合并**: 每个会话单独发起临时会话检查请求
+  3. **缺少限流保护**: 后端没有请求速率限制
+  4. **没有熔断机制**: 请求失败后没有退避策略
+- **解决方案**: AI智能调度系统
+  1. 前端智能调度器 (smartScheduler)
+  2. 增强版API客户端 (smartApiClient)
+  3. 智能聊天存储 (smartChatStore)
+  4. 后端限流保护 (rateLimiter.js)
 - **状态**: ✅ 已解决
 
-### 问题29: storeFetchMessages未定义导致错误 ⚠️ 已解决
-- **描述**: Chat.tsx中调用了storeFetchMessages但该函数从未定义
-- **症状**: JavaScript运行时错误，消息加载逻辑异常
-- **根本原因**:
-  1. **代码传播错误** - 可能是在复制粘贴代码时遗留的错误调用
-  2. **审查不充分** - 没有在修改前检查函数是否存在
-- **教训**:
-  1. 每次添加函数调用前必须确认函数已定义
-  2. 使用IDE的语法检查和lint工具可以提前发现此类问题
-  3. 代码修改后应该进行基本的功能验证
-- **修复方案**: 移除未定义的函数调用
+### 问题29: Admin页面AI调度硬编码中文 ⚠️ 已解决
+- **描述**: Admin页面的AI调度菜单中存在硬编码的中文文本，无法切换中英文
+- **根本原因**: 后端返回硬编码中文，前端也直接使用硬编码文本
+- **解决方案**:
+  1. 更新 `zh-CN.json` 和 `en-US.json` 添加AI服务相关翻译
+  2. 后端 AIServiceManager 返回 `nameKey` 和 `descKey` 而非硬编码文本
+  3. 前端使用 `t()` 函数获取翻译
 - **涉及文件**:
-  - `frontend/src/app/pages/Chat.tsx`
+  - `frontend/src/i18n/locales/zh-CN.json` - 中文翻译
+  - `frontend/src/i18n/locales/en-US.json` - 英文翻译
+  - `backend/src/services/AIServiceManager.js` - 返回翻译key
+  - `frontend/src/app/pages/Admin.tsx` - 使用t()获取翻译
 - **状态**: ✅ 已解决
 
-### 问题30: GroupService使用错误字段名read_at ⚠️ 已解决
-- **描述**: 数据库报错 `Unknown column 'read_at' in 'where clause'`
-- **根本原因**: 代码中使用的是 `read_at`，但数据库表中实际字段名是 `seen_at`
-- **教训**:
-  1. **数据库文档必须与代码保持同步** - 这次是因为先更新了文档但代码未同步
-  2. **修改数据库结构后必须同步更新所有相关代码**
-  3. **使用ORM或类型安全的数据库访问层可以减少此类错误**
-- **修复方案**: 将所有 `read_at` 改为 `seen_at`
+### 问题30: IM限流策略过严导致正常使用被拦截 ⚠️ 已解决
+- **描述**: IM应用正常使用时请求频繁，限流策略过于严格导致用户被频繁拦截并弹出限流提示
+- **症状**:
+  - 用户正常切换聊天、发送消息时被限流弹窗拦截
+  - 页面初始化时大量请求触发限流
+  - Render休眠唤醒时请求风暴触发限流
+- **根本原因**:
+  1. **后端IP限流过低**: 每IP每分钟100请求对于IM应用来说太低
+  2. **全局并发限制过严**: 30最大并发对于活跃IM用户来说太少
+  3. **封禁时长过长**: 30秒封禁严重影响用户体验
+  4. **前端调度器限制**: maxConcurrent=3, maxQueueSize=50 过于保守
+- **解决方案**: 大幅放宽限流策略
+  1. **后端限流配置调整** (`backend/src/middleware/rateLimiter.js`):
+     - IP限流: 100 → 500 请求/分钟
+     - 全局并发: 30 → 200
+     - 封禁时长: 30000ms → 10000ms
+     - 全局负载阈值: 100 → 500
+  2. **前端智能调度器配置调整** (`frontend/src/lib/smartScheduler.ts`):
+     - maxConcurrent: 3 → 10
+     - maxQueueSize: 50 → 200
+     - baseDelay: 1000ms → 500ms
+     - maxDelay: 30000ms → 15000ms
+     - circuitBreakerThreshold: 5 → 20
+     - circuitBreakerResetTime: 60000ms → 30000ms
+     - 令牌桶: (10, 5) → (50, 20)
+  3. **smartChatStore冷却时间调整**:
+     - FETCH_COOLDOWN: 5000ms → 3000ms
 - **涉及文件**:
-  - `backend/src/services/GroupService.js`
+  - `backend/src/middleware/rateLimiter.js` - 后端限流配置
+  - `frontend/src/lib/smartScheduler.ts` - 前端调度器配置
+  - `frontend/src/store/smartChatStore.ts` - 聊天存储冷却时间
 - **状态**: ✅ 已解决
 
 ---
@@ -1179,25 +1188,7 @@ IM-Chat-App/
 
 ## 智能调度系统
 
-### 问题31: 后端负载激增导致502错误 ⚠️ 已解决
-- **描述**: 刷新页面时大量请求同时发送，导致后端负载过高返回502错误
-- **症状**:
-  - `502 Bad Gateway` 错误
-  - 多个临时会话检查请求同时失败
-  - 级联式请求失败
-- **根本原因**:
-  1. **同步请求风暴**: 页面加载时多个组件同时发起API请求
-  2. **缺乏请求合并**: 每个会话单独发起临时会话检查请求
-  3. **缺少限流保护**: 后端没有请求速率限制
-  4. **没有熔断机制**: 请求失败后没有退避策略
-- **教训**:
-  1. 需要智能调度来控制并发请求数量
-  2. 需要熔断器模式防止级联失败
-  3. 需要后端限流保护
-
-### 解决方案：AI智能调度系统
-
-#### 1. 前端智能调度器 (Smart Scheduler)
+### 前端智能调度器 (Smart Scheduler)
 **文件**: `frontend/src/lib/smartScheduler.ts`
 
 **核心功能**:
@@ -1212,14 +1203,14 @@ IM-Chat-App/
 {
   maxConcurrent: 3,           // 最大并发数
   maxQueueSize: 50,          // 队列最大长度
-  baseDelay: 1000,           // 基础重试延迟
-  maxDelay: 30000,           // 最大延迟
+  baseDelay: 1000,            // 基础重试延迟
+  maxDelay: 30000,            // 最大延迟
   circuitBreakerThreshold: 5, // 熔断阈值
   circuitBreakerResetTime: 60000 // 熔断恢复时间
 }
 ```
 
-#### 2. 增强版API客户端 (Smart API Client)
+### 增强版API客户端 (Smart API Client)
 **文件**: `frontend/src/lib/smartApiClient.ts`
 
 **功能**:
@@ -1228,7 +1219,7 @@ IM-Chat-App/
 - 慢请求警告（>5秒）
 - 自动重试与退避
 
-#### 3. 智能聊天存储 (Smart Chat Store)
+### 智能聊天存储 (Smart Chat Store)
 **文件**: `frontend/src/store/smartChatStore.ts`
 
 **功能**:
@@ -1236,7 +1227,7 @@ IM-Chat-App/
 - 优先级标记（获取消息=high，发送消息=critical）
 - 智能缓存避免重复请求
 
-#### 4. 后端限流保护 (Rate Limiter)
+### 后端限流保护 (Rate Limiter)
 **文件**: `backend/src/middleware/rateLimiter.js`
 
 **功能**:
@@ -1255,62 +1246,30 @@ IM-Chat-App/
 }
 ```
 
-### 涉及文件
-**新增文件**:
-- `frontend/src/lib/smartScheduler.ts` - 前端智能调度器
-- `frontend/src/lib/smartApiClient.ts` - 增强版API客户端
-- `frontend/src/store/smartChatStore.ts` - 智能聊天存储
-- `backend/src/middleware/rateLimiter.js` - 后端限流中间件
+---
 
-**修改文件**:
-- `backend/src/app.js` - 集成限流中间件
-- `frontend/src/app/components/ChatsSidebar.tsx` - 移除循环检查
-- `frontend/src/app/pages/Chat.tsx` - 优化消息加载
+## 安全规范
 
-### 使用示例
-```typescript
-import { smartScheduler } from './smartScheduler';
+### 已实施的安全措施
+- [x] 密码 bcrypt 加密存储
+- [x] JWT token 认证
+- [x] 参数化查询防 SQL 注入
+- [x] XSS 转义处理（前端 React 默认转义）
+- [x] 接口权限校验（authMiddleware）
+- [x] 敏感信息脱敏（手机号、邮箱）
+- [x] CORS 跨域配置
+- [x] 统一错误响应格式
+- [x] 限流保护（IP级别）
+- [x] 密码强度校验（至少6位）
 
-// 关键请求（发送消息）
-await smartScheduler.schedule(sendMessageApi, 'critical', 3);
-
-// 高优先级请求（获取消息）
-await smartScheduler.schedule(getMessagesApi, 'high', 2);
-
-// 普通请求（获取会话列表）
-await smartScheduler.schedule(getConversationsApi, 'normal', 2);
-```
-
-### 状态: ✅ 已解决
+### 待测试项
+- [ ] SQL 注入测试
+- [ ] XSS 跨站脚本测试
+- [ ] CSRF 测试
+- [ ] 未授权访问测试
+- [ ] npm audit 依赖漏洞扫描
 
 ---
 
-## 项目文档更新记录
-
-### 问题32: Admin页面AI调度部分硬编码中文 ⚠️ 已解决
-- **描述**: Admin页面的AI调度菜单中存在硬编码的中文文本，无法切换中英文
-- **根本原因**: 后端返回硬编码中文，前端也直接使用硬编码文本
-- **解决方案**:
-  1. 更新 `zh-CN.json` 和 `en-US.json` 添加AI服务相关翻译
-  2. 后端 AIServiceManager 返回 `nameKey` 和 `descKey` 而非硬编码文本
-  3. 前端使用 `t()` 函数获取翻译
-- **涉及文件**:
-  - `frontend/src/i18n/locales/zh-CN.json` - 中文翻译
-  - `frontend/src/i18n/locales/en-US.json` - 英文翻译
-  - `backend/src/services/AIServiceManager.js` - 返回翻译key
-  - `frontend/src/app/pages/Admin.tsx` - 使用t()获取翻译
-- **状态**: ✅ 已解决
-
-### 问题33: 缺乏i18n开发规范 ⚠️ 已解决
-- **描述**: 开发规范中缺少国际化相关要求，导致新开发内容未使用i18n
-- **解决方案**: 在 `guidelines/Guidelines.md` 中添加国际化规范
-- **涉及文件**:
-  - `guidelines/Guidelines.md` - 新增i18n规范章节
-- **规范内容**:
-  1. 所有用户可见文本必须使用i18n
-  2. 后端返回翻译key而非硬编码文本
-  3. 翻译key命名规范：`模块.具体内容`
-  4. 新增翻译流程
-- **状态**: ✅ 已解决
-
----
+**文档更新时间**: 2026-04-18
+**文档版本**: v2.0.1
