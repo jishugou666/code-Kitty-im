@@ -10,11 +10,6 @@ router.use(authMiddleware);
 router.post('/single', ConversationController.createSingle);
 router.post('/group', ConversationController.createGroup);
 router.get('/list', ConversationController.getList);
-router.get('/:id', ConversationController.getConversation);
-router.get('/:id/members', ConversationController.getMembers);
-router.post('/:id/members', ConversationController.addMembers);
-router.delete('/:id/members/:userId', ConversationController.removeMember);
-
 router.get('/debug/all', async (req, res) => {
   try {
     const userId = req.userId;
@@ -38,5 +33,9 @@ router.get('/debug/all', async (req, res) => {
     res.status(500).json({ code: 500, data: null, msg: err.message });
   }
 });
+router.get('/:id', ConversationController.getConversation);
+router.get('/:id/members', ConversationController.getMembers);
+router.post('/:id/members', ConversationController.addMembers);
+router.delete('/:id/members/:userId', ConversationController.removeMember);
 
 export default router;
