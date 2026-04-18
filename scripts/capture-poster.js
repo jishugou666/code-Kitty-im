@@ -16,6 +16,7 @@ async function capturePosterToPNG() {
   console.log('📦 启动浏览器...');
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
 

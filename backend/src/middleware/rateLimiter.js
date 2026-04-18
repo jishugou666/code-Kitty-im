@@ -94,8 +94,8 @@ class AdvancedRateLimiter {
     }
 
     this.globalRequestCount++;
-    if (now - this.lastGlobalReset > this.config.windowMs) {
-      this.globalRequestCount = 1;
+    if (now - this.lastGlobalReset >= this.config.windowMs) {
+      this.globalRequestCount = 0;
       this.lastGlobalReset = now;
     }
 
@@ -167,7 +167,7 @@ export function globalRateLimitMiddleware(req, res, next) {
   res.setHeader('X-Global-Load', String(stats.globalLoad));
   res.setHeader('X-Active-Requests', String(stats.activeRequests));
 
-  if (stats.globalLoad > 500) {
+  if (stats.globalLoad > 1000) {
     console.warn(`[GlobalRateLimit] High load detected: ${stats.globalLoad}`);
 
     if (req.method === 'GET' && !req.path.includes('/message/list')) {
