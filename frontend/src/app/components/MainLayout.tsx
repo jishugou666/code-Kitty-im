@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { MessageCircle, Users, Settings, Globe, Shield } from "lucide-react";
+import { MessageCircle, Users, Settings, Globe, Shield, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "motion/react";
 import { ChatsSidebar } from "./ChatsSidebar";
@@ -20,8 +20,12 @@ export function MainLayout() {
     { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
     { path: "/contacts", icon: Users, label: t('chat.contacts'), isMatch: (p: string) => p.startsWith("/contacts") },
     { path: "/moments", icon: Globe, label: t('moments.title'), isMatch: (p: string) => p.startsWith("/moments") },
-    { path: "/profile", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/profile") },
+    { path: "/settings", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/settings") },
   ];
+
+  const handleStudioClick = () => {
+    window.open('/studio', '_blank');
+  };
 
   const isContacts = location.pathname.startsWith('/contacts');
   const isAdmin = location.pathname.startsWith('/admin');
@@ -106,6 +110,18 @@ export function MainLayout() {
               </div>
             </button>
           )}
+
+          <div className="w-full h-px bg-gray-100 dark:bg-gray-800 my-2" />
+
+          <button
+            onClick={handleStudioClick}
+            className="flex flex-col items-center justify-center gap-1.5 group relative"
+            title="冰网工作室"
+          >
+            <div className="p-2.5 rounded-[14px] transition-all duration-300 relative z-10 text-slate-400 group-hover:text-[#FF5252] dark:text-slate-500 dark:group-hover:text-[#FF5252] group-hover:bg-red-50 dark:group-hover:bg-red-500/10">
+              <Sparkles strokeWidth={2} size={22} className="drop-shadow-sm" />
+            </div>
+          </button>
         </div>
 
         <div className="mt-auto">

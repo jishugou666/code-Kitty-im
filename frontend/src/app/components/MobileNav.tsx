@@ -1,4 +1,4 @@
-import { MessageCircle, Users, Globe, Settings, Shield } from "lucide-react";
+import { MessageCircle, Users, Globe, Settings, Shield, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { motion } from "motion/react";
 import { useLocation, useNavigate } from "react-router";
@@ -105,6 +105,21 @@ export function MobileNav() {
             </button>
           </>
         )}
+
+        <div className="w-px h-8 bg-black/10 dark:bg-white/10 mx-1" />
+        <button
+          onClick={() => window.open('/studio', '_blank')}
+          className={clsx(
+            "relative flex items-center justify-center transition-all duration-300 rounded-full w-11 h-11"
+          )}
+        >
+          <div className={clsx(
+            "relative z-10 transition-all duration-300",
+            "text-slate-400 dark:text-slate-500 hover:text-[#FF5252] dark:hover:text-[#FF5252]"
+          )}>
+            <Sparkles size={22} strokeWidth={2} />
+          </div>
+        </button>
       </motion.div>
     </div>
   );
