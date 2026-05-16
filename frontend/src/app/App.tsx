@@ -10,12 +10,22 @@ export default function App() {
   const [showRateLimit, setShowRateLimit] = useState(false);
   const [rateLimitReason, setRateLimitReason] = useState('');
   const pendingRetryRef = useRef<(() => void) | null>(null);
+  const [isStudio, setIsStudio] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('banned') === '1') {
       setShowBanOverlay(true);
     }
+  }, []);
+
+  useEffect(() => {
+    const checkStudio = () => setIsStudio(window.location.pathname === '/studio');
+    checkStudio();
+    window.addEventListener('popstate', checkStudio);
+    return () => {
+      window.removeEventListener('popstate', checkStudio);
+    };
   }, []);
 
   const handleUnblockAndRetry = useCallback(async () => {
@@ -47,6 +57,20 @@ export default function App() {
 
   if (showBanOverlay) {
     return <BanOverlay />;
+  }
+
+  if (isStudio) {
+    return (
+      <div className="w-screen h-screen">
+        <RouterProvider router={router} />
+        <RateLimitOverlay
+          isVisible={showRateLimit}
+          retryAfter={5}
+          reason={rateLimitReason}
+          onRetry={handleUnblockAndRetry}
+        />
+      </div>
+    );
   }
 
   return (
