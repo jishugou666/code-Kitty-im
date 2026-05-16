@@ -124,8 +124,7 @@ function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50/50 to-white dark:from-black dark:via-gray-950/50 dark:to-black" />
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] bg-gradient-to-br from-red-100/40 to-orange-100/40 dark:from-red-900/10 dark:to-orange-900/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] bg-gradient-to-br from-blue-100/30 to-purple-100/30 dark:from-blue-900/10 dark:to-purple-900/10 rounded-full blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-red-100/40 via-orange-100/30 to-purple-100/40 dark:from-red-900/10 dark:via-orange-900/10 dark:to-purple-900/10 rounded-full blur-[120px]" />
       </div>
 
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
@@ -185,12 +184,12 @@ function HeroSection() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </a>
               <a
-                href="https://github.com/jishugou666/code-Kitty-im"
+                href="https://shequ.codemao.cn/work_shop/549"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-8 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-medium text-base hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
               >
-                GitHub 开源
+                编程猫工作室
               </a>
             </motion.div>
           </motion.div>
@@ -350,7 +349,7 @@ function FeaturesSection() {
         <AnimatedSection className="text-center mb-16 md:mb-20">
           <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">特色</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            为什么选择我们
+            工作室核心
           </h2>
         </AnimatedSection>
 
@@ -383,26 +382,26 @@ function CTASection() {
       <div className="max-w-[800px] mx-auto text-center">
         <AnimatedSection>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            准备好开始了吗？
+            工作室优秀作品展示
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto">
-            加入 Code Kitty IM，体验全新的即时通讯方式
+            探索我们精心打造的每一个作品
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="/"
+              href="https://shequ.codemao.cn/work_shop/549"
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-8 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-medium text-base hover:bg-gray-800 dark:hover:bg-gray-100 transition-all hover:shadow-xl flex items-center justify-center gap-2 group"
             >
-              免费开始使用
+              浏览全部作品
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
             <a
-              href="https://github.com/jishugou666/code-Kitty-im"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/"
               className="px-8 py-3.5 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full font-medium text-base hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center justify-center"
             >
-              GitHub 开源
+              体验 Code Kitty IM
             </a>
           </div>
         </AnimatedSection>
