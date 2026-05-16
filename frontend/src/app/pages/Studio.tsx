@@ -124,9 +124,21 @@ function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50/50 to-white dark:from-black dark:via-gray-950/50 dark:to-black" />
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-red-200/60 via-orange-200/50 to-amber-200/40 dark:from-red-800/30 dark:via-orange-800/25 dark:to-amber-800/20 rounded-full blur-[140px]" />
-        <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] bg-gradient-to-br from-rose-200/50 to-red-200/50 dark:from-rose-800/20 dark:to-red-800/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/3 right-1/3 w-[350px] h-[350px] bg-gradient-to-br from-orange-200/40 to-red-200/40 dark:from-orange-800/15 dark:to-red-800/15 rounded-full blur-[90px]" />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-red-200/60 via-orange-200/50 to-amber-200/40 dark:from-red-800/30 dark:via-orange-800/25 dark:to-amber-800/20 rounded-full blur-[140px]"
+          animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
+          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute top-1/3 left-1/3 w-[400px] h-[400px] bg-gradient-to-br from-rose-200/50 to-red-200/50 dark:from-rose-800/20 dark:to-red-800/20 rounded-full blur-[100px]"
+          animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+        />
+        <motion.div
+          className="absolute bottom-1/3 right-1/3 w-[350px] h-[350px] bg-gradient-to-br from-orange-200/40 to-red-200/40 dark:from-orange-800/15 dark:to-red-800/15 rounded-full blur-[90px]"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0.9, 0.6] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        />
       </div>
 
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
