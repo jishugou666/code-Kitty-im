@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { AtSign, Lock, ChevronRight, User, Mail } from 'lucide-react';
+import { AtSign, Lock, ChevronRight, User, Mail, Github, Chrome } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../components/ui/use-mobile';
 
@@ -17,37 +18,68 @@ export function Login() {
   const [email, setEmail] = useState('');
   const isMobile = useIsMobile();
 
+  const [emailError, setEmailError] = useState('');
+  const [nicknameError, setNicknameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [nicknameTouched, setNicknameTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const validateEmail = (value: string) => {
+    if (!value.trim()) return '请输入邮箱';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return '请输入有效的邮箱地址';
+    return '';
+  };
+
+  const validateNickname = (value: string) => {
+    if (!value.trim()) return '请输入昵称';
+    if (value.length < 2) return '昵称长度不能少于2位';
+    if (value.length > 20) return '昵称长度不能超过20位';
+    if (/\s/.test(value)) return '昵称不能包含空格';
+    return '';
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) return '请输入密码';
+    if (value.length < 6) return '密码长度不能少于6位';
+    return '';
+  };
+
+  const handleEmailBlur = () => {
+    setEmailTouched(true);
+    setEmailError(validateEmail(email));
+  };
+
+  const handleNicknameBlur = () => {
+    setNicknameTouched(true);
+    setNicknameError(validateNickname(nickname));
+  };
+
+  const handlePasswordBlur = () => {
+    setPasswordTouched(true);
+    setPasswordError(validatePassword(password));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
 
     if (!isLogin) {
-      if (!nickname.trim()) {
-        setError('请输入昵称');
-        return;
-      }
-      if (nickname.length < 2) {
-        setError('昵称长度不能少于2位');
-        return;
-      }
-      if (nickname.length > 20) {
-        setError('昵称长度不能超过20位');
-        return;
-      }
-      if (/\s/.test(nickname)) {
-        setError('昵称不能包含空格');
-        return;
-      }
-      if (!email.trim()) {
-        setError('请输入邮箱');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setError('请输入有效的邮箱地址');
-        return;
-      }
-      if (password.length < 6) {
-        setError('密码长度不能少于6位');
+      const nickError = validateNickname(nickname);
+      const emailErr = validateEmail(email);
+      const passError = validatePassword(password);
+      
+      setNicknameError(nickError);
+      setEmailError(emailErr);
+      setPasswordError(passError);
+      setNicknameTouched(true);
+      setEmailTouched(true);
+      setPasswordTouched(true);
+
+      if (nickError || emailErr || passError) return;
+    } else {
+      if (!loginField.trim()) {
+        setError('请输入邮箱或昵称');
         return;
       }
     }
@@ -67,6 +99,12 @@ export function Login() {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     clearError();
+    setEmailError('');
+    setNicknameError('');
+    setPasswordError('');
+    setEmailTouched(false);
+    setNicknameTouched(false);
+    setPasswordTouched(false);
   };
 
   return (
@@ -125,67 +163,118 @@ export function Login() {
 
             <div className="space-y-4 sm:space-y-5">
               {!isLogin && (
-                <>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                      <User size={isMobile ? 18 : 22} strokeWidth={2} />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={t('auth.nickname')}
-                      value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
-                      className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
-                      required
-                    />
-                  </div>
-
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                      <Mail size={isMobile ? 18 : 22} strokeWidth={2} />
-                    </div>
-                    <input
-                      type="email"
-                      placeholder={t('auth.email')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
-              {isLogin && (
+              <>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                    <AtSign size={isMobile ? 18 : 22} strokeWidth={2} />
+                    <User size={isMobile ? 18 : 22} strokeWidth={2} />
                   </div>
                   <input
                     type="text"
-                    placeholder={t('auth.email')}
-                    value={loginField}
-                    onChange={(e) => setLoginField(e.target.value)}
-                    className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
+                    placeholder={t('auth.nickname')}
+                    value={nickname}
+                    onChange={(e) => {
+                      setNickname(e.target.value);
+                      if (nicknameTouched) setNicknameError(validateNickname(e.target.value));
+                    }}
+                    onBlur={handleNicknameBlur}
+                    className={clsx(
+                      isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all",
+                      nicknameError && nicknameTouched
+                        ? 'border-red-500/50 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                        : 'border-slate-200/50 dark:border-white/5 focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)]'
+                    )}
                     required
                   />
+                  {nicknameError && nicknameTouched && (
+                    <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {nicknameError}
+                    </p>
+                  )}
                 </div>
-              )}
 
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                    <Mail size={isMobile ? 18 : 22} strokeWidth={2} />
+                  </div>
+                  <input
+                    type="email"
+                    placeholder={t('auth.email')}
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailTouched) setEmailError(validateEmail(e.target.value));
+                    }}
+                    onBlur={handleEmailBlur}
+                    className={clsx(
+                      isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all",
+                      emailError && emailTouched
+                        ? 'border-red-500/50 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                        : 'border-slate-200/50 dark:border-white/5 focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)]'
+                    )}
+                    required
+                  />
+                  {emailError && emailTouched && (
+                    <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {emailError}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {isLogin && (
               <div className="relative group">
                 <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
-                  <Lock size={isMobile ? 18 : 22} strokeWidth={2} />
+                  <AtSign size={isMobile ? 18 : 22} strokeWidth={2} />
                 </div>
                 <input
-                  type="password"
-                  placeholder={t('auth.password')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="text"
+                  placeholder={t('auth.email')}
+                  value={loginField}
+                  onChange={(e) => setLoginField(e.target.value)}
                   className={isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border border-slate-200/50 dark:border-white/5 text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border border-slate-200/50 dark:border-white/5 text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)] transition-all"}
                   required
-                  minLength={6}
                 />
               </div>
+            )}
+
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-4 sm:left-5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#007AFF] transition-colors">
+                <Lock size={isMobile ? 18 : 22} strokeWidth={2} />
+              </div>
+              <input
+                type="password"
+                placeholder={t('auth.password')}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordTouched) setPasswordError(validatePassword(e.target.value));
+                }}
+                onBlur={handlePasswordBlur}
+                className={clsx(
+                  isMobile ? "w-full h-12 pl-11 pr-4 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-xl outline-none border text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all" : "w-full h-14 pl-14 pr-5 bg-white/60 dark:bg-[#0E1116]/60 backdrop-blur-xl rounded-2xl outline-none border text-[17px] text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-[#0E1116] transition-all",
+                  passwordError && passwordTouched
+                    ? 'border-red-500/50 focus:border-red-500 focus:shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                    : 'border-slate-200/50 dark:border-white/5 focus:border-[#007AFF]/50 focus:shadow-[0_0_0_4px_rgba(0,122,255,0.1)]'
+                )}
+                required
+                minLength={6}
+              />
+              {passwordError && passwordTouched && (
+                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {passwordError}
+                </p>
+              )}
+            </div>
             </div>
 
             <button
@@ -203,13 +292,40 @@ export function Login() {
               )}
             </button>
 
+            {isLogin && (
+              <>
+                <div className="mt-6 sm:mt-8 flex items-center gap-4">
+                  <div className="flex-1 h-px bg-gray-200/60 dark:bg-gray-700/60" />
+                  <span className="text-xs text-slate-400 dark:text-slate-500">或</span>
+                  <div className="flex-1 h-px bg-gray-200/60 dark:bg-gray-700/60" />
+                </div>
+
+                <div className="mt-4 flex justify-center gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all flex items-center justify-center border border-gray-100 dark:border-gray-700 group"
+                  >
+                    <Github className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all flex items-center justify-center border border-gray-100 dark:border-gray-700 group"
+                  >
+                    <Chrome className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </motion.button>
+                </div>
+              </>
+            )}
+
             <div className="mt-4 sm:mt-6 text-center">
               <button
                 type="button"
                 onClick={toggleMode}
-                className="text-[13px] sm:text-[15px] text-[#007AFF] hover:text-[#006CE0] transition-colors"
+                className="text-[13px] sm:text-[15px] text-[#007AFF] hover:text-[#006CE0] transition-colors font-medium"
               >
-                {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+                {isLogin ? "没有账号？注册" : "已有账号？登录"}
               </button>
             </div>
           </form>

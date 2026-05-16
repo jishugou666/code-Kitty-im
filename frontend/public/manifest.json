@@ -1,0 +1,24 @@
+{
+  "name": "Code Kitty IM - 即时通讯应用",
+  "short_name": "Code Kitty IM",
+  "description": "一款现代化的即时通讯应用，支持单聊、群聊、朋友圈等功能",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#007AFF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
