@@ -1,240 +1,6 @@
-import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView, useMotionValue, useTransform } from 'motion/react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, Environment, MeshTransmissionMaterial, Stars } from '@react-three/drei';
 import { ArrowRight, MessageSquare, Shield, Zap, Globe, Sparkles, ChevronDown, Star, Heart, Code, Layers, Smartphone, Lock } from 'lucide-react';
-import * as THREE from 'three';
-
-/* ========== 3D Logo 组件 ========== */
-function Logo3D({ ...props }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
-  const mouse = useMotionValue(0);
-
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    const t = state.clock.getElapsedTime();
-    meshRef.current.rotation.y = Math.sin(t * 0.4) * 0.2 + (mouse.get() * 0.3);
-    meshRef.current.rotation.x = Math.sin(t * 0.3) * 0.1;
-    if (glowRef.current) {
-      glowRef.current.scale.setScalar(1 + Math.sin(t * 1.5) * 0.05);
-    }
-  });
-
-  return (
-    <Float speed={2} rotationIntensity={0.3} floatIntensity={0.5} {...props}>
-      <mesh ref={meshRef}>
-        <torusKnotGeometry args={[1, 0.3, 128, 32]} />
-        <MeshTransmissionMaterial
-          backside
-          samples={8}
-          thickness={0.5}
-          chromaticAberration={0.4}
-          anisotropy={0.3}
-          roughness={0.1}
-          metalness={0.8}
-          color="#FF5252"
-          transmission={0.95}
-          ior={1.5}
-        />
-      </mesh>
-      <mesh ref={glowRef} scale={1.15}>
-        <sphereGeometry args={[1.8, 32, 32]} />
-        <meshBasicMaterial color="#FF5252" transparent opacity={0.08} />
-      </mesh>
-    </Float>
-  );
-}
-
-/* ========== 3D 粒子背景 ========== */
-function ParticleField() {
-  const count = 120;
-  const meshRef = useRef<THREE.Points>(null);
-
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 12;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 8;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 6;
-
-    const colorChoice = Math.random();
-    if (colorChoice < 0.33) {
-      colors[i * 3] = 1; colors[i * 3 + 1] = 0.32; colors[i * 3 + 2] = 0.32;
-    } else if (colorChoice < 0.66) {
-      colors[i * 3] = 1; colors[i * 3 + 1] = 0.5; colors[i * 3 + 2] = 0.2;
-    } else {
-      colors[i * 3] = 1; colors[i * 3 + 1] = 0.7; colors[i * 3 + 2] = 0.4;
-    }
-
-    sizes[i] = Math.random() * 0.03 + 0.01;
-  }
-
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.03;
-    meshRef.current.rotation.x = Math.sin(state.clock.getElapsedTime() * 0.02) * 0.05;
-  });
-
-  return (
-    <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-color" count={count} array={colors} itemSize={3} />
-      </bufferGeometry>
-      <pointsMaterial size={0.04} vertexColors transparent opacity={0.6} sizeAttenuation />
-    </points>
-  );
-}
-
-/* ========== 3D 浮动几何体装饰 ========== */
-function FloatingShapes() {
-  return (
-    <>
-      <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.8}>
-        <mesh position={[-3, 1.5, -2]} rotation={[0.5, 0.5, 0]}>
-          <octahedronGeometry args={[0.4, 0]} />
-          <meshStandardMaterial color="#FF5252" transparent opacity={0.3} wireframe />
-        </mesh>
-      </Float>
-      <Float speed={1.8} rotationIntensity={0.4} floatIntensity={0.6}>
-        <mesh position={[3.5, -1, -1.5]} rotation={[0.3, 0.8, 0.2]}>
-          <icosahedronGeometry args={[0.5, 0]} />
-          <meshStandardMaterial color="#FF8C00" transparent opacity={0.25} wireframe />
-        </mesh>
-      </Float>
-      <Float speed={2} rotationIntensity={0.3} floatIntensity={0.7}>
-        <mesh position={[-2.5, -2, -3]} rotation={[0.8, 0.3, 0.5]}>
-          <tetrahedronGeometry args={[0.35, 0]} />
-          <meshStandardMaterial color="#FFB300" transparent opacity={0.2} wireframe />
-        </mesh>
-      </Float>
-    </>
-  );
-}
-
-/* ========== 3D 场景组件 ========== */
-function Scene3D() {
-  return (
-    <Canvas camera={{ position: [0, 0, 5], fov: 50 }} style={{ touchAction: 'none' }}>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[5, 5, 5]} intensity={1} />
-      <pointLight position={[-5, -3, 2]} color="#FF5252" intensity={0.8} />
-      <pointLight position={[5, 3, 3]} color="#FF8C00" intensity={0.6} />
-      <Suspense fallback={null}>
-        <Logo3D scale={0.8} />
-        <ParticleField />
-        <FloatingShapes />
-        <Stars radius={80} depth={30} count={200} factor={3} saturation={0.5} fade speed={0.5} />
-        <Environment preset="city" />
-      </Suspense>
-    </Canvas>
-  );
-}
-
-/* ========== 3D 特色卡片 ========== */
-function FeatureCard3D({ feature, index }: { feature: { icon: React.ElementType; title: string; description: string }; index: number }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-100, 100], [8, -8]);
-  const rotateY = useTransform(x, [-100, 100], [-8, 8]);
-  const isHovered = useRef(false);
-
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    x.set(e.clientX - centerX);
-    y.set(e.clientY - centerY);
-  }
-
-  function handleMouseEnter() {
-    isHovered.current = true;
-  }
-
-  function handleMouseLeave() {
-    isHovered.current = false;
-    x.set(0);
-    y.set(0);
-  }
-
-  return (
-    <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      style={{ rotateX, rotateY, transformPerspective: 1000, transformStyle: 'preserve-3d' }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="p-6 md:p-8 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-none transition-shadow h-full cursor-pointer"
-    >
-      <motion.div
-        className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5"
-        style={{ transform: 'translateZ(30px)' }}
-        whileHover={{ scale: 1.1, rotateY: 15 }}
-      >
-        <feature.icon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </motion.div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2" style={{ transform: 'translateZ(20px)' }}>{feature.title}</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed" style={{ transform: 'translateZ(10px)' }}>{feature.description}</p>
-    </motion.div>
-  );
-}
-
-/* ========== 3D 产品手机模型 ========== */
-function Phone3D() {
-  const meshRef = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    const t = state.clock.getElapsedTime();
-    meshRef.current.rotation.y = Math.sin(t * 0.5) * 0.15;
-    meshRef.current.position.y = Math.sin(t * 0.8) * 0.15;
-  });
-
-  return (
-    <group ref={meshRef}>
-      <mesh>
-        <boxGeometry args={[1.8, 3.2, 0.15]} />
-        <meshStandardMaterial color="#1a1a2e" metalness={0.8} roughness={0.2} />
-      </mesh>
-      <mesh position={[0, 0, 0.08]}>
-        <boxGeometry args={[1.6, 2.9, 0.02]} />
-        <meshStandardMaterial color="#4a90d9" metalness={0.3} roughness={0.4} emissive="#4a90d9" emissiveIntensity={0.3} />
-      </mesh>
-      <mesh position={[0, 1.45, 0.1]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#333" metalness={0.5} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 1.35, 0.1]}>
-        <boxGeometry args={[0.4, 0.04, 0.02]} />
-        <meshStandardMaterial color="#555" metalness={0.5} roughness={0.3} />
-      </mesh>
-    </group>
-  );
-}
-
-function Phone3DScene() {
-  return (
-    <Canvas camera={{ position: [0, 0, 6], fov: 45 }} style={{ touchAction: 'none' }}>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[3, 5, 4]} intensity={1.2} />
-      <pointLight position={[-3, 2, 3]} color="#4a90d9" intensity={0.8} />
-      <pointLight position={[3, -2, 2]} color="#FF5252" intensity={0.5} />
-      <Suspense fallback={null}>
-        <Float speed={1} rotationIntensity={0.1} floatIntensity={0.3}>
-          <Phone3D />
-        </Float>
-        <Environment preset="studio" />
-      </Suspense>
-    </Canvas>
-  );
-}
 
 /* ========== 动画定义 ========== */
 const fadeInUp = {
@@ -249,6 +15,15 @@ const fadeInUp = {
 const fadeIn = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 1, ease: [0.22, 1, 0.36, 1] } }
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }
+  })
 };
 
 function AnimatedSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -366,10 +141,6 @@ function HeroSection() {
         />
       </div>
 
-      <div className="absolute inset-0 pointer-events-none">
-        <Scene3D />
-      </div>
-
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         {loaded && (
           <motion.div
@@ -377,6 +148,15 @@ function HeroSection() {
             initial="hidden"
             animate="visible"
           >
+            <motion.img
+              src="/studio-logo.svg"
+              alt=""
+              className="w-40 h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 mx-auto mb-10"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            />
+
             <motion.h1
               className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight leading-[1.05]"
               initial={{ opacity: 0, y: 30 }}
@@ -431,7 +211,7 @@ function HeroSection() {
       </div>
 
       <motion.div
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 cursor-pointer z-10"
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 cursor-pointer"
         onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -535,7 +315,28 @@ function ProductsSection() {
               </div>
 
               <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-850 p-8 sm:p-10 md:p-14 flex items-center justify-center min-h-[360px] md:min-h-[440px]">
-                <Phone3DScene />
+                <div className="relative">
+                  <motion.div
+                    className="w-56 h-80 sm:w-64 sm:h-96 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[2rem] shadow-2xl shadow-blue-500/30 flex items-center justify-center relative overflow-hidden"
+                    initial={{ opacity: 0, y: 30, rotateY: -10 }}
+                    whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
+                    <div className="relative text-center text-white z-10">
+                      <MessageSquare className="w-14 h-14 mx-auto mb-4 opacity-90" />
+                      <p className="text-lg font-semibold mb-1">Code Kitty</p>
+                      <p className="text-sm opacity-70">即时通讯</p>
+                    </div>
+                    <div className="absolute top-4 left-4 right-4 h-6 bg-white/20 rounded-full" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute -top-3 -right-3 w-6 h-6 bg-green-400 rounded-full border-4 border-white dark:border-gray-900 shadow-lg"
+                    animate={{ scale: [1, 1.3, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -569,7 +370,17 @@ function FeaturesSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((feature, i) => (
             <AnimatedSection key={feature.title} delay={i}>
-              <FeatureCard3D feature={feature} index={i} />
+              <motion.div
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="p-6 md:p-8 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-none transition-shadow h-full"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
+                  <feature.icon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{feature.description}</p>
+              </motion.div>
             </AnimatedSection>
           ))}
         </div>
