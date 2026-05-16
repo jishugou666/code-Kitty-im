@@ -137,7 +137,7 @@ function HeroSection() {
             <motion.img
               src="/studio-logo.svg"
               alt=""
-              className="w-24 h-24 md:w-28 md:h-28 mx-auto mb-10"
+              className="w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 mx-auto mb-10"
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
