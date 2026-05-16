@@ -114,3 +114,29 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 Button.displayName = 'Button';
+
+// Compatibility export for shadcn/ui components that depend on buttonVariants
+type ButtonVariantOptions = {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+};
+
+export function buttonVariants({ variant = 'default', size = 'default' }: ButtonVariantOptions = {}) {
+  const variantMap: Record<string, string> = {
+    default: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-md',
+    destructive: 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-md',
+    outline: 'border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700',
+    secondary: 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50',
+    ghost: 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400',
+    link: 'text-blue-500 hover:underline'
+  };
+
+  const sizeMap: Record<string, string> = {
+    default: 'px-4 py-2 text-sm rounded-xl',
+    sm: 'px-3 py-1.5 text-xs rounded-lg',
+    lg: 'px-6 py-2.5 text-base rounded-xl',
+    icon: 'p-2 rounded-lg'
+  };
+
+  return `${variantMap[variant]} ${sizeMap[size]}`;
+}

@@ -1,4 +1,4 @@
-export { Button } from './Button';
+export { Button, buttonVariants } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
 export { Modal, ModalHeader, ModalContent, ModalFooter } from './Modal';
