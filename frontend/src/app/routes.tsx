@@ -8,11 +8,16 @@ import { EmptyState } from "./pages/EmptyState";
 import { Moments } from "./pages/Moments";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
+import Studio from "./pages/Studio";
 
 export const router = createBrowserRouter([
   {
     path: "/login",
     Component: Login,
+  },
+  {
+    path: "/studio",
+    Component: Studio,
   },
   {
     path: "/",

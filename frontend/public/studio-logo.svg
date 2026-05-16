@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B"/>
+      <stop offset="50%" style="stop-color:#FF5252"/>
+      <stop offset="100%" style="stop-color:#FF4444"/>
+    </linearGradient>
+    <linearGradient id="sphereGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="70%" style="stop-color:#E0E0E0"/>
+      <stop offset="100%" style="stop-color:#B0B0B0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF4444" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  
+  <rect x="25" y="25" width="150" height="150" rx="45" ry="45" fill="url(#logoGrad)" filter="url(#shadow)"/>
+  
+  <rect x="55" y="55" width="90" height="90" rx="25" ry="25" fill="#FFFFFF"/>
+  
+  <circle cx="130" cy="130" r="18" fill="url(#sphereGrad)">
+    <animate attributeName="r" values="18;19;18" dur="3s" repeatCount="indefinite"/>
+  </circle>
+</svg>
