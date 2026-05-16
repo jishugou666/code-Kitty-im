@@ -45,3 +45,19 @@ export function validationError(msg = 'Validation Error') {
     msg
   };
 }
+
+export function serverError(msg = 'Server Error') {
+  return {
+    code: 500,
+    data: null,
+    msg: process.env.NODE_ENV === 'production' ? 'Server Error' : msg
+  };
+}
+
+export function operationFailed(msg = 'Operation Failed') {
+  return {
+    code: 400,
+    data: null,
+    msg
+  };
+}

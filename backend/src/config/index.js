@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export default {
   port: process.env.PORT || 3000,
   db: {
@@ -10,8 +12,8 @@ export default {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'im_chat',
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    connectionLimit: parseInt(process.env.DB_POOL_SIZE) || (isProduction ? 20 : 10),
+    queueLimit: parseInt(process.env.DB_QUEUE_LIMIT) || 0
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'default_secret_change_me',
@@ -26,5 +28,9 @@ export default {
     secret: process.env.PUSHER_SECRET || 'ed4de7ef1448ce39c28e',
     cluster: process.env.PUSHER_CLUSTER || 'ap1',
     encrypted: process.env.PUSHER_ENCRYPTED !== 'false'
+  },
+  logging: {
+    level: process.env.LOG_LEVEL || (isProduction ? 'error' : 'debug'),
+    enabled: process.env.LOG_ENABLED !== 'false'
   }
 };

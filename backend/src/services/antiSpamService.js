@@ -11,7 +11,11 @@ const CONFIG = {
   cooldownMs: 3000,
   maxConcurrent: 3,
   blockThreshold: 50,
-  feedbackConfidence: 65
+  feedbackConfidence: 65,
+  cleanupIntervalMs: 60000,
+  maxUserDataAgeMs: 300000,
+  maxIPDataAgeMs: 600000,
+  maxMapSize: 10000
 };
 
 class AntiSpamService {
@@ -24,6 +28,72 @@ class AntiSpamService {
     this.monitoredConversations = new Set();
     this.messagesProcessed = 0;
     this.threatsBlocked = 0;
+    this.cleanupTimer = null;
+    this.startCleanupTimer();
+  }
+
+  startCleanupTimer() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+    }
+    this.cleanupTimer = setInterval(() => {
+      this.performCleanup();
+    }, CONFIG.cleanupIntervalMs);
+  }
+
+  stopCleanupTimer() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
+  performCleanup() {
+    const now = Date.now();
+    let userCleaned = 0;
+    let ipCleaned = 0;
+
+    for (const [userId, data] of messageTracking.entries()) {
+      if (now - (data.lastActivity || data.messages[data.messages.length - 1]?.timestamp || 0) > CONFIG.maxUserDataAgeMs) {
+        messageTracking.delete(userId);
+        this.userScores.delete(userId);
+        this.lastMessages.delete(userId);
+        if (data.conversationId) {
+          this.monitoredConversations.delete(data.conversationId);
+        }
+        userCleaned++;
+      }
+    }
+
+    for (const [ip, data] of ipTracking.entries()) {
+      if (now - (data.lastActivity || data.messages[data.messages.length - 1]?.timestamp || 0) > CONFIG.maxIPDataAgeMs) {
+        ipTracking.delete(ip);
+        this.ipScores.delete(ip);
+        ipCleaned++;
+      }
+    }
+
+    if (messageTracking.size > CONFIG.maxMapSize) {
+      const excessCount = messageTracking.size - CONFIG.maxMapSize;
+      const entriesToDelete = Array.from(messageTracking.entries()).slice(0, excessCount);
+      for (const [userId] of entriesToDelete) {
+        this.clearUserData(userId);
+        userCleaned++;
+      }
+    }
+
+    if (ipTracking.size > CONFIG.maxMapSize) {
+      const excessCount = ipTracking.size - CONFIG.maxMapSize;
+      const entriesToDelete = Array.from(ipTracking.entries()).slice(0, excessCount);
+      for (const [ip] of entriesToDelete) {
+        this.clearIPData(ip);
+        ipCleaned++;
+      }
+    }
+
+    if (userCleaned > 0 || ipCleaned > 0) {
+      console.log(`[AntiSpam] Cleanup: removed ${userCleaned} users, ${ipCleaned} IPs. Current: ${messageTracking.size} users, ${ipTracking.size} IPs`);
+    }
   }
 
   generateFingerprint(reqOrIp) {

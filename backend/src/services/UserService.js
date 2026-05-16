@@ -1,5 +1,5 @@
 import { query } from '../utils/db.js';
-import { hashPassword, comparePassword, generateToken, maskPhone, maskEmail } from '../utils/crypto.js';
+import { hashPassword, comparePassword, generateToken, maskPhone, maskEmail, escapeLikeQuery } from '../utils/crypto.js';
 
 export const UserService = {
   async register(password, nickname, email) {
@@ -133,9 +133,10 @@ export const UserService = {
 
   async searchUsers(keyword) {
     const trimmedKeyword = keyword.trim();
+    const escapedKeyword = escapeLikeQuery(trimmedKeyword);
     const users = await query(
       'SELECT id, username, nickname, avatar, status, role FROM user WHERE (username LIKE ? OR nickname LIKE ? OR email LIKE ?) LIMIT 20',
-      [`%${trimmedKeyword}%`, `%${trimmedKeyword}%`, `%${trimmedKeyword}%`]
+      [`%${escapedKeyword}%`, `%${escapedKeyword}%`, `%${escapedKeyword}%`]
     );
     return users.map(u => this.sanitizeUser(u, true));
   },

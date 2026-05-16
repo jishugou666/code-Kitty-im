@@ -112,12 +112,18 @@ export const ConversationService = {
           (SELECT COUNT(*) FROM message m WHERE m.conversation_id = c.id AND m.sender_id != ? AND m.created_at > COALESCE((SELECT MAX(seen_at) FROM message_read WHERE conversation_id = c.id AND user_id = ?), '1970-01-01')) as unread_count
          FROM conversation c
          JOIN conversation_member cm ON c.id = cm.conversation_id AND cm.user_id = ?
-         ORDER BY last_message_time DESC`,
+         ORDER BY COALESCE(last_message_time, '1970-01-01 00:00:00') DESC`,
         [userId, userId, userId]
       );
 
       console.log('[ConversationService] Found conversations:', conversations.length);
-      console.log('[ConversationService] Conversation types:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name })));
+      console.log('[ConversationService] Conversation types:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name, last_message_time: c.last_message_time })));
+
+      // Debug: 检查每个会话是否有last_message_time
+      const noLastMessageTime = conversations.filter(c => !c.last_message_time);
+      if (noLastMessageTime.length > 0) {
+        console.log('[ConversationService] Conversations without last_message_time:', noLastMessageTime.map(c => c.id));
+      }
 
       if (conversations.length === 0) {
         return [];
@@ -162,10 +168,12 @@ export const ConversationService = {
         console.log('[ConversationService] techGod conversations:', techGodConversations.length);
         console.log('[ConversationService] other conversations:', otherConversations.length);
         console.log('[ConversationService] Group conversations in others:', otherConversations.filter(c => c.type === 'group').map(c => ({ id: c.id, name: c.name, last_message_time: c.last_message_time })));
-        return [...techGodConversations, ...otherConversations];
+        const result = [...techGodConversations, ...otherConversations];
+        console.log('[ConversationService] FINAL RETURN - total:', result.length, 'groups:', result.filter(c => c.type === 'group').length);
+        return result;
       }
 
-      console.log('[ConversationService] All conversations:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name, last_message_time: c.last_message_time })));
+      console.log('[ConversationService] FINAL RETURN - All conversations:', conversations.map(c => ({ id: c.id, type: c.type, name: c.name, last_message_time: c.last_message_time })));
       return conversations;
     } catch (err) {
       console.error('获取会话列表失败:', err);

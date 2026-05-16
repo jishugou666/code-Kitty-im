@@ -37,3 +37,38 @@ export function maskEmail(email) {
   if (name.length <= 2) return name[0] + '***@' + parts[1];
   return name[0] + '***' + name[name.length - 1] + '@' + parts[1];
 }
+
+export function escapeHtml(text) {
+  if (!text) return text;
+  const htmlEscapes = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+    '`': '&#x60;',
+    '=': '&#x3D;'
+  };
+  return String(text).replace(/[&<>"'`=/]/g, (chr) => htmlEscapes[chr]);
+}
+
+export function unescapeHtml(text) {
+  if (!text) return text;
+  const htmlUnescapes = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#x60;': '`',
+    '&#x3D;': '='
+  };
+  return String(text).replace(/&(amp|lt|gt|quot|#x27|#x2F|#x60|#x3D);/g, (match) => htmlUnescapes[match] || match);
+}
+
+export function escapeLikeQuery(text) {
+  if (!text) return text;
+  return String(text).replace(/[%_\\]/g, (chr) => '\\' + chr);
+}

@@ -1,26 +1,45 @@
-class AdvancedRateLimiter {
+class SlidingWindowRateLimiter {
   constructor(config = {}) {
     this.config = {
       windowMs: config.windowMs || 60000,
       maxRequests: config.maxRequests || 100,
       maxConcurrent: config.maxConcurrent || 30,
-      blockDurationMs: config.blockDurationMs || 30000
+      blockDurationMs: config.blockDurationMs || 30000,
+      precisionMs: config.precisionMs || 1000
     };
 
-    this.requests = new Map();
-    this.globalRequestCount = 0;
-    this.lastGlobalReset = Date.now();
+    this.requestLog = new Map();
+    this.globalRequestTimestamps = [];
+    this.maxGlobalEntries = 10000;
     this.skipPaths = ['/api/rate-limit/unblock'];
 
     this.startCleanup();
   }
 
+  cleanOldEntries(entry, now) {
+    const windowStart = now - this.config.windowMs;
+    while (entry.timestamps.length > 0 && entry.timestamps[0] < windowStart) {
+      entry.timestamps.shift();
+    }
+    return entry;
+  }
+
+  cleanGlobalEntries(now) {
+    const windowStart = now - this.config.windowMs;
+    while (this.globalRequestTimestamps.length > 0 && this.globalRequestTimestamps[0] < windowStart) {
+      this.globalRequestTimestamps.shift();
+    }
+    while (this.globalRequestTimestamps.length > this.maxGlobalEntries) {
+      this.globalRequestTimestamps.shift();
+    }
+  }
+
   unblockUser(identifier) {
-    const entry = this.requests.get(identifier);
+    const entry = this.requestLog.get(identifier);
     if (entry) {
       entry.blocked = false;
       entry.blockedUntil = 0;
-      entry.count = 0;
+      entry.timestamps = [];
       console.log(`[RateLimit] Unblocked user: ${identifier}`);
       return true;
     }
@@ -38,40 +57,44 @@ class AdvancedRateLimiter {
   startCleanup() {
     setInterval(() => {
       const now = Date.now();
-      for (const [key, entry] of this.requests.entries()) {
-        if (entry.resetTime < now && !entry.blocked) {
-          this.requests.delete(key);
-        }
+      for (const [key, entry] of this.requestLog.entries()) {
         if (entry.blocked && entry.blockedUntil < now) {
           entry.blocked = false;
-          entry.count = 0;
+          entry.timestamps = [];
+        }
+        if (!entry.blocked && entry.timestamps.length === 0) {
+          this.requestLog.delete(key);
         }
       }
-    }, 10000);
+      this.cleanGlobalEntries(now);
+    }, this.config.precisionMs);
   }
 
   isAllowed(identifier) {
     const now = Date.now();
+    this.cleanGlobalEntries(now);
 
-    if (this.globalRequestCount > this.config.maxConcurrent * 3) {
+    if (this.globalRequestTimestamps.length > this.config.maxConcurrent * 3) {
+      const oldestGlobal = this.globalRequestTimestamps[0];
+      const retryAfter = Math.ceil((this.config.windowMs - (now - oldestGlobal)) / 1000);
       return {
         allowed: false,
-        retryAfter: Math.ceil((this.config.windowMs - (now - this.lastGlobalReset)) / 1000),
+        retryAfter: Math.max(1, retryAfter),
         reason: 'Server is experiencing high load'
       };
     }
 
-    let entry = this.requests.get(identifier);
-
-    if (!entry || entry.resetTime < now) {
+    let entry = this.requestLog.get(identifier);
+    if (!entry) {
       entry = {
-        count: 0,
-        resetTime: now + this.config.windowMs,
+        timestamps: [],
         blocked: false,
         blockedUntil: 0
       };
-      this.requests.set(identifier, entry);
+      this.requestLog.set(identifier, entry);
     }
+
+    entry = this.cleanOldEntries(entry, now);
 
     if (entry.blocked && entry.blockedUntil > now) {
       return {
@@ -81,9 +104,13 @@ class AdvancedRateLimiter {
       };
     }
 
-    entry.count++;
+    entry.timestamps.push(now);
+    this.globalRequestTimestamps.push(now);
 
-    if (entry.count > this.config.maxRequests) {
+    const windowStart = now - this.config.windowMs;
+    const requestCount = entry.timestamps.filter(ts => ts >= windowStart).length;
+
+    if (requestCount > this.config.maxRequests) {
       entry.blocked = true;
       entry.blockedUntil = now + this.config.blockDurationMs;
       return {
@@ -93,23 +120,25 @@ class AdvancedRateLimiter {
       };
     }
 
-    this.globalRequestCount++;
-    if (now - this.lastGlobalReset >= this.config.windowMs) {
-      this.globalRequestCount = 0;
-      this.lastGlobalReset = now;
-    }
-
-    return { allowed: true };
+    return { 
+      allowed: true, 
+      remaining: Math.max(0, this.config.maxRequests - requestCount),
+      resetIn: Math.ceil((entry.timestamps[0] + this.config.windowMs - now) / 1000)
+    };
   }
 
   getStats() {
     const now = Date.now();
-    let activeRequests = 0;
+    this.cleanGlobalEntries(now);
+    
+    let activeUsers = 0;
     let blocked = 0;
+    const windowStart = now - this.config.windowMs;
 
-    for (const entry of this.requests.values()) {
-      if (entry.count > 0 && entry.resetTime > now) {
-        activeRequests++;
+    for (const entry of this.requestLog.values()) {
+      const validTimestamps = entry.timestamps.filter(ts => ts >= windowStart);
+      if (validTimestamps.length > 0) {
+        activeUsers++;
       }
       if (entry.blocked && entry.blockedUntil > now) {
         blocked++;
@@ -117,18 +146,21 @@ class AdvancedRateLimiter {
     }
 
     return {
-      activeRequests,
+      activeUsers,
       blocked,
-      globalLoad: this.globalRequestCount
+      globalLoad: this.globalRequestTimestamps.length,
+      windowMs: this.config.windowMs,
+      maxRequests: this.config.maxRequests
     };
   }
 }
 
-const rateLimiter = new AdvancedRateLimiter({
+const rateLimiter = new SlidingWindowRateLimiter({
   windowMs: 60000,
   maxRequests: 500,
   maxConcurrent: 200,
-  blockDurationMs: 10000
+  blockDurationMs: 10000,
+  precisionMs: 1000
 });
 
 export function rateLimitMiddleware(req, res, next) {
@@ -140,8 +172,8 @@ export function rateLimitMiddleware(req, res, next) {
 
   const result = rateLimiter.isAllowed(identifier);
 
-  res.setHeader('X-RateLimit-Remaining', '100');
-  res.setHeader('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString());
+  res.setHeader('X-RateLimit-Remaining', String(result.remaining || 0));
+  res.setHeader('X-RateLimit-Reset', String(result.resetIn || 60));
 
   if (!result.allowed) {
     const retryAfterSeconds = Math.ceil((result.retryAfter || 30));
@@ -165,7 +197,7 @@ export function globalRateLimitMiddleware(req, res, next) {
   const stats = rateLimiter.getStats();
 
   res.setHeader('X-Global-Load', String(stats.globalLoad));
-  res.setHeader('X-Active-Requests', String(stats.activeRequests));
+  res.setHeader('X-Active-Requests', String(stats.activeUsers));
 
   if (stats.globalLoad > 1000) {
     console.warn(`[GlobalRateLimit] High load detected: ${stats.globalLoad}`);
