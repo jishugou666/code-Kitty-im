@@ -127,7 +127,7 @@ function Scene3D() {
         <Logo3D scale={0.8} />
         <ParticleField />
         <FloatingShapes />
-        <Stars radius={80 depth={30} count={200} factor={3} saturation={0.5} fade speed={0.5} />
+        <Stars radius={80} depth={30} count={200} factor={3} saturation={0.5} fade speed={0.5} />
         <Environment preset="city" />
       </Suspense>
     </Canvas>
