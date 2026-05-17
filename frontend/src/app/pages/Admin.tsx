@@ -513,7 +513,7 @@ export function Admin() {
   const isStudioTab = activeTab === 'studio';
 
   if (isStudioTab && isStudioAdmin) {
-    const hasLoadedSettings = studioSettings.hero && studioSettings.about && studioSettings.cta;
+    const hasLoadedSettings = studioSettings.hero && Object.keys(studioSettings.hero).length > 0;
     return (
       <div className="h-full flex flex-col bg-white dark:bg-[#0A0C10]">
         <div className="flex items-center justify-between px-4 py-2 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10 flex-shrink-0">
