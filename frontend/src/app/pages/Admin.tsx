@@ -67,6 +67,7 @@ export function Admin() {
 
   const [studioSettings, setStudioSettings] = useState<StudioSettings>({ hero: {}, about: {}, cta: {} });
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
 
@@ -1552,6 +1553,7 @@ export function Admin() {
                   </div>
                   <button
                     onClick={() => {
+                      setIsSaving(true);
                       const updates = section.fields.map(field => ({
                         section: section.section,
                         key: field.key,
@@ -1567,17 +1569,22 @@ export function Admin() {
                         },
                         body: JSON.stringify({ settings: updates })
                       }).then(res => res.json()).then(data => {
+                        setIsSaving(false);
                         if (data.code === 200) {
                           toast('保存成功', 'success');
                         } else {
                           toast(data.message || '保存失败', 'error');
                         }
+                      }).catch(() => {
+                        setIsSaving(false);
+                        toast('网络错误', 'error');
                       });
                     }}
-                    className="mt-6 px-6 py-2.5 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium"
+                    disabled={isSaving}
+                    className="mt-6 px-6 py-2.5 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium disabled:opacity-50"
                   >
                     <Save size={16} />
-                    保存 {section.title}
+                    {isSaving ? '保存中...' : `保存 ${section.title}`}
                   </button>
                 </motion.div>
               );
