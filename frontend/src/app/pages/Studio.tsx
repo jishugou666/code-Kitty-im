@@ -142,10 +142,34 @@ function Navbar() {
 /* ========== Hero 区域 ========== */
 function HeroSection() {
   const [loaded, setLoaded] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const targetDate = new Date('2027-01-15T00:00:00').getTime();
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const diff = targetDate - now;
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -205,7 +229,7 @@ function HeroSection() {
             </motion.p>
 
             <motion.p
-              className="text-sm text-gray-400 dark:text-gray-500 mb-12 font-medium"
+              className="text-sm text-gray-400 dark:text-gray-500 mb-8 font-medium"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -214,10 +238,45 @@ function HeroSection() {
             </motion.p>
 
             <motion.div
+              className="flex items-center justify-center gap-2 mb-12"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">距七周年还有</span>
+              <div className="flex items-center gap-1.5">
+                {[
+                  { value: timeLeft.days, label: '天' },
+                  { value: timeLeft.hours, label: '时' },
+                  { value: timeLeft.minutes, label: '分' },
+                  { value: timeLeft.seconds, label: '秒' },
+                ].map((unit, i) => (
+                  <div key={unit.label} className="flex items-center gap-1.5">
+                    <div className="flex items-baseline gap-0.5">
+                      <motion.span
+                        key={unit.value}
+                        initial={{ y: -6, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.25 }}
+                        className="text-lg font-semibold text-gray-900 dark:text-white tabular-nums"
+                      >
+                        {String(unit.value).padStart(2, '0')}
+                      </motion.span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{unit.label}</span>
+                    </div>
+                    {i < 3 && (
+                      <span className="text-gray-300 dark:text-gray-600 font-light text-sm">:</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
               className="flex flex-col sm:flex-row gap-4 justify-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.9, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <a
                 href="/"
@@ -296,98 +355,6 @@ function AboutSection({ info, loading }: { info: WorkshopInfo | null; loading: b
               </AnimatedSection>
             ))
           )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ========== 倒计时区域 ========== */
-function CountdownSection() {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
-
-  useEffect(() => {
-    const targetDate = new Date('2027-01-15T00:00:00').getTime();
-    
-    const updateCountdown = () => {
-      const now = Date.now();
-      const diff = targetDate - now;
-      
-      if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        return;
-      }
-      
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      
-      setTimeLeft({ days, hours, minutes, seconds });
-    };
-    
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const units = [
-    { value: timeLeft.days, label: '天' },
-    { value: timeLeft.hours, label: '时' },
-    { value: timeLeft.minutes, label: '分' },
-    { value: timeLeft.seconds, label: '秒' },
-  ];
-
-  return (
-    <section className="py-24 md:py-32 px-6 bg-gray-950 dark:bg-black relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 via-orange-900/10 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-red-500/10 via-orange-500/5 to-transparent rounded-full blur-[120px]"
-          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </div>
-      
-      <div className="max-w-[1200px] mx-auto text-center relative z-10">
-        <AnimatedSection className="mb-12 md:mb-16">
-          <span className="inline-block text-xs font-semibold text-red-400 dark:text-red-500 uppercase tracking-[0.2em] mb-4">倒计时</span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-            七周年倒计时
-          </h2>
-          <p className="text-base md:text-lg text-gray-400 max-w-xl mx-auto">
-            2020.01.15 — 2027.01.15 · 七年征程，感恩同行
-          </p>
-        </AnimatedSection>
-        
-        <div className="flex justify-center items-center gap-3 md:gap-6">
-          {units.map((unit, i) => (
-            <AnimatedSection key={unit.label} delay={i}>
-              <div className="flex items-center gap-3 md:gap-6">
-                <div className="bg-white/10 backdrop-blur-xl rounded-2xl w-20 h-24 md:w-28 md:h-32 flex flex-col items-center justify-center border border-white/10 hover:border-white/20 transition-colors">
-                  <motion.span
-                    key={unit.value}
-                    initial={{ y: -8, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-3xl md:text-5xl font-bold text-white tabular-nums"
-                  >
-                    {String(unit.value).padStart(2, '0')}
-                  </motion.span>
-                  <span className="text-xs text-gray-400 mt-1">{unit.label}</span>
-                </div>
-                {i < units.length - 1 && (
-                  <span className="text-2xl md:text-3xl text-gray-500 font-light -mt-6">:</span>
-                )}
-              </div>
-            </AnimatedSection>
-          ))}
         </div>
       </div>
     </section>
@@ -689,7 +656,6 @@ export default function Studio() {
       <main>
         <HeroSection />
         <AboutSection info={workshopInfo} loading={infoLoading} />
-        <CountdownSection />
         <WorksSection works={works} loading={worksLoading} />
         <MembersSection members={members} loading={membersLoading} />
         <CTASection />
