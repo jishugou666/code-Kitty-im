@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { motion, useInView, useMotionValue, useTransform } from 'motion/react';
-import { ArrowRight, MessageSquare, Shield, Zap, Globe, Sparkles, ChevronDown, Star, Heart, Code, Layers, Smartphone, Lock } from 'lucide-react';
+import { motion, useInView } from 'motion/react';
+import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock } from 'lucide-react';
 
 /* ========== 动画定义 ========== */
 const fadeInUp = {
