@@ -9,8 +9,6 @@ import { EmptyState } from "./pages/EmptyState";
 import { Moments } from "./pages/Moments";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
-import { StudioAdminLogin } from "./pages/StudioAdminLogin";
-import { StudioAdminDashboard } from "./pages/StudioAdminDashboard";
 
 const Studio = lazy(() => import("./pages/Studio"));
 
@@ -28,18 +26,6 @@ export const router = createBrowserRouter([
   {
     path: "/studio",
     Component: LazyStudio,
-  },
-  {
-    path: "/studio/admin/login",
-    Component: StudioAdminLogin,
-  },
-  {
-    path: "/studio/admin/dashboard",
-    Component: StudioAdminDashboard,
-  },
-  {
-    path: "/studio/admin",
-    Component: StudioAdminLogin,
   },
   {
     path: "/",
