@@ -168,47 +168,44 @@ interface EditableTextProps {
 
 function EditableText({ configKey, section, value, onChange, onSelect, selectedConfigKey, editMode, className = '', children, multiline = false, tag: Tag = 'span' }: EditableTextProps) {
   const isSelected = selectedConfigKey === configKey;
-  const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (isSelected && isEditing) {
+    if (isSelected) {
       const el = multiline ? textareaRef.current : inputRef.current;
-      el?.focus();
+      setTimeout(() => el?.focus(), 50);
     }
-  }, [isSelected, isEditing]);
+  }, [isSelected]);
+
+  const startEditing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect(configKey, section);
+  };
+
+  const stopEditing = () => {
+    onSelect('', '');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      stopEditing();
+    }
+  };
 
   if (!editMode) {
     return <Tag className={className}>{children}</Tag>;
   }
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isEditing) {
-      onSelect(configKey, section);
-      setIsEditing(true);
-    }
-  };
-
-  const handleBlur = () => {
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsEditing(false);
-    }
-  };
-
-  if (isSelected && isEditing) {
+  if (isSelected) {
     if (multiline) {
       return (
         <textarea
           ref={textareaRef}
           value={value || ''}
           onChange={(e) => onChange(section, configKey, e.target.value)}
-          onBlur={handleBlur}
+          onBlur={stopEditing}
           onKeyDown={handleKeyDown}
           className={`${className} bg-[#007AFF]/10 border border-[#007AFF] rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none w-full`}
           rows={3}
@@ -221,7 +218,7 @@ function EditableText({ configKey, section, value, onChange, onSelect, selectedC
         type="text"
         value={value || ''}
         onChange={(e) => onChange(section, configKey, e.target.value)}
-        onBlur={handleBlur}
+        onBlur={stopEditing}
         onKeyDown={handleKeyDown}
         className={`${className} bg-[#007AFF]/10 border border-[#007AFF] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#007AFF] w-full`}
       />
@@ -230,11 +227,11 @@ function EditableText({ configKey, section, value, onChange, onSelect, selectedC
 
   return (
     <Tag
-      className={`${className} ${isSelected ? 'ring-2 ring-[#007AFF] rounded-lg -m-1 p-1' : editMode ? 'hover:ring-2 hover:ring-[#007AFF]/50 hover:rounded-lg hover:-m-1 hover:p-1 cursor-pointer' : ''} transition-all relative group`}
-      onClick={handleClick}
+      className={`${className} ${editMode ? 'hover:ring-2 hover:ring-[#007AFF]/50 hover:rounded-lg hover:-m-1 hover:p-1 cursor-pointer' : ''} transition-all relative group`}
+      onClick={startEditing}
     >
       {children}
-      {editMode && !isSelected && (
+      {editMode && (
         <span className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-[#007AFF] text-white rounded-full p-1 shadow-lg">
           <Edit2 size={12} />
         </span>
@@ -271,19 +268,13 @@ function EditableButton({ configKey, section, text, link, onChange, onSelect, se
   return (
     <div
       className={`${className} relative group ${isSelected ? 'ring-2 ring-[#007AFF] rounded-full -m-1 p-1' : 'hover:ring-2 hover:ring-[#007AFF]/50 hover:rounded-full hover:-m-1 hover:p-1 cursor-pointer'} transition-all`}
-      onClick={() => onSelect(configKey, section)}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(configKey, section); }}
     >
-      <a
-        href={link || '#'}
-        target={link?.startsWith('http') ? '_blank' : undefined}
-        rel="noopener noreferrer"
-        onClick={(e) => e.preventDefault()}
-        className={className}
-      >
+      <span className={className}>
         {text}
-        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-      </a>
-      {editMode && !isSelected && (
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform inline" />
+      </span>
+      {editMode && (
         <span className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-[#007AFF] text-white rounded-full p-1 shadow-lg">
           <Edit2 size={12} />
         </span>
