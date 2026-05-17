@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu, Cpu, Zap, ShieldCheck, Activity, Bell, CheckCircle, XCircle, AlertOctagon } from 'lucide-react';
+import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, AlertTriangle, Settings, Ban, Unlock, Crown, X, MessageCircle, ChevronDown, Edit2, Save, UserPlus, Menu, Cpu, Zap, ShieldCheck, Activity, Bell, CheckCircle, XCircle, AlertOctagon, Palette, Type, Link, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
@@ -10,9 +10,19 @@ import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useIsMobile } from '../components/ui/use-mobile';
 
-type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai' | 'aiFeedback';
+type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai' | 'aiFeedback' | 'studio';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5856D6'];
+const STUDIO_ADMIN_EMAIL = '3121601311@qq.com';
+const STUDIO_ADMIN_NICKNAME = '技术狗';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+interface StudioSettings {
+  hero: Record<string, any>;
+  about: Record<string, any>;
+  cta: Record<string, any>;
+}
 
 export function Admin() {
   const { t } = useTranslation();
@@ -55,8 +65,13 @@ export function Admin() {
   const [handleModal, setHandleModal] = useState<{ id: number; action: 'approve' | 'reject' } | null>(null);
   const [handleResult, setHandleResult] = useState('');
 
+  const [studioSettings, setStudioSettings] = useState<StudioSettings>({ hero: {}, about: {}, cta: {} });
+  const [editingField, setEditingField] = useState<string | null>(null);
+
+  const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
+
   useEffect(() => {
-    if (user?.role !== 'admin') {
+    if (!isStudioAdmin) {
       navigate('/');
       return;
     }
@@ -68,6 +83,12 @@ export function Admin() {
       loadAIFeedback();
     }
   }, [aiFeedbackPage, aiFeedbackFilter]);
+
+  useEffect(() => {
+    if (activeTab === 'studio') {
+      loadStudioSettings();
+    }
+  }, [activeTab]);
 
   const loadDashboard = async () => {
     setIsLoading(true);
@@ -104,17 +125,54 @@ export function Admin() {
     }
   };
 
+  const loadStudioSettings = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/studio/admin/settings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.code === 200) {
+        setStudioSettings(data.data);
+      } else if (data.code === 401) {
+        toast('登录已过期，请重新登录', 'error');
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Failed to load studio settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateStudioSetting = async (section: string, key: string, value: any, type = 'string') => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_BASE}/studio/admin/settings/${section}/${key}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ value, type })
+    });
+    const data = await res.json();
+    if (data.code === 200) {
+      setStudioSettings(prev => ({
+        ...prev,
+        [section]: { ...(prev[section] || {}), [key]: value }
+      }));
+      toast('保存成功', 'success');
+    } else {
+      toast(data.message || '保存失败', 'error');
+    }
+  };
+
   const loadUsers = async () => {
     setIsLoading(true);
     try {
       const res = await adminApi.getUsers({ page: 1, limit: 100 });
       if (res.code === 200) {
-        console.log('Users loaded:', res.data?.list?.map((u: any) => ({
-          id: u.id,
-          username: u.username,
-          status: u.status,
-          ban_status: u.ban_status
-        })));
         setUsers(res.data?.list || []);
       }
     } catch (error) {
@@ -333,6 +391,9 @@ export function Admin() {
       case 'aiFeedback':
         await loadAIFeedback();
         break;
+      case 'studio':
+        await loadStudioSettings();
+        break;
     }
   };
 
@@ -440,8 +501,89 @@ export function Admin() {
     { key: 'tables' as TabType, icon: Database, label: '数据库' },
     { key: 'groups' as TabType, icon: UserPlus, label: '群组管理' },
     { key: 'ai' as TabType, icon: Cpu, label: 'AI调度' },
-    { key: 'aiFeedback' as TabType, icon: Bell, label: 'AI反馈' }
+    { key: 'aiFeedback' as TabType, icon: Bell, label: 'AI反馈' },
+    ...(isStudioAdmin ? [{ key: 'studio' as TabType, icon: Palette, label: '官网配置' }] : [])
   ];
+
+  const studioSections = [
+    {
+      section: 'hero',
+      title: 'Hero 区域',
+      icon: LayoutDashboard,
+      fields: [
+        { key: 'subtitle', label: '副标题', type: 'text' },
+        { key: 'dateText', label: '日期文本', type: 'text' },
+        { key: 'countdownTarget', label: '倒计时目标日期', type: 'text' },
+        { key: 'countdownLabel', label: '倒计时标签', type: 'text' },
+        { key: 'primaryButtonText', label: '主按钮文字', type: 'text' },
+        { key: 'primaryButtonLink', label: '主按钮链接', type: 'text' },
+        { key: 'secondaryButtonText', label: '副按钮文字', type: 'text' },
+        { key: 'secondaryButtonLink', label: '副按钮链接', type: 'text' },
+      ]
+    },
+    {
+      section: 'about',
+      title: '关于区域',
+      icon: Type,
+      fields: [
+        { key: 'title', label: '标题', type: 'text' },
+        { key: 'description', label: '简介', type: 'textarea' },
+      ]
+    },
+    {
+      section: 'cta',
+      title: 'CTA 区域',
+      icon: Link,
+      fields: [
+        { key: 'title', label: '标题', type: 'text' },
+        { key: 'description', label: '描述', type: 'textarea' },
+        { key: 'primaryButtonText', label: '主按钮文字', type: 'text' },
+        { key: 'primaryButtonLink', label: '主按钮链接', type: 'text' },
+        { key: 'secondaryButtonText', label: '副按钮文字', type: 'text' },
+        { key: 'secondaryButtonLink', label: '副按钮链接', type: 'text' },
+      ]
+    }
+  ];
+
+  const renderStudioField = (field: any, section: string, value: any) => {
+    const fieldKey = `${section}-${field.key}`;
+    const isEditing = editingField === fieldKey;
+
+    return (
+      <div key={field.key}>
+        <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">
+          {field.label}
+        </label>
+        {field.type === 'textarea' ? (
+          <textarea
+            value={value || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setStudioSettings(prev => ({
+                ...prev,
+                [section]: { ...(prev[section] || {}), [field.key]: val }
+              }));
+            }}
+            rows={4}
+            className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white focus:border-[#007AFF] focus:outline-none transition-colors resize-none"
+          />
+        ) : (
+          <input
+            type="text"
+            value={value || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setStudioSettings(prev => ({
+                ...prev,
+                [section]: { ...(prev[section] || {}), [field.key]: val }
+              }));
+            }}
+            className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white focus:border-[#007AFF] focus:outline-none transition-colors"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={isMobile ? "h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] pb-20" : "h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A]"}>
@@ -1369,6 +1511,84 @@ export function Admin() {
                 <p>加载中...</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'studio' && isStudioAdmin && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="text-lg font-semibold text-black dark:text-white">工作室官网配置</h3>
+                <p className="text-sm text-black/40 dark:text-white/40 mt-1">修改后将实时生效于官网页面</p>
+              </div>
+              {isSaving && (
+                <div className="flex items-center gap-2 text-sm text-[#007AFF]">
+                  <div className="w-4 h-4 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                  保存中...
+                </div>
+              )}
+            </div>
+
+            {studioSections.map((section) => {
+              const SectionIcon = section.icon;
+              return (
+                <motion.div
+                  key={section.section}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg"
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
+                      <SectionIcon size={18} className="text-white" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-black dark:text-white">{section.title}</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {section.fields.map((field) => {
+                      const value = studioSettings[section.section]?.[field.key];
+                      return renderStudioField(field, section.section, value);
+                    })}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const updates = section.fields.map(field => ({
+                        section: section.section,
+                        key: field.key,
+                        value: studioSettings[section.section]?.[field.key] || '',
+                        type: field.type === 'textarea' ? 'string' : 'string'
+                      }));
+                      const token = localStorage.getItem('token');
+                      fetch(`${API_BASE}/studio/admin/settings/batch`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ settings: updates })
+                      }).then(res => res.json()).then(data => {
+                        if (data.code === 200) {
+                          toast('保存成功', 'success');
+                        } else {
+                          toast(data.message || '保存失败', 'error');
+                        }
+                      });
+                    }}
+                    className="mt-6 px-6 py-2.5 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Save size={16} />
+                    保存 {section.title}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {!isStudioAdmin && activeTab === 'studio' && (
+          <div className="text-center text-black/40 dark:text-white/40 py-12">
+            <Shield size={48} className="mx-auto mb-4 opacity-50" />
+            <p>无权访问此页面</p>
           </div>
         )}
       </div>
