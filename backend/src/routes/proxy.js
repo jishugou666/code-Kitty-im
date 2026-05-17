@@ -4,10 +4,11 @@ const router = Router();
 
 const CODEMAO_API_BASE = 'https://api.codemao.cn';
 
-router.get(/^\/studio\/(.*)$/, async (req, res) => {
+router.get(/^\/studio\/(api|web)\/(.*)$/, async (req, res) => {
   try {
-    const path = req.params[0] || '';
-    const targetUrl = `${CODEMAO_API_BASE}/web/${path}`;
+    const section = req.params[0];
+    const path = req.params[1] || '';
+    const targetUrl = `${CODEMAO_API_BASE}/${section}/${path}`;
     const params = new URLSearchParams(req.query);
     const url = `${targetUrl}?${params.toString()}`;
 

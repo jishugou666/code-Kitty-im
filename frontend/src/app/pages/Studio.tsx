@@ -34,6 +34,12 @@ interface MemberItem {
   position: string;
   n_works: number;
   latest_work_at: number;
+  description?: string;
+  doing?: string;
+  praiseTimes?: number;
+  viewTimes?: number;
+  collectionTimes?: number;
+  forkedTimes?: number;
 }
 
 const fadeInUp = {
@@ -377,8 +383,6 @@ function WorksSection({ works, loading }: { works: WorkItem[]; loading: boolean 
 
 /* ========== 成员展示区域 ========== */
 function MembersSection({ members, loading }: { members: MemberItem[]; loading: boolean }) {
-  const coreMembers = members.filter((m) => m.position === 'LEADER' || m.position === 'DEPUTYLEADER');
-
   const getPositionLabel = (pos: string) => {
     switch (pos) {
       case 'LEADER': return '室长';
@@ -405,38 +409,42 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8 max-w-5xl mx-auto">
-            {coreMembers.map((member, i) => (
-              <AnimatedSection key={member.user_id} delay={i * 0.06}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 max-w-5xl mx-auto">
+            {members.map((member, i) => (
+              <AnimatedSection key={member.user_id} delay={i * 0.08}>
                 <motion.a
                   href={`https://shequ.codemao.cn/user/${member.user_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -6 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   className="block group"
                 >
-                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-gray-200 dark:bg-gray-800">
-                    <img
-                      src={member.avatar_url}
-                      alt={member.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-white/90 dark:bg-black/90 backdrop-blur-sm rounded-full text-gray-900 dark:text-white">
-                        {getPositionLabel(member.position)}
-                      </span>
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all">
+                    <div className="relative w-full aspect-[3/4] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <img
+                        src={member.avatar_url}
+                        alt={member.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {member.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {member.n_works} 作品
-                    </p>
+                    <div className="p-4 text-center">
+                      <div className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full mb-3">
+                        {getPositionLabel(member.position)}
+                      </div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {member.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2">
+                        {member.description || member.doing || '暂无简介'}
+                      </p>
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
+                        <span>{member.n_works} 作品</span>
+                        <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                        <span>{(member.praiseTimes || 0).toLocaleString()} 获赞</span>
+                      </div>
+                    </div>
                   </div>
                 </motion.a>
               </AnimatedSection>
@@ -559,9 +567,9 @@ export default function Studio() {
     const fetchData = async () => {
       try {
         const [infoRes, worksRes, membersRes] = await Promise.all([
-          fetch(`${CODEMAO_PROXY}/shops/${WORKSHOP_ID}`),
-          fetch(`${CODEMAO_PROXY}/works/subjects/${WORKSHOP_ID}/works?limit=8&sort=-n_likes`),
-          fetch(`${CODEMAO_PROXY}/shops/${WORKSHOP_ID}/users?limit=6`),
+          fetch(`${CODEMAO_PROXY}/web/shops/${WORKSHOP_ID}`),
+          fetch(`${CODEMAO_PROXY}/web/works/subjects/${WORKSHOP_ID}/works?limit=8&sort=-n_likes`),
+          fetch(`${CODEMAO_PROXY}/web/shops/${WORKSHOP_ID}/users?limit=6`),
         ]);
 
         if (infoRes.ok) {
@@ -576,11 +584,38 @@ export default function Studio() {
 
         if (membersRes.ok) {
           const data = await membersRes.json();
-          const sortedMembers = (data.items || []).sort((a: MemberItem, b: MemberItem) => {
-            const order = { LEADER: 0, DEPUTYLEADER: 1, STAFF: 2 };
+          const coreMembers = (data.items || []).filter((m: MemberItem) => m.position === 'LEADER' || m.position === 'DEPUTYLEADER');
+          const sortedMembers = coreMembers.sort((a: MemberItem, b: MemberItem) => {
+            const order = { LEADER: 0, DEPUTYLEADER: 1 };
             return (order[a.position as keyof typeof order] ?? 3) - (order[b.position as keyof typeof order] ?? 3);
           });
-          setMembers(sortedMembers);
+
+          const memberInfoPromises = sortedMembers.map(async (member: MemberItem) => {
+            try {
+              const res = await fetch(`${CODEMAO_PROXY}/api/user/info/detail/${member.user_id}`);
+              if (res.ok) {
+                const userInfoData = await res.json();
+                const userInfo = userInfoData.data?.userInfo;
+                if (userInfo) {
+                  return {
+                    ...member,
+                    description: userInfo.user?.description || '',
+                    doing: userInfo.user?.doing || '',
+                    praiseTimes: userInfo.praiseTimes || 0,
+                    viewTimes: userInfo.viewTimes || 0,
+                    collectionTimes: userInfo.collectionTimes || 0,
+                    forkedTimes: userInfo.forkedTimes || 0,
+                  };
+                }
+              }
+            } catch (e) {
+              console.error(`Failed to fetch user info for ${member.name}:`, e);
+            }
+            return member;
+          });
+
+          const membersWithInfo = await Promise.all(memberInfoPromises);
+          setMembers(membersWithInfo);
         }
       } catch (e) {
         console.error('Failed to fetch studio data:', e);
