@@ -420,7 +420,7 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   className="block group"
                 >
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all h-[280px] flex flex-col">
                     <div className="pt-6 pb-2 px-4 text-center">
                       <img
                         src={member.avatar_url}
@@ -429,16 +429,18 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
                         loading="lazy"
                       />
                     </div>
-                    <div className="px-4 pb-4 pt-1 text-center">
-                      <div className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full mb-3">
-                        {getPositionLabel(member.position)}
+                    <div className="px-4 pb-4 pt-1 text-center flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full mb-3">
+                          {getPositionLabel(member.position)}
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {member.name}
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2.5 min-h-[2.5rem]">
+                          {member.description || member.doing || '暂无简介'}
+                        </p>
                       </div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {member.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2.5">
-                        {member.description || member.doing || '暂无简介'}
-                      </p>
                       <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
                         <span>{member.n_works} 作品</span>
                         <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
