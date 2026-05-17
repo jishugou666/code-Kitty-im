@@ -409,7 +409,7 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8 max-w-5xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-6 md:gap-8 max-w-5xl mx-auto">
             {members.map((member, i) => (
               <AnimatedSection key={member.user_id} delay={i * 0.08}>
                 <motion.a
@@ -418,7 +418,7 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
                   rel="noopener noreferrer"
                   whileHover={{ y: -6 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="block group"
+                  className="block group w-[calc(50%-12px)] sm:w-[calc(33.333%-16px)] md:w-[calc(25%-18px)] max-w-[240px]"
                 >
                   <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all h-[280px] flex flex-col">
                     <div className="pt-6 pb-2 px-4 text-center">
