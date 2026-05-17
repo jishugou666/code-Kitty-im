@@ -68,6 +68,7 @@ export function Admin() {
 
   const [studioSettings, setStudioSettings] = useState<StudioSettings>({ hero: {}, about: {}, cta: {} });
   const [isSaving, setIsSaving] = useState(false);
+  const [studioLoaded, setStudioLoaded] = useState(false);
 
   const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
 
@@ -127,7 +128,7 @@ export function Admin() {
   };
 
   const loadStudioSettings = async () => {
-    setIsLoading(true);
+    setStudioLoaded(false);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE}/studio/admin/settings`, {
@@ -147,7 +148,7 @@ export function Admin() {
     } catch (error) {
       console.error('Failed to load studio settings:', error);
     } finally {
-      setIsLoading(false);
+      setStudioLoaded(true);
     }
   };
 
@@ -513,7 +514,6 @@ export function Admin() {
   const isStudioTab = activeTab === 'studio';
 
   if (isStudioTab && isStudioAdmin) {
-    const hasLoadedSettings = studioSettings.hero && Object.keys(studioSettings.hero).length > 0;
     return (
       <div className="h-full flex flex-col bg-white dark:bg-[#0A0C10]">
         <div className="flex items-center justify-between px-4 py-2 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10 flex-shrink-0">
@@ -524,7 +524,7 @@ export function Admin() {
           <div className="w-8" />
         </div>
         <div className="flex-1 overflow-hidden flex items-center justify-center">
-          {hasLoadedSettings ? (
+          {studioLoaded ? (
             <StudioConfigPreview
               config={studioSettings}
               onChange={(section, key, value) => {
