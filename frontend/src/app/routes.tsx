@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, redirect } from "react-router";
 import { Suspense, lazy } from "react";
 import { MainLayout } from "./components/MainLayout";
 import { Login } from "./pages/Login";
@@ -26,6 +26,18 @@ export const router = createBrowserRouter([
   {
     path: "/studio",
     Component: LazyStudio,
+  },
+  {
+    path: "/studio/admin",
+    loader: () => redirect("/admin"),
+  },
+  {
+    path: "/studio/admin/login",
+    loader: () => redirect("/admin"),
+  },
+  {
+    path: "/studio/admin/dashboard",
+    loader: () => redirect("/admin"),
   },
   {
     path: "/",
