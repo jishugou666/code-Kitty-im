@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 import { useIsMobile } from '../components/ui/use-mobile';
+import StudioConfigPreview from './StudioConfigPreview';
 
 type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'groups' | 'ai' | 'aiFeedback' | 'studio';
 
@@ -66,7 +67,6 @@ export function Admin() {
   const [handleResult, setHandleResult] = useState('');
 
   const [studioSettings, setStudioSettings] = useState<StudioSettings>({ hero: {}, about: {}, cta: {} });
-  const [editingField, setEditingField] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
@@ -506,85 +506,66 @@ export function Admin() {
     ...(isStudioAdmin ? [{ key: 'studio' as TabType, icon: Palette, label: '官网配置' }] : [])
   ];
 
-  const studioSections = [
-    {
-      section: 'hero',
-      title: 'Hero 区域',
-      icon: LayoutDashboard,
-      fields: [
-        { key: 'subtitle', label: '副标题', type: 'text' },
-        { key: 'dateText', label: '日期文本', type: 'text' },
-        { key: 'countdownTarget', label: '倒计时目标日期', type: 'text' },
-        { key: 'countdownLabel', label: '倒计时标签', type: 'text' },
-        { key: 'primaryButtonText', label: '主按钮文字', type: 'text' },
-        { key: 'primaryButtonLink', label: '主按钮链接', type: 'text' },
-        { key: 'secondaryButtonText', label: '副按钮文字', type: 'text' },
-        { key: 'secondaryButtonLink', label: '副按钮链接', type: 'text' },
-      ]
-    },
-    {
-      section: 'about',
-      title: '关于区域',
-      icon: Type,
-      fields: [
-        { key: 'title', label: '标题', type: 'text' },
-        { key: 'description', label: '简介', type: 'textarea' },
-      ]
-    },
-    {
-      section: 'cta',
-      title: 'CTA 区域',
-      icon: Link,
-      fields: [
-        { key: 'title', label: '标题', type: 'text' },
-        { key: 'description', label: '描述', type: 'textarea' },
-        { key: 'primaryButtonText', label: '主按钮文字', type: 'text' },
-        { key: 'primaryButtonLink', label: '主按钮链接', type: 'text' },
-        { key: 'secondaryButtonText', label: '副按钮文字', type: 'text' },
-        { key: 'secondaryButtonLink', label: '副按钮链接', type: 'text' },
-      ]
-    }
-  ];
+  const isStudioTab = activeTab === 'studio';
 
-  const renderStudioField = (field: any, section: string, value: any) => {
-    const fieldKey = `${section}-${field.key}`;
-    const isEditing = editingField === fieldKey;
-
+  if (isStudioTab && isStudioAdmin) {
     return (
-      <div key={field.key}>
-        <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">
-          {field.label}
-        </label>
-        {field.type === 'textarea' ? (
-          <textarea
-            value={value || ''}
-            onChange={(e) => {
-              const val = e.target.value;
+      <div className="h-full flex flex-col bg-white dark:bg-[#0A0C10]">
+        <div className="flex items-center justify-between px-4 py-2 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10 flex-shrink-0">
+          <button onClick={() => setActiveTab('dashboard')} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
+            <ArrowLeft size={20} className="text-black dark:text-white" />
+          </button>
+          <h1 className="text-base font-bold text-black dark:text-white">官网配置</h1>
+          <div className="w-8" />
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <StudioConfigPreview
+            config={studioSettings}
+            onChange={(section, key, value) => {
               setStudioSettings(prev => ({
                 ...prev,
-                [section]: { ...(prev[section] || {}), [field.key]: val }
+                [section]: { ...(prev[section] || {}), [key]: value }
               }));
             }}
-            rows={4}
-            className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white focus:border-[#007AFF] focus:outline-none transition-colors resize-none"
-          />
-        ) : (
-          <input
-            type="text"
-            value={value || ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              setStudioSettings(prev => ({
-                ...prev,
-                [section]: { ...(prev[section] || {}), [field.key]: val }
-              }));
+            onSave={async () => {
+              setIsSaving(true);
+              try {
+                const allUpdates = Object.entries(studioSettings).flatMap(([section, fields]) =>
+                  Object.entries(fields || {}).map(([key, value]) => ({
+                    section,
+                    key,
+                    value: value || '',
+                    type: 'string'
+                  }))
+                );
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_BASE}/studio/admin/settings/batch`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ settings: allUpdates })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                  toast('保存成功', 'success');
+                } else {
+                  toast(data.message || '保存失败', 'error');
+                }
+              } catch {
+                toast('网络错误', 'error');
+              } finally {
+                setIsSaving(false);
+              }
             }}
-            className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white focus:border-[#007AFF] focus:outline-none transition-colors"
+            isSaving={isSaving}
           />
-        )}
+        </div>
+        <ToastContainer />
       </div>
     );
-  };
+  }
 
   return (
     <div className={isMobile ? "h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] pb-20" : "h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A]"}>
@@ -1516,79 +1497,49 @@ export function Admin() {
         )}
 
         {activeTab === 'studio' && isStudioAdmin && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h3 className="text-lg font-semibold text-black dark:text-white">工作室官网配置</h3>
-                <p className="text-sm text-black/40 dark:text-white/40 mt-1">修改后将实时生效于官网页面</p>
-              </div>
-              {isSaving && (
-                <div className="flex items-center gap-2 text-sm text-[#007AFF]">
-                  <div className="w-4 h-4 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-                  保存中...
-                </div>
-              )}
-            </div>
-
-            {studioSections.map((section) => {
-              const SectionIcon = section.icon;
-              return (
-                <motion.div
-                  key={section.section}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 shadow-lg"
-                >
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center">
-                      <SectionIcon size={18} className="text-white" />
-                    </div>
-                    <h4 className="text-lg font-semibold text-black dark:text-white">{section.title}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {section.fields.map((field) => {
-                      const value = studioSettings[section.section]?.[field.key];
-                      return renderStudioField(field, section.section, value);
-                    })}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setIsSaving(true);
-                      const updates = section.fields.map(field => ({
-                        section: section.section,
-                        key: field.key,
-                        value: studioSettings[section.section]?.[field.key] || '',
-                        type: field.type === 'textarea' ? 'string' : 'string'
-                      }));
-                      const token = localStorage.getItem('token');
-                      fetch(`${API_BASE}/studio/admin/settings/batch`, {
-                        method: 'PUT',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ settings: updates })
-                      }).then(res => res.json()).then(data => {
-                        setIsSaving(false);
-                        if (data.code === 200) {
-                          toast('保存成功', 'success');
-                        } else {
-                          toast(data.message || '保存失败', 'error');
-                        }
-                      }).catch(() => {
-                        setIsSaving(false);
-                        toast('网络错误', 'error');
-                      });
-                    }}
-                    disabled={isSaving}
-                    className="mt-6 px-6 py-2.5 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2 text-sm font-medium disabled:opacity-50"
-                  >
-                    <Save size={16} />
-                    {isSaving ? '保存中...' : `保存 ${section.title}`}
-                  </button>
-                </motion.div>
-              );
-            })}
+          <div className="h-full -m-6 sm:-m-6 lg:-m-6" style={{ minHeight: 'calc(100vh - 64px)' }}>
+            <StudioConfigPreview
+              config={studioSettings}
+              onChange={(section, key, value) => {
+                setStudioSettings(prev => ({
+                  ...prev,
+                  [section]: { ...(prev[section] || {}), [key]: value }
+                }));
+              }}
+              onSave={async () => {
+                setIsSaving(true);
+                try {
+                  const allUpdates = Object.entries(studioSettings).flatMap(([section, fields]) =>
+                    Object.entries(fields || {}).map(([key, value]) => ({
+                      section,
+                      key,
+                      value: value || '',
+                      type: 'string'
+                    }))
+                  );
+                  const token = localStorage.getItem('token');
+                  const res = await fetch(`${API_BASE}/studio/admin/settings/batch`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ settings: allUpdates })
+                  });
+                  const data = await res.json();
+                  if (data.code === 200) {
+                    toast('保存成功', 'success');
+                  } else {
+                    toast(data.message || '保存失败', 'error');
+                  }
+                } catch {
+                  toast('网络错误', 'error');
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              isSaving={isSaving}
+            />
           </div>
         )}
 
