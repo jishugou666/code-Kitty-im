@@ -409,8 +409,8 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="flex justify-center w-full">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 md:gap-8 justify-items-center">
+          <div className="flex justify-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 md:gap-8">
               {members.map((member, i) => (
                 <AnimatedSection key={member.user_id} delay={i * 0.08}>
                   <motion.a
@@ -419,39 +419,39 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
                     rel="noopener noreferrer"
                     whileHover={{ y: -6 }}
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className="block group w-[220px]"
+                    className="block group"
                   >
-                  <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all h-[280px] flex flex-col">
-                    <div className="pt-6 pb-2 px-4 text-center">
-                      <img
-                        src={member.avatar_url}
-                        alt={member.name}
-                        className="w-20 h-20 rounded-2xl object-cover mx-auto group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="px-4 pb-4 pt-1 text-center flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full mb-3">
-                          {getPositionLabel(member.position)}
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all w-[200px] h-[280px] flex flex-col">
+                      <div className="pt-6 pb-2 px-4 text-center flex-shrink-0">
+                        <img
+                          src={member.avatar_url}
+                          alt={member.name}
+                          className="w-20 h-20 rounded-2xl object-cover mx-auto group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="px-4 pb-4 pt-1 text-center flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full mb-3">
+                            {getPositionLabel(member.position)}
+                          </div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {member.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2.5 min-h-[2.5rem]">
+                            {member.description || member.doing || '暂无简介'}
+                          </p>
                         </div>
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {member.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-2.5 min-h-[2.5rem]">
-                          {member.description || member.doing || '暂无简介'}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
-                        <span>{member.n_works} 作品</span>
-                        <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
-                        <span>{(member.praiseTimes || 0).toLocaleString()} 获赞</span>
+                        <div className="flex items-center justify-center gap-3 text-xs text-gray-400">
+                          <span>{member.n_works} 作品</span>
+                          <span className="w-px h-3 bg-gray-200 dark:bg-gray-700" />
+                          <span>{(member.praiseTimes || 0).toLocaleString()} 获赞</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.a>
-              </AnimatedSection>
-            ))}
+                  </motion.a>
+                </AnimatedSection>
+              ))}
             </div>
           </div>
         )}
