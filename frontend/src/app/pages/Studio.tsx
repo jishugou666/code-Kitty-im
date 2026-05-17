@@ -253,7 +253,7 @@ function HeroSection() {
 }
 
 /* ========== 关于区域 ========== */
-function AboutSection({ info }: { info: WorkshopInfo | null }) {
+function AboutSection({ info, loading }: { info: WorkshopInfo | null; loading: boolean }) {
   const descriptionLines = info?.description?.split('\n').filter((l) => l.trim()) || [];
   const mainDescription = descriptionLines[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。';
 
@@ -264,12 +264,7 @@ function AboutSection({ info }: { info: WorkshopInfo | null }) {
         { number: `${new Date().getFullYear() - 2020}+`, label: '年发展历程' },
         { number: `${info.level}`, label: '工作室等级' },
       ]
-    : [
-        { number: '加载中...', label: '' },
-        { number: '加载中...', label: '' },
-        { number: '加载中...', label: '' },
-        { number: '加载中...', label: '' },
-      ];
+    : [];
 
   return (
     <section id="about" className="py-24 md:py-32 px-6 bg-white dark:bg-black">
@@ -285,14 +280,23 @@ function AboutSection({ info }: { info: WorkshopInfo | null }) {
         </AnimatedSection>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-          {stats.map((stat, i) => (
-            <AnimatedSection key={stat.label} delay={i} className="text-center">
-              <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                {stat.number}
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="text-center">
+                <div className="h-10 w-24 bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse mx-auto mb-2" />
+                <div className="h-4 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mx-auto" />
               </div>
-              <div className="text-sm text-gray-400 dark:text-gray-500 font-medium">{stat.label}</div>
-            </AnimatedSection>
-          ))}
+            ))
+          ) : (
+            stats.map((stat, i) => (
+              <AnimatedSection key={stat.label} delay={i} className="text-center">
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                  {stat.number}
+                </div>
+                <div className="text-sm text-gray-400 dark:text-gray-500 font-medium">{stat.label}</div>
+              </AnimatedSection>
+            ))
+          )}
         </div>
       </div>
     </section>
@@ -564,6 +568,7 @@ export default function Studio() {
   const [workshopInfo, setWorkshopInfo] = useState<WorkshopInfo | null>(null);
   const [works, setWorks] = useState<WorkItem[]>([]);
   const [members, setMembers] = useState<MemberItem[]>([]);
+  const [infoLoading, setInfoLoading] = useState(true);
   const [worksLoading, setWorksLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
 
@@ -580,6 +585,7 @@ export default function Studio() {
           const data = await infoRes.json();
           setWorkshopInfo(data);
         }
+        setInfoLoading(false);
 
         if (worksRes.ok) {
           const data = await worksRes.json();
@@ -623,6 +629,7 @@ export default function Studio() {
         }
       } catch (e) {
         console.error('Failed to fetch studio data:', e);
+        setInfoLoading(false);
       } finally {
         setWorksLoading(false);
         setMembersLoading(false);
@@ -637,7 +644,7 @@ export default function Studio() {
       <Navbar />
       <main>
         <HeroSection />
-        <AboutSection info={workshopInfo} />
+        <AboutSection info={workshopInfo} loading={infoLoading} />
         <WorksSection works={works} loading={worksLoading} />
         <MembersSection members={members} loading={membersLoading} />
         <FeaturesSection />
