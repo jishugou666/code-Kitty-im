@@ -815,9 +815,22 @@ export default function StudioConfigPreview({ config, onChange, onSave, isSaving
   const [worksLoading, setWorksLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
 
-  const heroConfig = config?.hero || DEFAULT_CONFIG.hero;
-  const aboutConfig = config?.about || DEFAULT_CONFIG.about;
-  const ctaConfig = config?.cta || DEFAULT_CONFIG.cta;
+  const hasHero = config?.hero && Object.keys(config.hero).length > 0;
+  const hasAbout = config?.about && Object.keys(config.about).length > 0;
+  const hasCta = config?.cta && Object.keys(config.cta).length > 0;
+
+  const heroConfig: StudioConfig['hero'] = {
+    ...DEFAULT_CONFIG.hero,
+    ...(hasHero ? config.hero : {}),
+  };
+  const aboutConfig: StudioConfig['about'] = {
+    ...DEFAULT_CONFIG.about,
+    ...(hasAbout ? config.about : {}),
+  };
+  const ctaConfig: StudioConfig['cta'] = {
+    ...DEFAULT_CONFIG.cta,
+    ...(hasCta ? config.cta : {}),
+  };
 
   const handleSelect = useCallback((configKey: string, section: string) => {
     setSelectedConfigKey(configKey);
