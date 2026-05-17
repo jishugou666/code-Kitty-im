@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView } from 'motion/react';
-import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock, Star, Eye, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowRight, ChevronDown, Star, Eye, ExternalLink, Loader2 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
@@ -97,7 +97,6 @@ function Navbar() {
     { id: 'about', label: '关于' },
     { id: 'works', label: '作品' },
     { id: 'members', label: '成员' },
-    { id: 'features', label: '特色' },
   ];
 
   return (
@@ -464,49 +463,6 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
   );
 }
 
-/* ========== 特色区域 ========== */
-function FeaturesSection() {
-  const features = [
-    { icon: Code, title: '前沿技术', description: 'React 18 + TypeScript + Node.js 现代技术栈' },
-    { icon: Lock, title: '安全可靠', description: 'JWT 认证、数据加密、多层安全防护' },
-    { icon: Zap, title: '极致性能', description: '优化的数据库查询、CDN 加速、毫秒级响应' },
-    { icon: Globe, title: '全球部署', description: 'Vercel + Render + TiDB Cloud 全球基础设施' },
-    { icon: Smartphone, title: '全端适配', description: '桌面端 + 移动端完整适配，流畅体验' },
-    { icon: Layers, title: '持续迭代', description: '基于用户反馈快速迭代，保持产品竞争力' },
-  ];
-
-  return (
-    <section id="features" className="py-24 md:py-32 px-6 bg-white dark:bg-black">
-      <div className="max-w-[1200px] mx-auto">
-        <AnimatedSection className="text-center mb-16 md:mb-20">
-          <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">特色</span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            为什么选择我们
-          </h2>
-        </AnimatedSection>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((feature, i) => (
-            <AnimatedSection key={feature.title} delay={i}>
-              <motion.div
-                whileHover={{ y: -2 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="p-6 md:p-8 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-none transition-shadow h-full"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
-                  <feature.icon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{feature.description}</p>
-              </motion.div>
-            </AnimatedSection>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ========== CTA 区域 ========== */
 function CTASection() {
   return (
@@ -552,10 +508,6 @@ function Footer() {
           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">冰网工作室</span>
         </div>
         <div className="flex items-center gap-5">
-          <a href="https://github.com/jishugou666/code-Kitty-im" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            GitHub
-          </a>
-          <span className="text-xs text-gray-300 dark:text-gray-600">|</span>
           <span className="text-xs text-gray-400 dark:text-gray-500">© 2020-2026 冰网工作室</span>
         </div>
       </div>
@@ -647,7 +599,6 @@ export default function Studio() {
         <AboutSection info={workshopInfo} loading={infoLoading} />
         <WorksSection works={works} loading={worksLoading} />
         <MembersSection members={members} loading={membersLoading} />
-        <FeaturesSection />
         <CTASection />
       </main>
       <Footer />
