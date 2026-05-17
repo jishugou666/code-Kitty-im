@@ -1,8 +1,40 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView } from 'motion/react';
-import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock, Crown, User, Star, Eye, ExternalLink, Loader2, Users } from 'lucide-react';
 
-/* ========== 动画定义 ========== */
+const API_BASE = 'https://api.codemao.cn';
+const WORKSHOP_ID = 549;
+
+interface WorkshopInfo {
+  name: string;
+  description: string;
+  n_works: number;
+  n_views: number;
+  n_likes: number;
+  total_score: number;
+  level: number;
+  created_at: number;
+}
+
+interface WorkItem {
+  id: number;
+  name: string;
+  preview: string;
+  praise_times: number;
+  view_times: number;
+  audited_at: number;
+  user: { nickname: string; avatar_url: string };
+}
+
+interface MemberItem {
+  user_id: number;
+  name: string;
+  avatar_url: string;
+  position: string;
+  n_works: number;
+  latest_work_at: number;
+}
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
   visible: (i: number) => ({
@@ -15,15 +47,6 @@ const fadeInUp = {
 const fadeIn = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 1, ease: [0.22, 1, 0.36, 1] } }
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: (i: number) => ({
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.8, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }
-  })
 };
 
 function AnimatedSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -65,9 +88,9 @@ function Navbar() {
 
   const navLinks = [
     { id: 'about', label: '关于' },
-    { id: 'products', label: '产品' },
+    { id: 'works', label: '作品' },
+    { id: 'members', label: '成员' },
     { id: 'features', label: '特色' },
-    { id: 'contact', label: '联系' },
   ];
 
   return (
@@ -223,13 +246,20 @@ function HeroSection() {
 }
 
 /* ========== 关于区域 ========== */
-function AboutSection() {
-  const stats = [
-    { number: '6+', label: '年发展历程' },
-    { number: '10K+', label: '活跃用户' },
-    { number: '99.9%', label: '服务可用性' },
-    { number: '24/7', label: '技术支持' },
-  ];
+function AboutSection({ info }: { info: WorkshopInfo | null }) {
+  const stats = info
+    ? [
+        { number: `${info.level}`, label: '工作室等级' },
+        { number: `${info.n_works.toLocaleString()}`, label: '投稿作品' },
+        { number: `${(info.n_views / 1000).toFixed(0)}K+`, label: '总浏览量' },
+        { number: `${new Date().getFullYear() - 2020}+`, label: '年发展历程' },
+      ]
+    : [
+        { number: '加载中...', label: '' },
+        { number: '加载中...', label: '' },
+        { number: '加载中...', label: '' },
+        { number: '加载中...', label: '' },
+      ];
 
   return (
     <section id="about" className="py-24 md:py-32 px-6 bg-white dark:bg-black">
@@ -240,7 +270,7 @@ function AboutSection() {
             始于热爱，忠于品质
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。我们相信技术的力量可以让沟通变得更加简单、高效和有趣。
+            {info?.description?.split('\n')[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。'}
           </p>
         </AnimatedSection>
 
@@ -259,88 +289,161 @@ function AboutSection() {
   );
 }
 
-/* ========== 产品区域 ========== */
-function ProductsSection() {
+/* ========== 作品展示区域 ========== */
+function WorksSection({ works, loading }: { works: WorkItem[]; loading: boolean }) {
   return (
-    <section id="products" className="py-24 md:py-32 px-6 bg-gray-50/50 dark:bg-gray-950/50">
+    <section id="works" className="py-24 md:py-32 px-6 bg-gray-50/50 dark:bg-gray-950/50">
       <div className="max-w-[1200px] mx-auto">
         <AnimatedSection className="text-center mb-16 md:mb-20">
-          <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">产品</span>
+          <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">作品</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            精心打造每一个产品
+            工作室优秀作品
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
-            我们以极致的态度打磨产品细节，追求最佳用户体验
+            来自编程猫社区的真实作品数据，按热度排行展示
           </p>
         </AnimatedSection>
 
-        <AnimatedSection delay={0.2}>
-          <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-[0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-gray-800">
-            <div className="grid md:grid-cols-2">
-              <div className="p-8 sm:p-10 md:p-14 flex flex-col justify-center">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/25">
-                  <MessageSquare className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                  Code Kitty IM
-                </h3>
-                <p className="text-base text-blue-500 font-medium mb-4">现代即时通讯平台</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-                  支持单聊、群聊、朋友圈的完整即时通讯平台，采用 React + Node.js + MySQL 构建，已上线运营。
-                </p>
-                <div className="flex flex-wrap gap-2 mb-8">
-                  {['端到端加密', '多端同步', '实时推送', '群组管理'].map((f) => (
-                    <span key={f} className="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <a
-                    href="/"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-medium text-sm hover:bg-gray-800 dark:hover:bg-gray-100 transition-all hover:shadow-lg group"
-                  >
-                    立即体验
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </a>
-                  <a
-                    href="https://github.com/jishugou666/code-Kitty-im"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors underline underline-offset-4"
-                  >
-                    查看源码
-                  </a>
-                </div>
-              </div>
-
-              <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-850 p-8 sm:p-10 md:p-14 flex items-center justify-center min-h-[360px] md:min-h-[440px]">
-                <div className="relative">
-                  <motion.div
-                    className="w-56 h-80 sm:w-64 sm:h-96 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[2rem] shadow-2xl shadow-blue-500/30 flex items-center justify-center relative overflow-hidden"
-                    initial={{ opacity: 0, y: 30, rotateY: -10 }}
-                    whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent" />
-                    <div className="relative text-center text-white z-10">
-                      <MessageSquare className="w-14 h-14 mx-auto mb-4 opacity-90" />
-                      <p className="text-lg font-semibold mb-1">Code Kitty</p>
-                      <p className="text-sm opacity-70">即时通讯</p>
-                    </div>
-                    <div className="absolute top-4 left-4 right-4 h-6 bg-white/20 rounded-full" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute -top-3 -right-3 w-6 h-6 bg-green-400 rounded-full border-4 border-white dark:border-gray-900 shadow-lg"
-                    animate={{ scale: [1, 1.3, 1] }}
-                    transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                </div>
-              </div>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {works.map((work, i) => (
+              <AnimatedSection key={work.id} delay={i * 0.08}>
+                <motion.a
+                  href={`https://shequ.codemao.cn/work/${work.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="block bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all h-full group"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
+                    <img
+                      src={work.preview}
+                      alt={work.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white text-xs">
+                      <Star className="w-3 h-3" />
+                      <span>{work.praise_times.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-snug">
+                      {work.name}
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <img src={work.user.avatar_url} alt="" className="w-5 h-5 rounded-full" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[80px]">
+                          {work.user.nickname}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-400 text-xs">
+                        <Eye className="w-3 h-3" />
+                        <span>{(work.view_times / 1000).toFixed(1)}K</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.a>
+              </AnimatedSection>
+            ))}
+          </div>
+        )}
+
+        <AnimatedSection className="text-center mt-12">
+          <a
+            href="https://shequ.codemao.cn/work_shop/549"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-medium text-sm hover:bg-gray-800 dark:hover:bg-gray-100 transition-all hover:shadow-lg group"
+          >
+            查看全部 {works.length > 0 ? `${works.length}+` : ''} 作品
+            <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </a>
         </AnimatedSection>
+      </div>
+    </section>
+  );
+}
+
+/* ========== 成员展示区域 ========== */
+function MembersSection({ members, loading }: { members: MemberItem[]; loading: boolean }) {
+  const getPositionLabel = (pos: string) => {
+    switch (pos) {
+      case 'LEADER': return { label: '室长', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800' };
+      case 'DEPUTYLEADER': return { label: '副室长', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-800' };
+      default: return { label: '室员', color: 'text-gray-500', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-200 dark:border-gray-700' };
+    }
+  };
+
+  return (
+    <section id="members" className="py-24 md:py-32 px-6 bg-white dark:bg-black">
+      <div className="max-w-[1200px] mx-auto">
+        <AnimatedSection className="text-center mb-16 md:mb-20">
+          <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">团队</span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
+            工作室核心成员
+          </h2>
+          <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+            每一位成员都在为创作更好的作品而努力
+          </p>
+        </AnimatedSection>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
+            {members.map((member, i) => {
+              const pos = getPositionLabel(member.position);
+              return (
+                <AnimatedSection key={member.user_id} delay={i * 0.08}>
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className={`flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow h-full`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={member.avatar_url}
+                        alt={member.name}
+                        className="w-14 h-14 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-700"
+                        loading="lazy"
+                      />
+                      {member.position === 'LEADER' && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                          <Crown className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                          {member.name}
+                        </h3>
+                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${pos.bg} ${pos.color} border ${pos.border}`}>
+                          {pos.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3" />
+                          {member.n_works} 作品
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatedSection>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -363,7 +466,7 @@ function FeaturesSection() {
         <AnimatedSection className="text-center mb-16 md:mb-20">
           <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">特色</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            工作室核心
+            为什么选择我们
           </h2>
         </AnimatedSection>
 
@@ -396,10 +499,10 @@ function CTASection() {
       <div className="max-w-[800px] mx-auto text-center">
         <AnimatedSection>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            工作室优秀作品展示
+            准备好开始了吗？
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto">
-            探索我们精心打造的每一个作品
+            加入冰网工作室，体验全新的即时通讯方式
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
@@ -447,13 +550,58 @@ function Footer() {
 
 /* ========== 主组件 ========== */
 export default function Studio() {
+  const [workshopInfo, setWorkshopInfo] = useState<WorkshopInfo | null>(null);
+  const [works, setWorks] = useState<WorkItem[]>([]);
+  const [members, setMembers] = useState<MemberItem[]>([]);
+  const [worksLoading, setWorksLoading] = useState(true);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [infoRes, worksRes, membersRes] = await Promise.all([
+          fetch(`${API_BASE}/web/shops/${WORKSHOP_ID}`),
+          fetch(`${API_BASE}/web/works/subjects/${WORKSHOP_ID}/works?limit=8&sort=-n_likes`),
+          fetch(`${API_BASE}/web/shops/${WORKSHOP_ID}/users?limit=6`),
+        ]);
+
+        if (infoRes.ok) {
+          const data = await infoRes.json();
+          setWorkshopInfo(data);
+        }
+
+        if (worksRes.ok) {
+          const data = await worksRes.json();
+          setWorks(data.items || []);
+        }
+
+        if (membersRes.ok) {
+          const data = await membersRes.json();
+          const sortedMembers = (data.items || []).sort((a: MemberItem, b: MemberItem) => {
+            const order = { LEADER: 0, DEPUTYLEADER: 1, STAFF: 2 };
+            return (order[a.position as keyof typeof order] ?? 3) - (order[b.position as keyof typeof order] ?? 3);
+          });
+          setMembers(sortedMembers);
+        }
+      } catch (e) {
+        console.error('Failed to fetch studio data:', e);
+      } finally {
+        setWorksLoading(false);
+        setMembersLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white dark:bg-black antialiased">
       <Navbar />
       <main>
         <HeroSection />
-        <AboutSection />
-        <ProductsSection />
+        <AboutSection info={workshopInfo} />
+        <WorksSection works={works} loading={worksLoading} />
+        <MembersSection members={members} loading={membersLoading} />
         <FeaturesSection />
         <CTASection />
       </main>
