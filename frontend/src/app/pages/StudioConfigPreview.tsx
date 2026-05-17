@@ -261,7 +261,7 @@ function EditableButton({ configKey, section, text, link, onChange, onSelect, se
 
   if (!editMode) {
     return (
-      <a href={link} target={link.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={className}>
+      <a href={link || '#'} target={link?.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={className}>
         {text}
         <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
       </a>
@@ -274,8 +274,8 @@ function EditableButton({ configKey, section, text, link, onChange, onSelect, se
       onClick={() => onSelect(configKey, section)}
     >
       <a
-        href={link}
-        target={link.startsWith('http') ? '_blank' : undefined}
+        href={link || '#'}
+        target={link?.startsWith('http') ? '_blank' : undefined}
         rel="noopener noreferrer"
         onClick={(e) => e.preventDefault()}
         className={className}
