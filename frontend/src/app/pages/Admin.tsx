@@ -526,32 +526,17 @@ export function Admin() {
         <div className="flex-1 overflow-hidden">
           {studioLoaded ? (
             <StudioConfigPreview
-              config={studioSettings}
-              onChange={(section, key, value) => {
-                setStudioSettings(prev => ({
-                  ...prev,
-                  [section]: { ...(prev[section] || {}), [key]: value }
-                }));
-              }}
-              onSave={async () => {
+              onSave={async (workIds: number[]) => {
                 setIsSaving(true);
                 try {
-                  const allUpdates = Object.entries(studioSettings).flatMap(([section, fields]) =>
-                    Object.entries(fields || {}).map(([key, value]) => ({
-                      section,
-                      key,
-                      value: value || '',
-                      type: 'string'
-                    }))
-                  );
                   const token = localStorage.getItem('token');
-                  const res = await fetch(`${API_BASE}/studio/admin/settings/batch`, {
+                  const res = await fetch(`${API_BASE}/studio/admin/settings/works`, {
                     method: 'PUT',
                     headers: {
                       'Content-Type': 'application/json',
                       Authorization: `Bearer ${token}`
                     },
-                    body: JSON.stringify({ settings: allUpdates })
+                    body: JSON.stringify({ ids: workIds })
                   });
                   const data = await res.json();
                   if (data.code === 200) {

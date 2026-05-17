@@ -107,6 +107,21 @@ router.put('/settings/batch', studioAuth, async (req, res) => {
   }
 });
 
+// 保存作品配置
+router.put('/settings/works', studioAuth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.json(validationError('作品ID列表格式错误'));
+    }
+
+    await studioAdminService.updateSetting('works', 'ids', JSON.stringify(ids), 'json');
+    res.json(success({ ids }, '保存成功'));
+  } catch (err) {
+    res.json(error(err.message));
+  }
+});
+
 // 删除配置
 router.delete('/settings/:section/:key', studioAuth, async (req, res) => {
   try {
