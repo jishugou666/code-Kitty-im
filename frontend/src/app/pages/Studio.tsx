@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView } from 'motion/react';
-import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock, Crown, User, Star, Eye, ExternalLink, Loader2, Users } from 'lucide-react';
+import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock, Star, Eye, ExternalLink, Loader2 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
@@ -248,12 +248,15 @@ function HeroSection() {
 
 /* ========== 关于区域 ========== */
 function AboutSection({ info }: { info: WorkshopInfo | null }) {
+  const descriptionLines = info?.description?.split('\n').filter((l) => l.trim()) || [];
+  const mainDescription = descriptionLines[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。';
+
   const stats = info
     ? [
-        { number: `${info.level}`, label: '工作室等级' },
         { number: `${info.n_works.toLocaleString()}`, label: '投稿作品' },
         { number: `${(info.n_views / 1000).toFixed(0)}K+`, label: '总浏览量' },
         { number: `${new Date().getFullYear() - 2020}+`, label: '年发展历程' },
+        { number: `${info.level}`, label: '工作室等级' },
       ]
     : [
         { number: '加载中...', label: '' },
@@ -271,7 +274,7 @@ function AboutSection({ info }: { info: WorkshopInfo | null }) {
             始于热爱，忠于品质
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            {info?.description?.split('\n')[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。'}
+            {mainDescription}
           </p>
         </AnimatedSection>
 
@@ -374,16 +377,18 @@ function WorksSection({ works, loading }: { works: WorkItem[]; loading: boolean 
 
 /* ========== 成员展示区域 ========== */
 function MembersSection({ members, loading }: { members: MemberItem[]; loading: boolean }) {
+  const coreMembers = members.filter((m) => m.position === 'LEADER' || m.position === 'DEPUTYLEADER');
+
   const getPositionLabel = (pos: string) => {
     switch (pos) {
-      case 'LEADER': return { label: '室长', color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800' };
-      case 'DEPUTYLEADER': return { label: '副室长', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950/30', border: 'border-orange-200 dark:border-orange-800' };
-      default: return { label: '室员', color: 'text-gray-500', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-200 dark:border-gray-700' };
+      case 'LEADER': return '室长';
+      case 'DEPUTYLEADER': return '副室长';
+      default: return '';
     }
   };
 
   return (
-    <section id="members" className="py-24 md:py-32 px-6 bg-white dark:bg-black">
+    <section id="members" className="py-24 md:py-32 px-6 bg-gray-50/50 dark:bg-gray-950/50">
       <div className="max-w-[1200px] mx-auto">
         <AnimatedSection className="text-center mb-16 md:mb-20">
           <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">团队</span>
@@ -391,7 +396,7 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
             工作室核心成员
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
-            每一位成员都在为创作更好的作品而努力
+            引领工作室发展方向的核心团队
           </p>
         </AnimatedSection>
 
@@ -400,49 +405,42 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
-            {members.map((member, i) => {
-              const pos = getPositionLabel(member.position);
-              return (
-                <AnimatedSection key={member.user_id} delay={i * 0.08}>
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    className={`flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow h-full`}
-                  >
-                    <div className="relative flex-shrink-0">
-                      <img
-                        src={member.avatar_url}
-                        alt={member.name}
-                        className="w-14 h-14 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-700"
-                        loading="lazy"
-                      />
-                      {member.position === 'LEADER' && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                          <Crown className="w-3 h-3 text-white" />
-                        </div>
-                      )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 md:gap-8 max-w-5xl mx-auto">
+            {coreMembers.map((member, i) => (
+              <AnimatedSection key={member.user_id} delay={i * 0.06}>
+                <motion.a
+                  href={`https://shequ.codemao.cn/user/${member.user_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="block group"
+                >
+                  <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-gray-200 dark:bg-gray-800">
+                    <img
+                      src={member.avatar_url}
+                      alt={member.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-white/90 dark:bg-black/90 backdrop-blur-sm rounded-full text-gray-900 dark:text-white">
+                        {getPositionLabel(member.position)}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          {member.name}
-                        </h3>
-                        <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${pos.bg} ${pos.color} border ${pos.border}`}>
-                          {pos.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" />
-                          {member.n_works} 作品
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                </AnimatedSection>
-              );
-            })}
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {member.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {member.n_works} 作品
+                    </p>
+                  </div>
+                </motion.a>
+              </AnimatedSection>
+            ))}
           </div>
         )}
       </div>
