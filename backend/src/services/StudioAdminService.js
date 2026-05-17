@@ -30,7 +30,7 @@ class StudioAdminService {
     const whereClause = section ? 'WHERE section = ?' : '';
     const params = section ? [section] : [];
     const rows = await query(
-      `SELECT id, section, key as keyName, value, type, description, sort_order FROM studio_settings ${whereClause} ORDER BY sort_order ASC, id ASC`,
+      `SELECT id, section, \`key\` as keyName, value, type, description, sort_order FROM studio_settings ${whereClause} ORDER BY sort_order ASC, id ASC`,
       params
     );
 
@@ -49,18 +49,18 @@ class StudioAdminService {
     const strValue = type === 'json' ? JSON.stringify(value) : String(value);
 
     const existing = await query(
-      'SELECT id FROM studio_settings WHERE section = ? AND key = ?',
+      'SELECT id FROM studio_settings WHERE section = ? AND `key` = ?',
       [section, keyName]
     );
 
     if (existing.length) {
       await query(
-        'UPDATE studio_settings SET value = ?, type = ?, updated_at = NOW() WHERE section = ? AND key = ?',
+        'UPDATE studio_settings SET value = ?, type = ?, updated_at = NOW() WHERE section = ? AND `key` = ?',
         [strValue, type, section, keyName]
       );
     } else {
       await query(
-        'INSERT INTO studio_settings (section, key, value, type) VALUES (?, ?, ?, ?)',
+        'INSERT INTO studio_settings (section, `key`, value, type) VALUES (?, ?, ?, ?)',
         [section, keyName, strValue, type]
       );
     }
@@ -70,7 +70,7 @@ class StudioAdminService {
 
   async deleteSetting(section, keyName) {
     await query(
-      'DELETE FROM studio_settings WHERE section = ? AND key = ?',
+      'DELETE FROM studio_settings WHERE section = ? AND `key` = ?',
       [section, keyName]
     );
     return { success: true };
@@ -130,7 +130,7 @@ class StudioAdminService {
     if (!existing.length) {
       const hashedPassword = await hashPassword('bws123456');
       await query(
-        'INSERT INTO studio_admin (username, password, role) VALUES (?, ?, ?)',
+        'INSERT INTO studio_admin (username, `password`, role) VALUES (?, ?, ?)',
         ['admin', hashedPassword, 'admin']
       );
     }
