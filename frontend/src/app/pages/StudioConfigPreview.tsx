@@ -904,20 +904,18 @@ export default function StudioConfigPreview({ config, onChange, onSave, isSaving
   }, []);
 
   return (
-    <div className="h-full flex bg-white dark:bg-[#0A0C10]">
-      <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-auto">
-          <div className="min-h-screen bg-white dark:bg-black antialiased">
-            <Navbar editMode={editMode} />
-            <main>
-              <HeroSection config={heroConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
-              <AboutSection info={workshopInfo} loading={infoLoading} config={aboutConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
-              <WorksSection works={works} loading={worksLoading} />
-              <MembersSection members={members} loading={membersLoading} />
-              <CTASection config={ctaConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
-            </main>
-            <Footer />
-          </div>
+    <div className="h-full flex flex-col bg-white dark:bg-[#0A0C10]">
+      <div className="flex-1 overflow-auto relative">
+        <div className="bg-white dark:bg-black antialiased">
+          <Navbar editMode={editMode} />
+          <main>
+            <HeroSection config={heroConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+            <AboutSection info={workshopInfo} loading={infoLoading} config={aboutConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+            <WorksSection works={works} loading={worksLoading} />
+            <MembersSection members={members} loading={membersLoading} />
+            <CTASection config={ctaConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+          </main>
+          <Footer />
         </div>
 
         <div className="absolute top-4 right-4 flex items-center gap-2 z-[200]">

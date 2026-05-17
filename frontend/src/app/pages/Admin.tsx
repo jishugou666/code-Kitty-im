@@ -523,7 +523,7 @@ export function Admin() {
           <h1 className="text-base font-bold text-black dark:text-white">官网配置</h1>
           <div className="w-8" />
         </div>
-        <div className="flex-1 overflow-hidden flex items-center justify-center">
+        <div className="flex-1 overflow-hidden">
           {studioLoaded ? (
             <StudioConfigPreview
               config={studioSettings}
