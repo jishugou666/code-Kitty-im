@@ -6,6 +6,56 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
 const WORKSHOP_ID = 549;
 
+interface StudioConfig {
+  hero: {
+    subtitle: string;
+    dateText: string;
+    countdownTarget: string;
+    countdownLabel: string;
+    primaryButtonText: string;
+    primaryButtonLink: string;
+    secondaryButtonText: string;
+    secondaryButtonLink: string;
+  };
+  about: {
+    title: string;
+    description: string;
+  };
+  cta: {
+    title: string;
+    description: string;
+    primaryButtonText: string;
+    primaryButtonLink: string;
+    secondaryButtonText: string;
+    secondaryButtonLink: string;
+  };
+}
+
+const DEFAULT_CONFIG: StudioConfig = {
+  hero: {
+    subtitle: '用技术连接世界，让沟通更简单',
+    dateText: '2020.1.15 — 至今',
+    countdownTarget: '2027-01-15T00:00:00',
+    countdownLabel: '距七周年还有',
+    primaryButtonText: '体验 Code Kitty IM',
+    primaryButtonLink: '/',
+    secondaryButtonText: '编程猫工作室',
+    secondaryButtonLink: 'https://shequ.codemao.cn/work_shop/549',
+  },
+  about: {
+    title: '始于热爱，忠于品质',
+    description: '',
+  },
+  cta: {
+    title: '准备好开始了吗？',
+    description: '加入冰网工作室，体验全新的即时通讯方式',
+    primaryButtonText: '浏览全部作品',
+    primaryButtonLink: 'https://shequ.codemao.cn/work_shop/549',
+    secondaryButtonText: '体验 Code Kitty IM',
+    secondaryButtonLink: '/',
+  },
+};
+
 interface WorkshopInfo {
   name: string;
   description: string;
@@ -140,7 +190,7 @@ function Navbar() {
 }
 
 /* ========== Hero 区域 ========== */
-function HeroSection() {
+function HeroSection({ config }: { config: StudioConfig['hero'] }) {
   const [loaded, setLoaded] = useState(false);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -150,7 +200,7 @@ function HeroSection() {
   }, []);
 
   useEffect(() => {
-    const targetDate = new Date('2027-01-15T00:00:00').getTime();
+    const targetDate = new Date(config.countdownTarget).getTime();
 
     const updateCountdown = () => {
       const now = Date.now();
@@ -170,7 +220,7 @@ function HeroSection() {
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [config.countdownTarget]);
 
   return (
     <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
@@ -225,7 +275,7 @@ function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              用技术连接世界，让沟通更简单
+              {config.subtitle}
             </motion.p>
 
             <motion.p
@@ -234,7 +284,7 @@ function HeroSection() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              2020.1.15 — 至今
+              {config.dateText}
             </motion.p>
 
             <motion.div
@@ -243,7 +293,7 @@ function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">距七周年还有</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{config.countdownLabel}</span>
               <div className="flex items-center gap-1.5">
                 {[
                   { value: timeLeft.days, label: '天' },
@@ -279,19 +329,19 @@ function HeroSection() {
               transition={{ duration: 0.9, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <a
-                href="/"
+                href={config.primaryButtonLink}
                 className="px-8 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-medium text-base hover:bg-gray-800 dark:hover:bg-gray-100 transition-all hover:shadow-xl flex items-center justify-center gap-2 group"
               >
-                体验 Code Kitty IM
+                {config.primaryButtonText}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </a>
               <a
-                href="https://shequ.codemao.cn/work_shop/549"
+                href={config.secondaryButtonLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-8 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full font-medium text-base hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center"
               >
-                编程猫工作室
+                {config.secondaryButtonText}
               </a>
             </motion.div>
           </motion.div>
@@ -311,9 +361,9 @@ function HeroSection() {
 }
 
 /* ========== 关于区域 ========== */
-function AboutSection({ info, loading }: { info: WorkshopInfo | null; loading: boolean }) {
-  const descriptionLines = info?.description?.split('\n').filter((l) => l.trim()) || [];
-  const mainDescription = descriptionLines[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。';
+function AboutSection({ info, loading, config }: { info: WorkshopInfo | null; loading: boolean; config: StudioConfig['about'] }) {
+  const descriptionLines = config.description?.split('\n').filter((l) => l.trim()) || [];
+  const mainDescription = descriptionLines[0] || info?.description?.split('\n').filter((l) => l.trim())[0] || '冰网工作室成立于2020年，致力于用前沿技术打造优秀的互联网产品。';
 
   const stats = info
     ? [
@@ -330,7 +380,7 @@ function AboutSection({ info, loading }: { info: WorkshopInfo | null; loading: b
         <AnimatedSection className="text-center mb-16 md:mb-20">
           <span className="inline-block text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">关于</span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            始于热爱，忠于品质
+            {config.title || '始于热爱，忠于品质'}
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
             {mainDescription}
@@ -523,32 +573,32 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
 }
 
 /* ========== CTA 区域 ========== */
-function CTASection() {
+function CTASection({ config }: { config: StudioConfig['cta'] }) {
   return (
     <section id="contact" className="py-24 md:py-32 px-6 bg-gray-50/50 dark:bg-gray-950/50">
       <div className="max-w-[800px] mx-auto text-center">
         <AnimatedSection>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 tracking-tight">
-            准备好开始了吗？
+            {config.title}
           </h2>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-xl mx-auto">
-            加入冰网工作室，体验全新的即时通讯方式
+            {config.description}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="https://shequ.codemao.cn/work_shop/549"
+              href={config.primaryButtonLink}
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-medium text-base hover:bg-gray-800 dark:hover:bg-gray-100 transition-all hover:shadow-xl flex items-center justify-center gap-2 group"
             >
-              浏览全部作品
+              {config.primaryButtonText}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
             <a
-              href="/"
+              href={config.secondaryButtonLink}
               className="px-8 py-3.5 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-full font-medium text-base hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex items-center justify-center"
             >
-              体验 Code Kitty IM
+              {config.secondaryButtonText}
             </a>
           </div>
         </AnimatedSection>
@@ -582,6 +632,22 @@ export default function Studio() {
   const [infoLoading, setInfoLoading] = useState(true);
   const [worksLoading, setWorksLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [config, setConfig] = useState<StudioConfig>(DEFAULT_CONFIG);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/studio/admin/config`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.code === 200 && data.data) {
+          setConfig(prev => ({
+            hero: { ...prev.hero, ...(data.data.hero || {}) },
+            about: { ...prev.about, ...(data.data.about || {}) },
+            cta: { ...prev.cta, ...(data.data.cta || {}) },
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -654,11 +720,11 @@ export default function Studio() {
     <div className="min-h-screen bg-white dark:bg-black antialiased">
       <Navbar />
       <main>
-        <HeroSection />
-        <AboutSection info={workshopInfo} loading={infoLoading} />
+        <HeroSection config={config.hero} />
+        <AboutSection info={workshopInfo} loading={infoLoading} config={config.about} />
         <WorksSection works={works} loading={worksLoading} />
         <MembersSection members={members} loading={membersLoading} />
-        <CTASection />
+        <CTASection config={config.cta} />
       </main>
       <Footer />
     </div>

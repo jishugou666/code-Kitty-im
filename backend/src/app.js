@@ -20,6 +20,7 @@ import uploadRoutes from './routes/upload.js';
 import hiddenRoutes from './routes/hidden.js';
 import aiRoutes from './routes/ai.js';
 import proxyRoutes from './routes/proxy.js';
+import studioAdminRoutes from './routes/studioAdmin.js';
 
 const app = express();
 
@@ -115,6 +116,7 @@ app.use('/api/group', groupRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/v2', hiddenRoutes);
 app.use('/api/proxy', proxyRoutes);
+app.use('/api/studio/admin', studioAdminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
