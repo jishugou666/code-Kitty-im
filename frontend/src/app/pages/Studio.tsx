@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView } from 'motion/react';
 import { ArrowRight, MessageSquare, Zap, Globe, ChevronDown, Code, Layers, Smartphone, Lock, Crown, User, Star, Eye, ExternalLink, Loader2, Users } from 'lucide-react';
 
-const API_BASE = 'https://api.codemao.cn';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
 const WORKSHOP_ID = 549;
 
 interface WorkshopInfo {
@@ -560,9 +561,9 @@ export default function Studio() {
     const fetchData = async () => {
       try {
         const [infoRes, worksRes, membersRes] = await Promise.all([
-          fetch(`${API_BASE}/web/shops/${WORKSHOP_ID}`),
-          fetch(`${API_BASE}/web/works/subjects/${WORKSHOP_ID}/works?limit=8&sort=-n_likes`),
-          fetch(`${API_BASE}/web/shops/${WORKSHOP_ID}/users?limit=6`),
+          fetch(`${CODEMAO_PROXY}/shops/${WORKSHOP_ID}`),
+          fetch(`${CODEMAO_PROXY}/works/subjects/${WORKSHOP_ID}/works?limit=8&sort=-n_likes`),
+          fetch(`${CODEMAO_PROXY}/shops/${WORKSHOP_ID}/users?limit=6`),
         ]);
 
         if (infoRes.ok) {

@@ -19,6 +19,7 @@ import groupRoutes from './routes/group.js';
 import uploadRoutes from './routes/upload.js';
 import hiddenRoutes from './routes/hidden.js';
 import aiRoutes from './routes/ai.js';
+import proxyRoutes from './routes/proxy.js';
 
 const app = express();
 
@@ -113,6 +114,7 @@ app.use('/api/temp-conversation', tempConversationRoutes);
 app.use('/api/group', groupRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/v2', hiddenRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
