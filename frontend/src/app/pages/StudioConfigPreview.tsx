@@ -815,6 +815,10 @@ export default function StudioConfigPreview({ config, onChange, onSave, isSaving
   const [worksLoading, setWorksLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
 
+  const heroConfig = config?.hero || DEFAULT_CONFIG.hero;
+  const aboutConfig = config?.about || DEFAULT_CONFIG.about;
+  const ctaConfig = config?.cta || DEFAULT_CONFIG.cta;
+
   const handleSelect = useCallback((configKey: string, section: string) => {
     setSelectedConfigKey(configKey);
   }, []);
@@ -893,11 +897,11 @@ export default function StudioConfigPreview({ config, onChange, onSave, isSaving
           <div className="min-h-screen bg-white dark:bg-black antialiased">
             <Navbar editMode={editMode} />
             <main>
-              <HeroSection config={config.hero} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
-              <AboutSection info={workshopInfo} loading={infoLoading} config={config.about} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+              <HeroSection config={heroConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+              <AboutSection info={workshopInfo} loading={infoLoading} config={aboutConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
               <WorksSection works={works} loading={worksLoading} />
               <MembersSection members={members} loading={membersLoading} />
-              <CTASection config={config.cta} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
+              <CTASection config={ctaConfig} onChange={onChange} onSelect={handleSelect} selectedConfigKey={selectedConfigKey} editMode={editMode} />
             </main>
             <Footer />
           </div>

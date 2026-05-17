@@ -135,7 +135,11 @@ export function Admin() {
       });
       const data = await res.json();
       if (data.code === 200) {
-        setStudioSettings(data.data);
+        setStudioSettings(prev => ({
+          hero: { ...prev.hero, ...(data.data?.hero || {}) },
+          about: { ...prev.about, ...(data.data?.about || {}) },
+          cta: { ...prev.cta, ...(data.data?.cta || {}) },
+        }));
       } else if (data.code === 401) {
         toast('登录已过期，请重新登录', 'error');
         navigate('/login');
@@ -509,6 +513,7 @@ export function Admin() {
   const isStudioTab = activeTab === 'studio';
 
   if (isStudioTab && isStudioAdmin) {
+    const hasLoadedSettings = studioSettings.hero && studioSettings.about && studioSettings.cta;
     return (
       <div className="h-full flex flex-col bg-white dark:bg-[#0A0C10]">
         <div className="flex items-center justify-between px-4 py-2 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10 flex-shrink-0">
@@ -518,49 +523,56 @@ export function Admin() {
           <h1 className="text-base font-bold text-black dark:text-white">官网配置</h1>
           <div className="w-8" />
         </div>
-        <div className="flex-1 overflow-hidden">
-          <StudioConfigPreview
-            config={studioSettings}
-            onChange={(section, key, value) => {
-              setStudioSettings(prev => ({
-                ...prev,
-                [section]: { ...(prev[section] || {}), [key]: value }
-              }));
-            }}
-            onSave={async () => {
-              setIsSaving(true);
-              try {
-                const allUpdates = Object.entries(studioSettings).flatMap(([section, fields]) =>
-                  Object.entries(fields || {}).map(([key, value]) => ({
-                    section,
-                    key,
-                    value: value || '',
-                    type: 'string'
-                  }))
-                );
-                const token = localStorage.getItem('token');
-                const res = await fetch(`${API_BASE}/studio/admin/settings/batch`, {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                  },
-                  body: JSON.stringify({ settings: allUpdates })
-                });
-                const data = await res.json();
-                if (data.code === 200) {
-                  toast('保存成功', 'success');
-                } else {
-                  toast(data.message || '保存失败', 'error');
+        <div className="flex-1 overflow-hidden flex items-center justify-center">
+          {hasLoadedSettings ? (
+            <StudioConfigPreview
+              config={studioSettings}
+              onChange={(section, key, value) => {
+                setStudioSettings(prev => ({
+                  ...prev,
+                  [section]: { ...(prev[section] || {}), [key]: value }
+                }));
+              }}
+              onSave={async () => {
+                setIsSaving(true);
+                try {
+                  const allUpdates = Object.entries(studioSettings).flatMap(([section, fields]) =>
+                    Object.entries(fields || {}).map(([key, value]) => ({
+                      section,
+                      key,
+                      value: value || '',
+                      type: 'string'
+                    }))
+                  );
+                  const token = localStorage.getItem('token');
+                  const res = await fetch(`${API_BASE}/studio/admin/settings/batch`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ settings: allUpdates })
+                  });
+                  const data = await res.json();
+                  if (data.code === 200) {
+                    toast('保存成功', 'success');
+                  } else {
+                    toast(data.message || '保存失败', 'error');
+                  }
+                } catch {
+                  toast('网络错误', 'error');
+                } finally {
+                  setIsSaving(false);
                 }
-              } catch {
-                toast('网络错误', 'error');
-              } finally {
-                setIsSaving(false);
-              }
-            }}
-            isSaving={isSaving}
-          />
+              }}
+              isSaving={isSaving}
+            />
+          ) : (
+            <div className="text-center text-black/40 dark:text-white/40">
+              <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p>加载中...</p>
+            </div>
+          )}
         </div>
         <ToastContainer />
       </div>
