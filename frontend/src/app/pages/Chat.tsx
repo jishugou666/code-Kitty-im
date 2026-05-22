@@ -580,7 +580,7 @@ export function Chat() {
                           isOwnMessage ? "bg-[#007AFF] text-white hover:bg-[#0066E6] hover:shadow-lg" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white hover:shadow-md"
                         )}
                       >
-                        {message.type === 'text' && <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>}
+                        {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm", "whitespace-pre-wrap")}>{message.content}</p>}
                         {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
                         {message.type === 'recalled' && (
                           <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
