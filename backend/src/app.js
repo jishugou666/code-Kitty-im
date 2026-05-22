@@ -133,6 +133,14 @@ async function startServer() {
   }
   console.log('Database connection successful.');
 
+  const { query } = await import('./utils/db.js');
+  try {
+    await query("ALTER TABLE message MODIFY COLUMN type ENUM('text', 'image', 'file', 'system', 'recalled') DEFAULT 'text'");
+    console.log('[Migration] message.type ENUM updated: added recalled');
+  } catch (err) {
+    console.log('[Migration] message.type already has recalled or migration failed:', err.message?.substring(0, 80));
+  }
+
   server.listen(config.port, () => {
     console.log(`Server running on http://localhost:${config.port}`);
     console.log(`WebSocket running on ws://localhost:${config.port}/ws`);
