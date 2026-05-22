@@ -3,6 +3,7 @@ import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { userApi } from '../api/user';
+import { messageEventBus } from '../lib/messageEventBus';
 
 const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
 const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'ap1';
@@ -100,6 +101,11 @@ export function useGlobalWebSocket() {
 
     userChannel.bind('conversation-update', (data: any) => {
       fetchConversations();
+    });
+
+    userChannel.bind('new-message', (data: any) => {
+      console.log('[GlobalWebSocket] 📨 Received new-message on user channel:', data?.id, data?.sender_nickname);
+      messageEventBus.emit(data);
     });
 
     return () => {

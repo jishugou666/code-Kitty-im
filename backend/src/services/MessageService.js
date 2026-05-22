@@ -163,6 +163,20 @@ export const MessageService = {
 
       triggerEvent(`chat-${conversationId}`, 'new-message', messages[0]);
 
+      try {
+        const members = await query(
+          'SELECT user_id FROM conversation_member WHERE conversation_id = ? AND user_id != ?',
+          [conversationId, senderId]
+        );
+        if (Array.isArray(members)) {
+          for (const member of members) {
+            triggerEvent(`user-${member.user_id}`, 'new-message', messages[0]);
+          }
+        }
+      } catch (err) {
+        console.error('[MessageService] Failed to notify user channels:', err);
+      }
+
       console.log('发送成功:', messages[0]);
       return { code: 200, data: messages[0], msg: '发送成功' };
     } catch (err) {

@@ -11,6 +11,7 @@ import { useIsMobile } from './ui/use-mobile';
 import { MobileNav } from "./MobileNav";
 import { useSystemNotification } from '../../hooks/useSystemNotification';
 import { messageEventBus } from '../../lib/messageEventBus';
+import { useGlobalWebSocket } from '../../hooks/useWebSocket';
 
 export function MainLayout() {
   const location = useLocation();
@@ -19,6 +20,7 @@ export function MainLayout() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { notifyNewMessage } = useSystemNotification();
+  useGlobalWebSocket();
 
   const navItems = [
     { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
