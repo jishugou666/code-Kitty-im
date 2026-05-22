@@ -529,8 +529,12 @@ export function Chat() {
                     className={clsx("flex mb-3 gap-0", isOwnMessage ? "justify-end" : "justify-start")}
                   >
                     {!isOwnMessage && !isRecalled && (
-                      <div className={clsx(isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0")}>
-                        {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
+                      <div className={clsx(isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0 overflow-hidden" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0 overflow-hidden")}>
+                        {message.sender_avatar ? (
+                          <img src={message.sender_avatar} alt={message.sender_nickname || 'U'} className="w-full h-full object-cover" />
+                        ) : (
+                          (message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'
+                        )}
                       </div>
                     )}
                     <motion.div

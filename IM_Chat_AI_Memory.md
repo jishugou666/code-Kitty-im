@@ -418,6 +418,24 @@
   - `group`、`group_member`、`group_join_request` 表保留用于数据备份，但不再被应用使用
 - **执行结果**: ✅ 完成
 
+### 任务20: 修复会话界面头像不同步问题
+- **执行时间**: 2026-05-22
+- **问题描述**:
+  - 消息列表（ChatsSidebar）中头像正常显示自定义头像
+  - 会话界面（Chat.tsx）中头像始终显示默认大字首字母，不同步用户自定义头像
+- **根本原因**:
+  - Chat.tsx 第531-534行头像渲染逻辑只硬编码显示 `(message.sender_nickname || 'U')[0]` 首字母
+  - 后端 MessageService 已返回 `sender_avatar` 字段（LEFT JOIN user 表获取）
+  - 前端完全没有读取和使用 `sender_avatar` 字段
+- **修复方案**:
+  - 修改 Chat.tsx 头像渲染逻辑：先检查 `message.sender_avatar` 是否存在
+  - 有自定义头像时显示 `<img src={message.sender_avatar}>`
+  - 无自定义头像时回退到默认大字首字母
+  - 添加 `overflow-hidden` 类确保圆形裁剪
+- **涉及文件**:
+  - `frontend/src/app/pages/Chat.tsx` - 头像渲染逻辑（第531-538行）
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
