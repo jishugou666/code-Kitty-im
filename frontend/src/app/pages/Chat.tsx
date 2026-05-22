@@ -524,22 +524,8 @@ export function Chat() {
                 const isOwnMessage = message.sender_id === user?.id;
                 const isRecalled = message.type === 'recalled';
                 return (
-                  <motion.div
+                  <div
                     key={message.id || Math.random()}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onLongPress={() => {
-                      if (isOwnMessage && !isRecalled) {
-                        setSelectedMessage(message);
-                        setShowMessageMenu(true);
-                      }
-                    }}
-                    onClick={() => {
-                      if (isOwnMessage && !isRecalled) {
-                        setSelectedMessage(message);
-                        setShowMessageMenu(true);
-                      }
-                    }}
                     className={clsx("flex mb-3", isOwnMessage ? "justify-end" : "justify-start")}
                   >
                     {!isOwnMessage && !isRecalled && (
@@ -547,39 +533,121 @@ export function Chat() {
                         {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                    <div className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2" : "max-w-[70%] rounded-2xl px-4 py-2",
-                      isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
-                      isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
-                    )}>
-                      {message.type === 'text' && <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>}
-                      {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
-                      {message.type === 'recalled' && (
-                        <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
-                      )}
-                      {message.type === 'file' && !isRecalled && (
-                        (() => {
-                          try {
-                            const fileData = JSON.parse(message.content || '{}');
-                            return (
-                              <div className="flex items-center gap-2">
-                                <File size={isMobile ? 14 : 16} />
-                                <span className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{fileData.name || '未知文件'}</span>
-                              </div>
-                            );
-                          } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
-                        })()
-                      )}
-                      <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
-                        {message.status === 'pending' && (
-                          <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
+                    <div 
+                      className="relative group"
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (isOwnMessage && !isRecalled) {
+                          setSelectedMessage(message);
+                          setShowMessageMenu(true);
+                        }
+                      }}
+                      onTouchStart={(e) => {
+                        if (isMobile && isOwnMessage && !isRecalled) {
+                          const start = Date.now();
+                          const touchX = e.touches[0].clientX;
+                          const touchY = e.touches[0].clientY;
+                          const check = setTimeout(() => {
+                            if (Date.now() - start > 500) {
+                              setSelectedMessage(message);
+                              setShowMessageMenu(true);
+                            }
+                          }, 500);
+                          const up = () => {
+                            clearTimeout(check);
+                            document.removeEventListener('touchend', up);
+                            document.removeEventListener('touchmove', move);
+                          };
+                          const move = (me: TouchEvent) => {
+                            const dx = Math.abs(me.touches[0].clientX - touchX);
+                            const dy = Math.abs(me.touches[0].clientY - touchY);
+                            if (dx > 10 || dy > 10) {
+                              clearTimeout(check);
+                            }
+                          };
+                          document.addEventListener('touchend', up);
+                          document.addEventListener('touchmove', move);
+                        }
+                      }}
+                    >
+                      <motion.div
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 transition-all duration-150" : "max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-150",
+                          isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
+                          isOwnMessage ? "bg-[#007AFF] text-white hover:bg-[#0066E6] hover:shadow-lg" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white hover:shadow-md"
                         )}
-                        {formatTime(message.created_at)}
-                      </p>
+                      >
+                        {message.type === 'text' && <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>}
+                        {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
+                        {message.type === 'recalled' && (
+                          <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
+                        )}
+                        {message.type === 'file' && !isRecalled && (
+                          (() => {
+                            try {
+                              const fileData = JSON.parse(message.content || '{}');
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <File size={isMobile ? 14 : 16} />
+                                  <span className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{fileData.name || '未知文件'}</span>
+                                </div>
+                              );
+                            } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
+                          })()
+                        )}
+                        <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
+                          {message.status === 'pending' && (
+                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          )}
+                          {formatTime(message.created_at)}
+                        </p>
+                      </motion.div>
+                      
+                      {!isRecalled && !isMobile && (
+                        <div className={clsx("absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200", isOwnMessage ? "-right-12" : "-left-12")}>
+                          <div className="px-2 py-1 bg-white dark:bg-[#2A2D31] rounded-xl shadow-lg border border-gray-200 dark:border-white/10 flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(message.content);
+                                toast('已复制', 'success');
+                              }}
+                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                              title="复制"
+                            >
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                              </svg>
+                            </button>
+                            {isOwnMessage && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMessage(message);
+                                  setShowMessageMenu(true);
+                                }}
+                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                                title="更多操作"
+                              >
+                                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                                  <circle cx="12" cy="6" r="1"/>
+                                  <circle cx="19" cy="12" r="1"/>
+                                  <circle cx="5" cy="18" r="1"/>
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -597,82 +665,123 @@ export function Chat() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMessageMenu(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              className={isMobile ? "relative w-full bg-white dark:bg-[#1A1D21] rounded-t-2xl p-4 shadow-2xl" : "relative w-full max-w-xs bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden"}
+              initial={isMobile ? { opacity: 0, y: 100 } : { opacity: 0, scale: 0.95 }}
+              animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1 }}
+              exit={isMobile ? { opacity: 0, y: 100 } : { opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className={isMobile ? "relative w-full bg-white dark:bg-[#1A1D21] rounded-t-3xl p-6 shadow-2xl" : "relative w-full max-w-sm bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl border border-gray-200/50 dark:border-white/10 overflow-hidden"}
             >
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await messageApi.recallMessage(selectedMessage.id);
-                    if (res.code === 200) {
-                      setMessages(prev => prev.map(m =>
-                        m.id === selectedMessage.id
-                          ? { ...m, type: 'recalled', content: '此消息已撤回' }
-                          : m
-                      ));
-                      fetchConversations();
-                      toast('已撤回', 'success');
-                    } else {
-                      toast(res.msg || '撤回失败', 'error');
-                    }
-                  } catch {
-                    toast('撤回失败', 'error');
-                  }
-                  setShowMessageMenu(false);
-                }}
-                className="w-full px-5 py-3.5 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                撤回消息
-              </button>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(selectedMessage.content);
-                  toast('已复制', 'success');
-                  setShowMessageMenu(false);
-                }}
-                className="w-full px-5 py-3.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
-              >
-                复制
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
-                    if (conversations.code === 200) {
-                      const targets = conversations.data.filter((c: any) => c.id !== conversationId);
-                      if (targets.length === 0) {
-                        toast('没有其他会话可转发', 'warning');
-                        setShowMessageMenu(false);
-                        return;
+              {isMobile && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
+              )}
+              
+              <div className={isMobile ? "mb-5 text-center" : "mb-4"}>
+                <h3 className={isMobile ? "text-lg font-semibold text-gray-900 dark:text-white mb-1" : "text-sm font-semibold text-gray-900 dark:text-white mb-1"}>
+                  消息操作
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {selectedMessage.content?.substring(0, 40)}{selectedMessage.content?.length > 40 ? '...' : ''}
+                </p>
+              </div>
+              
+              <div className={isMobile ? "space-y-2" : "space-y-1"}>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await messageApi.recallMessage(selectedMessage.id);
+                      if (res.code === 200) {
+                        setMessages(prev => prev.map(m =>
+                          m.id === selectedMessage.id
+                            ? { ...m, type: 'recalled', content: '此消息已撤回' }
+                            : m
+                        ));
+                        fetchConversations();
+                        toast('已撤回', 'success');
+                      } else {
+                        toast(res.msg || '撤回失败', 'error');
                       }
-                      const target = targets[0];
-                      await messageApi.sendMessage({
-                        conversationId: target.id,
-                        content: selectedMessage.content,
-                        type: selectedMessage.type
-                      });
-                      toast('已转发', 'success');
+                    } catch {
+                      toast('撤回失败', 'error');
                     }
-                  } catch {
-                    toast('转发失败', 'error');
-                  }
-                  setShowMessageMenu(false);
-                }}
-                className="w-full px-5 py-3.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
-              >
-                转发
-              </button>
-              <button
-                onClick={() => setShowMessageMenu(false)}
-                className="w-full px-5 py-3.5 text-left text-sm text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors border-t border-gray-100 dark:border-white/10"
-              >
-                取消
-              </button>
+                    setShowMessageMenu(false);
+                  }}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-150",
+                    isMobile ? "rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 active:bg-red-100 dark:active:bg-red-900/30" : "rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  )}
+                >
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12h18M3 6h18M3 18h18" strokeDasharray="4 4" strokeDashoffset="4" />
+                  </svg>
+                  <span className="font-medium">撤回消息</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedMessage.content);
+                    toast('已复制', 'success');
+                    setShowMessageMenu(false);
+                  }}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-150",
+                    isMobile ? "rounded-xl bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-white/10" : "rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+                  )}
+                >
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  <span className="font-medium">复制</span>
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    try {
+                      const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
+                      if (conversations.code === 200) {
+                        const targets = conversations.data.filter((c: any) => c.id !== conversationId);
+                        if (targets.length === 0) {
+                          toast('没有其他会话可转发', 'warning');
+                          setShowMessageMenu(false);
+                          return;
+                        }
+                        const target = targets[0];
+                        await messageApi.sendMessage({
+                          conversationId: target.id,
+                          content: selectedMessage.content,
+                          type: selectedMessage.type
+                        });
+                        toast('已转发', 'success');
+                      }
+                    } catch {
+                      toast('转发失败', 'error');
+                    }
+                    setShowMessageMenu(false);
+                  }}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all duration-150",
+                    isMobile ? "rounded-xl bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-white/10" : "rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+                  )}
+                >
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/>
+                  </svg>
+                  <span className="font-medium">转发</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowMessageMenu(false)}
+                  className={clsx(
+                    "w-full flex items-center justify-center px-4 py-3 mt-2 text-left transition-all duration-150",
+                    isMobile ? "rounded-xl bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 font-medium active:bg-gray-200 dark:active:bg-white/20" : "rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10"
+                  )}
+                >
+                  取消
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
