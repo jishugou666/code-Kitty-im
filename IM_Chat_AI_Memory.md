@@ -88,9 +88,6 @@
   - 重新组织项目目录结构（frontend/backend/database/scripts/security）
   - 迁移现有 UI 文件到 frontend 目录
 - **执行结果**: ✅ 完成
-- **代码改动关键点**:
-  - 创建目录: frontend/src, backend/src, database/, scripts/, security/
-  - 迁移文件: package.json, vite.config.ts, index.html, src/ → frontend/src/
 
 ### 任务2: 后端 Node.js + Express 项目创建
 - **执行时间**: 2026-04-04
@@ -434,6 +431,21 @@
   - 添加 `overflow-hidden` 类确保圆形裁剪
 - **涉及文件**:
   - `frontend/src/app/pages/Chat.tsx` - 头像渲染逻辑（第531-538行）
+- **执行结果**: ✅ 完成
+
+### 任务21: 统一设置页面入口
+- **执行时间**: 2026-05-22
+- **问题描述**:
+  - 导航栏底部头像点击跳转到 `/profile`（Profile.tsx）- 大头像展示+渐变背景页面
+  - 导航栏设置按钮点击跳转到 `/settings`（Settings.tsx）- 标准设置页面
+  - 两个页面功能不一致，用户要求统一为 Settings 页面
+- **修复方案**:
+  - MainLayout.tsx 第128行：头像点击从 `navigate("/profile")` 改为 `navigate("/settings")`
+  - MobileNav.tsx 第18行：移动端导航栏设置项路径从 `/profile` 改为 `/settings`
+  - 统一后所有入口都进入 Settings 页面（包含个人资料、语言、主题、隐私、关于等完整功能）
+- **涉及文件**:
+  - `frontend/src/app/components/MainLayout.tsx` - 头像点击跳转（第128行）
+  - `frontend/src/app/components/MobileNav.tsx` - 移动端导航栏设置项（第18行）
 - **执行结果**: ✅ 完成
 
 ---

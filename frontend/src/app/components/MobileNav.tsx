@@ -15,7 +15,7 @@ export function MobileNav() {
     { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
     { path: "/contacts", icon: Users, label: t('chat.contacts'), isMatch: (p: string) => p.startsWith("/contacts") },
     { path: "/moments", icon: Globe, label: t('moments.title'), isMatch: (p: string) => p.startsWith("/moments") },
-    { path: "/profile", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/profile") || p.startsWith("/settings") },
+    { path: "/settings", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/profile") || p.startsWith("/settings") },
   ];
 
   const adminItem = user?.role === 'admin' ? {
