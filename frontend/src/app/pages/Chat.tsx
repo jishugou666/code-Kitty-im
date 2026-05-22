@@ -533,8 +533,13 @@ export function Chat() {
                         {(message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'}
                       </div>
                     )}
-                    <div 
-                      className="relative group flex-shrink-0"
+                    <motion.div
+                      className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 relative" : "max-w-[70%] rounded-2xl px-4 py-2 relative",
+                        isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
+                        isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
+                      )}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         if (isOwnMessage && !isRecalled) {
@@ -570,17 +575,7 @@ export function Chat() {
                         }
                       }}
                     >
-                      <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 transition-all duration-150" : "max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-150",
-                          isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
-                          isOwnMessage ? "bg-[#007AFF] text-white hover:bg-[#0066E6] hover:shadow-lg" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white hover:shadow-md"
-                        )}
-                      >
-                        {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm", "whitespace-pre-wrap")}>{message.content}</p>}
+                        {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>}
                         {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
                         {message.type === 'recalled' && (
                           <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
@@ -608,45 +603,6 @@ export function Chat() {
                           {formatTime(message.created_at)}
                         </p>
                       </motion.div>
-                      
-                      {!isRecalled && !isMobile && (
-                        <div className={clsx("absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200", isOwnMessage ? "-right-12" : "-left-12")}>
-                          <div className="px-2 py-1 bg-white dark:bg-[#2A2D31] rounded-xl shadow-lg border border-gray-200 dark:border-white/10 flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(message.content);
-                                toast('已复制', 'success');
-                              }}
-                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                              title="复制"
-                            >
-                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                              </svg>
-                            </button>
-                            {isOwnMessage && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedMessage(message);
-                                  setShowMessageMenu(true);
-                                }}
-                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
-                                title="更多操作"
-                              >
-                                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-                                  <circle cx="12" cy="6" r="1"/>
-                                  <circle cx="19" cy="12" r="1"/>
-                                  <circle cx="5" cy="18" r="1"/>
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 );
               })}
