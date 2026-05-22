@@ -11,7 +11,6 @@ const CONFIG = {
   cooldownMs: 3000,
   maxConcurrent: 3,
   blockThreshold: 50,
-  feedbackConfidence: 65,
   cleanupIntervalMs: 60000,
   maxUserDataAgeMs: 300000,
   maxIPDataAgeMs: 600000,
@@ -20,8 +19,6 @@ const CONFIG = {
 
 class AntiSpamService {
   constructor() {
-    this.userScores = new Map();
-    this.ipScores = new Map();
     this.cooldownUsers = new Set();
     this.cooldownIPs = new Set();
     this.lastMessages = new Map();
@@ -56,7 +53,6 @@ class AntiSpamService {
     for (const [userId, data] of messageTracking.entries()) {
       if (now - (data.lastActivity || data.messages[data.messages.length - 1]?.timestamp || 0) > CONFIG.maxUserDataAgeMs) {
         messageTracking.delete(userId);
-        this.userScores.delete(userId);
         this.lastMessages.delete(userId);
         if (data.conversationId) {
           this.monitoredConversations.delete(data.conversationId);
@@ -68,7 +64,6 @@ class AntiSpamService {
     for (const [ip, data] of ipTracking.entries()) {
       if (now - (data.lastActivity || data.messages[data.messages.length - 1]?.timestamp || 0) > CONFIG.maxIPDataAgeMs) {
         ipTracking.delete(ip);
-        this.ipScores.delete(ip);
         ipCleaned++;
       }
     }
@@ -132,37 +127,6 @@ class AntiSpamService {
     }, durationMs);
   }
 
-  async saveAIFeedback(type, severity, userId, targetType, targetId, content, contentFull, metadata, aiConfidence, aiAnalysis) {
-    try {
-      const result = await query(
-        `INSERT INTO ai_feedback (type, severity, user_id, target_type, target_id, content, content_full, metadata, ai_confidence, ai_analysis, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-        [type, severity, userId, targetType, targetId, content?.substring(0, 500), contentFull, JSON.stringify(metadata), aiConfidence, aiAnalysis]
-      );
-
-      await this.logActivity('detect', 'user', userId, 'success', {
-        type, severity, aiConfidence, reasons: aiAnalysis
-      });
-
-      return result.insertId;
-    } catch (error) {
-      console.error('[AntiSpam] Failed to save AI feedback:', error);
-      return null;
-    }
-  }
-
-  async logActivity(action, targetType, targetId, result, details) {
-    try {
-      await query(
-        `INSERT INTO ai_activity_log (service_name, action, target_type, target_id, result, details)
-         VALUES ('antiSpam', ?, ?, ?, ?, ?)`,
-        [action, targetType, targetId, result, JSON.stringify(details)]
-      );
-    } catch (error) {
-      console.error('[AntiSpam] Failed to log activity:', error);
-    }
-  }
-
   async updateServiceStatus() {
     try {
       const rows = await query(
@@ -173,7 +137,6 @@ class AntiSpamService {
         monitored_conversations: this.monitoredConversations.size,
         messages_processed: this.messagesProcessed,
         threats_blocked: this.threatsBlocked,
-        active_users: messageTracking.size,
         cooldown_users: this.cooldownUsers.size
       };
 
@@ -206,7 +169,6 @@ class AntiSpamService {
 
   analyzeMessagePattern(userId, ip, messageContent, messageId = null, conversationId = null) {
     const now = Date.now();
-    const fingerprint = this.generateFingerprint({ ip });
 
     if (!messageTracking.has(userId)) {
       messageTracking.set(userId, {
@@ -297,9 +259,6 @@ class AntiSpamService {
     userData.totalScore = Math.max(0, userData.totalScore * 0.8 + spamScore);
     ipData.totalScore = Math.max(0, ipData.totalScore * 0.8 + spamScore);
 
-    this.userScores.set(userId, userData.totalScore);
-    this.ipScores.set(ip, ipData.totalScore);
-
     this.lastMessages.set(userId, {
       content: messageContent,
       timestamp: now
@@ -321,27 +280,14 @@ class AntiSpamService {
       shouldBlock: spamScore >= CONFIG.blockThreshold && spamScore >= 50
     };
 
-    if (analysis.isSpam && analysis.confidence >= CONFIG.feedbackConfidence) {
-      const severity = spamScore >= 70 ? 'critical' : spamScore >= 50 ? 'high' : 'medium';
-      this.saveAIFeedback(
-        'spam',
-        severity,
-        userId,
-        'message',
-        messageId,
-        messageContent.substring(0, 200),
-        messageContent,
-        {
-          ip,
-          reasons: analysis.reasons,
-          spamScore,
-          userScore: userData.totalScore,
-          ipScore: ipData.totalScore,
-          messageCount: userData.messages.length
-        },
-        analysis.confidence,
-        analysis.reasons.join('; ')
-      );
+    if (analysis.shouldBlock) {
+      this.threatsBlocked++;
+      if (analysis.userScore >= CONFIG.blockThreshold) {
+        this.cooldownUser(userId);
+      }
+      if (analysis.ipScore >= 70) {
+        this.cooldownIP(ip);
+      }
     }
 
     return analysis;
@@ -380,23 +326,25 @@ class AntiSpamService {
   }
 
   shouldBlock(analysis) {
-    return analysis.isSpam && analysis.confidence >= CONFIG.feedbackConfidence;
+    return analysis.isSpam && analysis.confidence >= 65;
   }
 
   getUserStats(userId) {
+    const data = messageTracking.get(userId);
     return {
-      score: this.userScores.get(userId) || 0,
-      messageCount: messageTracking.get(userId)?.messages?.length || 0,
+      score: data?.totalScore || 0,
+      messageCount: data?.messages?.length || 0,
       isInCooldown: this.isUserInCooldown(userId),
-      conversationId: messageTracking.get(userId)?.conversationId
+      conversationId: data?.conversationId
     };
   }
 
   getIPStats(ip) {
+    const data = ipTracking.get(ip);
     return {
-      score: this.ipScores.get(ip) || 0,
-      messageCount: ipTracking.get(ip)?.messages?.length || 0,
-      userCount: ipTracking.get(ip)?.users?.size || 0,
+      score: data?.totalScore || 0,
+      messageCount: data?.messages?.length || 0,
+      userCount: data?.users?.size || 0,
       isInCooldown: this.isIPInCooldown(ip)
     };
   }
@@ -406,7 +354,6 @@ class AntiSpamService {
       monitoredConversations: this.monitoredConversations.size,
       messagesProcessed: this.messagesProcessed,
       threatsBlocked: this.threatsBlocked,
-      activeUsers: messageTracking.size,
       cooldownUsers: this.cooldownUsers.size,
       cooldownIPs: this.cooldownIPs.size
     };
@@ -418,14 +365,12 @@ class AntiSpamService {
       this.monitoredConversations.delete(userData.conversationId);
     }
     messageTracking.delete(userId);
-    this.userScores.delete(userId);
     this.cooldownUsers.delete(userId);
     this.lastMessages.delete(userId);
   }
 
   clearIPData(ip) {
     ipTracking.delete(ip);
-    this.ipScores.delete(ip);
     this.cooldownIPs.delete(ip);
   }
 }
