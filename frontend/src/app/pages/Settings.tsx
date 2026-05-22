@@ -7,6 +7,7 @@ import { settingsApi } from '../../api/settings';
 import { uploadApi } from '../../api/upload';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
+import { useSystemNotification } from '../../hooks/useSystemNotification';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 export function Settings() {
@@ -15,6 +16,7 @@ export function Settings() {
   const { user, setUser, logout } = useAuthStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
+  const { isSupported: notifySupported, permissionStatus: notifyPermission, requestPermission: requestNotify } = useSystemNotification();
 
   const [settings, setSettings] = useState<any>({
     language: 'zh-CN',
@@ -341,6 +343,50 @@ export function Settings() {
             </div>
           </div>
         </div>
+
+        {notifySupported && (
+          <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+              <Bell size={20} className="text-[#007AFF]" />
+              <span className="text-black dark:text-white">{t('settings.notifications')}</span>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm text-black/60 dark:text-white/60">
+                {notifyPermission === 'granted'
+                  ? '已开启桌面通知，收到新消息时将弹出系统提示'
+                  : notifyPermission === 'denied'
+                    ? '浏览器已禁止通知，请在浏览器设置中手动开启'
+                    : '开启后，收到新消息时将弹出系统级通知提醒'}
+              </p>
+              {notifyPermission !== 'granted' && (
+                <button
+                  onClick={async () => {
+                    const granted = await requestNotify();
+                    if (granted) {
+                      toast('已开启桌面通知', 'success');
+                    } else if (notifyPermission !== 'denied') {
+                      toast('授权被拒绝', 'error');
+                    }
+                  }}
+                  disabled={notifyPermission === 'denied'}
+                  className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    notifyPermission === 'denied'
+                      ? 'bg-black/5 dark:bg-white/5 text-black/30 dark:text-white/30 cursor-not-allowed'
+                      : 'bg-[#007AFF] hover:bg-[#006CE0] text-white'
+                  }`}
+                >
+                  {notifyPermission === 'denied' ? '已被禁止' : '开启桌面通知'}
+                </button>
+              )}
+              {notifyPermission === 'granted' && (
+                <div className="flex items-center gap-2 text-green-500 text-sm font-medium">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  桌面通知已启用
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 关于 */}
         <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-4 shadow-sm">

@@ -7,6 +7,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useSystemNotification } from '../../hooks/useSystemNotification';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { uploadApi } from '../../api/upload';
@@ -37,6 +38,7 @@ export function Chat() {
   const { conversations, fetchConversations } = useChatStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
+  const { notifyNewMessage } = useSystemNotification();
 
   const conversation = conversations.find(c => c.id === conversationId);
 
@@ -53,12 +55,10 @@ export function Chat() {
     } else if (newMessage.type === 'messages-deleted') {
       setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
     } else {
-      setMessages(prev => {
-        if (prev.some(m => m.id === newMessage.id)) {
-          return prev;
-        }
-        return [...prev, newMessage];
-      });
+      if (!prev.some(m => m.id === newMessage.id)) {
+        notifyNewMessage(newMessage);
+      }
+      return [...prev, newMessage];
     }
   });
 

@@ -448,6 +448,27 @@
   - `frontend/src/app/components/MobileNav.tsx` - 移动端导航栏设置项（第18行）
 - **执行结果**: ✅ 完成
 
+### 任务22: 系统级消息通知功能
+- **执行时间**: 2026-05-22
+- **任务内容**:
+  - 实现浏览器原生系统级通知（Notification API）
+  - 收到新消息时，如果页面不在前台，弹出系统级桌面通知
+  - 点击通知可跳转到对应聊天会话
+  - 在设置页面添加通知权限管理开关
+- **新增文件**:
+  - `frontend/src/hooks/useSystemNotification.ts` - 系统通知 Hook
+- **修改文件**:
+  - `frontend/src/app/pages/Chat.tsx` - 集成 useWebSocket 消息回调触发系统通知
+  - `frontend/src/app/pages/Settings.tsx` - 添加通知权限开关 UI
+- **核心逻辑**:
+  - 使用浏览器 Notification API 实现原生弹窗
+  - 仅在页面不可见（document.visibilityState !== 'visible'）时弹出通知，避免重复打扰
+  - 仅对他人发送的消息触发通知（过滤自己发送的消息）
+  - 通知 8 秒后自动关闭，点击通知聚焦窗口并跳转会话
+  - 支持 text/image/file 三种消息类型的预览文本
+  - 浏览器不支持 Notification API 时自动隐藏设置项
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
