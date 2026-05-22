@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useAuthStore } from '../store/authStore';
 
 interface SystemNotificationOptions {
@@ -12,9 +12,13 @@ interface SystemNotificationOptions {
 
 const NOTIFICATION_REQUESTED_KEY = 'im_notification_requested';
 
+function getCurrentChatId(): string | null {
+  const match = window.location.pathname.match(/^\/chat\/(\d+)/);
+  return match ? match[1] : null;
+}
+
 export function useSystemNotification(autoRequest = true) {
   const navigate = useNavigate();
-  const { id: currentChatId } = useParams();
   const { user } = useAuthStore();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
@@ -30,7 +34,16 @@ export function useSystemNotification(autoRequest = true) {
 
   useEffect(() => {
     if (!isSupported || !autoRequest || hasAutoRequested.current) return;
-    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+
+    const currentPermission = Notification.permission;
+    if (currentPermission === 'granted') {
+      setPermissionStatus('granted');
+      return;
+    }
+    if (currentPermission === 'denied') {
+      setPermissionStatus('denied');
+      return;
+    }
 
     const requested = localStorage.getItem(NOTIFICATION_REQUESTED_KEY);
     if (requested) return;
@@ -40,10 +53,12 @@ export function useSystemNotification(autoRequest = true) {
 
     const timer = setTimeout(async () => {
       try {
+        console.log('[SystemNotification] Requesting notification permission...');
         const permission = await Notification.requestPermission();
+        console.log('[SystemNotification] Permission result:', permission);
         setPermissionStatus(permission);
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error('[SystemNotification] Permission request failed:', err);
       }
     }, 2000);
 
@@ -53,7 +68,9 @@ export function useSystemNotification(autoRequest = true) {
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) return false;
     try {
+      console.log('[SystemNotification] Manual permission request...');
       const permission = await Notification.requestPermission();
+      console.log('[SystemNotification] Manual permission result:', permission);
       setPermissionStatus(permission);
       return permission === 'granted';
     } catch {
@@ -62,32 +79,84 @@ export function useSystemNotification(autoRequest = true) {
   }, [isSupported]);
 
   const showNotification = useCallback((options: SystemNotificationOptions) => {
-    if (!isSupported || permissionStatus !== 'granted') return;
-
-    const notification = new Notification(options.title, {
-      body: options.body,
-      icon: options.icon || undefined,
-      tag: options.tag,
-      requireInteraction: false,
-      silent: false,
+    const livePermission = Notification.permission;
+    console.log('[SystemNotification] showNotification called:', {
+      title: options.title,
+      isSupported,
+      livePermission,
+      permissionStatus,
     });
 
-    notification.onclick = () => {
-      window.focus();
-      options.onClick?.();
-      notification.close();
-    };
+    if (!isSupported) {
+      console.warn('[SystemNotification] Blocked: Not supported');
+      return;
+    }
 
-    setTimeout(() => notification.close(), 8000);
+    if (livePermission !== 'granted') {
+      console.warn('[SystemNotification] Blocked: Permission not granted:', livePermission);
+      setPermissionStatus(livePermission);
+      return;
+    }
+
+    console.log('[SystemNotification] Creating notification...');
+
+    try {
+      const notification = new Notification(options.title, {
+        body: options.body,
+        icon: options.icon || undefined,
+        tag: options.tag,
+        requireInteraction: false,
+        silent: false,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        options.onClick?.();
+        notification.close();
+      };
+
+      setTimeout(() => notification.close(), 8000);
+
+      console.log('[SystemNotification] ✅ Notification created successfully');
+    } catch (err) {
+      console.error('[SystemNotification] Failed to create notification:', err);
+    }
   }, [isSupported, permissionStatus]);
 
   const notifyNewMessage = useCallback((message: any) => {
-    if (!message || message.sender_id === user?.id) return;
+    console.log('[SystemNotification] notifyNewMessage called:', {
+      messageId: message?.id,
+      senderId: message?.sender_id,
+      myId: user?.id,
+      conversationId: message?.conversation_id,
+      type: message?.type,
+    });
+
+    if (!message) {
+      console.warn('[SystemNotification] Blocked: No message');
+      return;
+    }
+
+    if (message.sender_id === user?.id) {
+      console.log('[SystemNotification] Blocked: Own message');
+      return;
+    }
 
     const msgConversationId = String(message.conversation_id);
-    const isViewingThisChat = currentChatId === msgConversationId;
+    const viewingChatId = getCurrentChatId();
+    const isViewingThisChat = viewingChatId === msgConversationId;
 
-    if (isViewingThisChat) return;
+    console.log('[SystemNotification] Chat check:', {
+      msgConversationId,
+      viewingChatId,
+      isViewingThisChat,
+      pathname: window.location.pathname,
+    });
+
+    if (isViewingThisChat) {
+      console.log('[SystemNotification] Blocked: User is viewing this chat');
+      return;
+    }
 
     const senderName = message.sender_nickname || 'Unknown';
     let previewBody = '';
@@ -113,7 +182,7 @@ export function useSystemNotification(autoRequest = true) {
         }
       },
     });
-  }, [user?.id, currentChatId, showNotification, navigate]);
+  }, [user?.id, showNotification, navigate]);
 
   return {
     isSupported,
