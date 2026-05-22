@@ -227,7 +227,7 @@ export const MessageService = {
   async recallMessage(messageId, userId) {
     try {
       const messages = await query(
-        'SELECT m.*, m.conversation_id FROM message m WHERE m.id = ? AND m.sender_id = ?',
+        'SELECT * FROM message WHERE id = ? AND sender_id = ?',
         [messageId, userId]
       );
 
@@ -240,7 +240,7 @@ export const MessageService = {
       const messageTime = new Date(message.created_at);
       
       if (messageTime < fiveMinutesAgo) {
-        return { code: 400, data: null, msg: '超过5分钟，无法撤回' };
+        return { code: 400, data: null, msg: '超过5分钟，无法撤回此消息' };
       }
 
       const updateResult = await query(
@@ -260,7 +260,7 @@ export const MessageService = {
       return { code: 200, data: { messageId, conversationId: message.conversation_id }, msg: '已撤回' };
     } catch (err) {
       console.error('recallMessage error:', err);
-      return { code: 500, data: null, msg: '撤回失败: ' + err.message };
+      return { code: 500, data: null, msg: '撤回失败' };
     }
   }
 };
