@@ -18,7 +18,6 @@ export function ChatsSidebar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [collapsedPrivate, setCollapsedPrivate] = useState(false);
 
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
@@ -169,55 +168,6 @@ export function ChatsSidebar() {
     );
   };
 
-  const renderCategory = (
-    title: string,
-    icon: React.ReactNode,
-    chats: any[],
-    isCollapsed: boolean,
-    onToggle: () => void,
-    colorClass: string = 'text-[#007AFF]'
-  ) => (
-    <div className="mb-2">
-      <div
-        className="sticky top-0 z-30 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-md px-5 py-2 border-b border-black/[0.04] dark:border-white/[0.04] flex items-center justify-between cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-3">
-          {icon}
-          <span className={clsx("text-[12px] font-bold", colorClass)}>
-            {title} ({chats.length})
-          </span>
-        </div>
-        <motion.div
-          animate={{ rotate: isCollapsed ? -90 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-black/30 dark:text-white/30"
-        >
-          ▼
-        </motion.div>
-      </div>
-      <AnimatePresence>
-        {!isCollapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {chats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-black/40 dark:text-white/40 text-sm">
-                <MessageCircle size={24} className="mb-1 opacity-50" />
-                <p>{t('chat.noConversationsYet')}</p>
-              </div>
-            ) : (
-              chats.map(chat => renderChatItem(chat))
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
   return (
     <div className="flex flex-col h-full bg-transparent">
       <div className={isMobile ? "sticky top-0 z-40 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-3xl pt-4 pb-3 px-3 border-b border-black/5 dark:border-white/5 flex flex-col gap-3" : "sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4"}>
@@ -302,12 +252,10 @@ export function ChatsSidebar() {
             </div>
           )}
 
-          {renderCategory(
-            t('chat.privateChats'),
-            <MessageCircle size={14} className="text-[#007AFF]" />,
-            privateChats,
-            collapsedPrivate,
-            () => setCollapsedPrivate(!collapsedPrivate)
+          {privateChats.length > 0 && (
+            <div className="space-y-1">
+              {privateChats.map(chat => renderChatItem(chat))}
+            </div>
           )}
         </div>
       )}

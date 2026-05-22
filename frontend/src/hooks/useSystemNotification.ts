@@ -10,11 +10,14 @@ interface SystemNotificationOptions {
   onClick?: () => void;
 }
 
-export function useSystemNotification() {
+const NOTIFICATION_REQUESTED_KEY = 'im_notification_requested';
+
+export function useSystemNotification(autoRequest = true) {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
+  const hasAutoRequested = useRef(false);
 
   useEffect(() => {
     const supported = 'Notification' in window;
@@ -23,6 +26,28 @@ export function useSystemNotification() {
       setPermissionStatus(Notification.permission);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isSupported || !autoRequest || hasAutoRequested.current) return;
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+
+    const requested = localStorage.getItem(NOTIFICATION_REQUESTED_KEY);
+    if (requested) return;
+
+    hasAutoRequested.current = true;
+    localStorage.setItem(NOTIFICATION_REQUESTED_KEY, '1');
+
+    const timer = setTimeout(async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        setPermissionStatus(permission);
+      } catch {
+        // silently fail
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [isSupported, autoRequest]);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) return false;

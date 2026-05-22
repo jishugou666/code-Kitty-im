@@ -161,7 +161,7 @@ export function Settings() {
   ];
 
   return (
-    <div className={isMobile ? "min-h-screen bg-white dark:bg-[#13161A] pb-20" : "min-h-screen bg-white dark:bg-[#13161A]"}>
+    <div className={isMobile ? "h-[calc(100vh-80px)] bg-white dark:bg-[#13161A] pb-20 overflow-y-auto" : "h-full bg-white dark:bg-[#13161A] overflow-y-auto"}>
       <div className={isMobile ? "sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5" : "sticky top-0 z-50 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5"}>
         <div className={isMobile ? "flex items-center gap-3 px-3 py-3" : "flex items-center gap-4 px-4 py-4"}>
           <button onClick={() => navigate(-1)} className={isMobile ? "p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-full" : "p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full"}>
@@ -355,34 +355,29 @@ export function Settings() {
                 {notifyPermission === 'granted'
                   ? '已开启桌面通知，收到新消息时将弹出系统提示'
                   : notifyPermission === 'denied'
-                    ? '浏览器已禁止通知，请在浏览器设置中手动开启'
-                    : '开启后，收到新消息时将弹出系统级通知提醒'}
+                    ? '浏览器已禁止通知，请在浏览器地址栏左侧点击锁图标手动开启'
+                    : '正在请求通知权限...'}
               </p>
-              {notifyPermission !== 'granted' && (
-                <button
-                  onClick={async () => {
-                    const granted = await requestNotify();
-                    if (granted) {
-                      toast('已开启桌面通知', 'success');
-                    } else if (notifyPermission !== 'denied') {
-                      toast('授权被拒绝', 'error');
-                    }
-                  }}
-                  disabled={notifyPermission === 'denied'}
-                  className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    notifyPermission === 'denied'
-                      ? 'bg-black/5 dark:bg-white/5 text-black/30 dark:text-white/30 cursor-not-allowed'
-                      : 'bg-[#007AFF] hover:bg-[#006CE0] text-white'
-                  }`}
-                >
-                  {notifyPermission === 'denied' ? '已被禁止' : '开启桌面通知'}
-                </button>
-              )}
               {notifyPermission === 'granted' && (
                 <div className="flex items-center gap-2 text-green-500 text-sm font-medium">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   桌面通知已启用
                 </div>
+              )}
+              {notifyPermission === 'denied' && (
+                <button
+                  onClick={async () => {
+                    const granted = await requestNotify();
+                    if (granted) {
+                      toast('已开启桌面通知', 'success');
+                    } else {
+                      toast('请在浏览器设置中开启通知权限', 'error');
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium bg-[#007AFF] hover:bg-[#006CE0] text-white transition-colors"
+                >
+                  重新请求权限
+                </button>
               )}
             </div>
           </div>

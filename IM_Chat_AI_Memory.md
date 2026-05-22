@@ -469,6 +469,18 @@
   - 浏览器不支持 Notification API 时自动隐藏设置项
 - **执行结果**: ✅ 完成
 
+### 任务23: UI优化与通知自动开启
+- **执行时间**: 2026-05-22
+- **任务内容**:
+  1. 修复设置页面无法滚动问题（min-h-screen → h-full overflow-y-auto）
+  2. 删除消息列表的"私聊"分类标题，直接展示会话列表
+  3. 系统通知改为默认自动请求授权（首次进入2秒后自动弹窗）
+- **修改文件**:
+  - `frontend/src/app/pages/Settings.tsx` - 根容器改为 h-full + overflow-y-auto；通知UI简化
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 移除 renderCategory 和 collapsedPrivate，直接渲染列表
+  - `frontend/src/hooks/useSystemNotification.ts` - 增加 autoRequest 参数和 localStorage 去重逻辑
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
