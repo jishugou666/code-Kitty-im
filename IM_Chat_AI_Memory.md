@@ -22,7 +22,7 @@
 ### 核心业务场景
 1. 用户注册/登录（JWT认证）
 2. 即时消息收发（实时+历史消息）
-3. 会话管理（单聊/群聊）
+3. 会话管理（单聊）
 4. 联系人管理
 5. 用户资料管理
 6. 朋友圈功能
@@ -392,6 +392,32 @@
   - `guidelines/Guidelines.md` - 新增i18n规范章节
 - **执行结果**: ✅ 完成
 
+### 任务19: 移除群组功能
+- **执行时间**: 2026-05-22
+- **任务内容**:
+  - 完全移除群组功能相关代码
+  - 清理群组相关前端组件和后端服务
+  - 保留数据库表结构用于数据备份
+- **删除文件**:
+  - `frontend/src/api/group.ts` - 群组 API
+  - `frontend/src/app/components/CreateGroupModal.tsx` - 创建群组弹窗
+  - `frontend/src/app/components/GroupSearchModal.tsx` - 搜索群组弹窗
+  - `frontend/src/app/components/GroupInfoSidebar.tsx` - 群信息侧边栏
+  - `frontend/src/app/pages/GroupChat.tsx` - 群聊页面
+  - `backend/src/services/GroupService.js` - 群组服务
+  - `backend/src/controllers/GroupController.js` - 群组控制器
+  - `backend/src/routes/group.js` - 群组路由
+- **修改文件**:
+  - `backend/src/app.js` - 移除群组路由注册
+  - `frontend/src/app/routes.tsx` - 移除群聊路由
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 移除创建群组按钮和相关逻辑
+  - `frontend/src/app/components/ContactsSidebar.tsx` - 移除群组搜索、群申请、我的群组相关UI
+  - `frontend/src/app/pages/Chat.tsx` - 移除群信息侧边栏集成
+  - `frontend/src/app/pages/Admin.tsx` - 移除群组管理Tab
+- **数据库说明**:
+  - `group`、`group_member`、`group_join_request` 表保留用于数据备份，但不再被应用使用
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
@@ -666,6 +692,8 @@ CREATE TABLE contact (
 ```
 
 ### group 群组表
+> ⚠️ **已弃用**: 群组功能已于 2026-05-22 移除，此表保留仅用于数据备份，不再被应用使用
+
 ```sql
 CREATE TABLE `group` (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -681,6 +709,8 @@ CREATE TABLE `group` (
 ```
 
 ### group_member 群组成员表
+> ⚠️ **已弃用**: 群组功能已于 2026-05-22 移除，此表保留仅用于数据备份，不再被应用使用
+
 ```sql
 CREATE TABLE group_member (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -695,6 +725,8 @@ CREATE TABLE group_member (
 ```
 
 ### group_join_request 群加入申请表
+> ⚠️ **已弃用**: 群组功能已于 2026-05-22 移除，此表保留仅用于数据备份，不再被应用使用
+
 ```sql
 CREATE TABLE group_join_request (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -807,7 +839,7 @@ CREATE TABLE temp_conversation (
 | GET /api/conversation/list | GET | ChatsSidebar.tsx | 获取会话列表 |
 | GET /api/conversation/:id | GET | Chat.tsx | 获取会话详情 |
 | POST /api/conversation/single | POST | Chat.tsx | 创建单聊会话 |
-| POST /api/conversation/group | POST | GroupChat.tsx | 创建群聊会话 |
+| POST /api/conversation/group | POST | ~~GroupChat.tsx~~ | ~~创建群聊会话~~ ⚠️ 已弃用 |
 | GET /api/conversation/:id/members | GET | Chat.tsx | 获取会话成员 |
 | POST /api/conversation/:id/members | POST | Chat.tsx | 添加成员 |
 | DELETE /api/conversation/:id/members/:userId | DELETE | Chat.tsx | 移除成员 |

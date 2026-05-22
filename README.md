@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 
-一款功能完整的全栈即时通讯(IM)应用，采用 React + Node.js + MySQL 技术栈构建，支持单聊、群聊、朋友圈等核心功能。
+一款功能完整的全栈即时通讯(IM)应用，采用 React + Node.js + MySQL 技术栈构建，支持单聊、朋友圈等核心功能。
 
 ## 项目截图
 
@@ -23,7 +23,7 @@
 - ✅ 密码强度校验（至少6位字符）
 
 ### 即时通讯
-- ✅ 单聊和群聊
+- ✅ 单聊
 - ✅ 实时消息收发（WebSocket + Pusher）
 - ✅ 消息类型支持：文本、图片、文件
 - ✅ 乐观消息发送（发送即显示，后台上传）
@@ -37,14 +37,6 @@
 - ✅ 联系人列表管理
 - ✅ 联系人搜索
 - ✅ 好友请求处理
-
-### 群聊功能
-- ✅ 创建群聊
-- ✅ 群聊成员管理（添加/移除）
-- ✅ 群聊信息展示
-- ✅ 群管理员设置
-- ✅ 加群申请审批
-- ✅ 禁言功能（群主/管理员可禁言成员）
 
 ### 朋友圈功能
 - ✅ 发布朋友圈动态
@@ -119,7 +111,6 @@ CDK IM/
 │   │   │   ├── AIController.js
 │   │   │   ├── ContactController.js
 │   │   │   ├── ConversationController.js
-│   │   │   ├── GroupController.js
 │   │   │   ├── MessageController.js
 │   │   │   ├── MomentsController.js
 │   │   │   ├── SettingsController.js
@@ -138,7 +129,6 @@ CDK IM/
 │   │   │   ├── antiSpamService.js     # 反垃圾服务
 │   │   │   ├── ContactService.js
 │   │   │   ├── ConversationService.js
-│   │   │   ├── GroupService.js
 │   │   │   ├── IPBanService.js        # IP封禁服务
 │   │   │   ├── MessageService.js
 │   │   │   ├── MomentsService.js
@@ -166,9 +156,6 @@ CDK IM/
 │   │   │   │   ├── BanOverlay.tsx      # 封禁提示组件
 │   │   │   │   ├── ChatsSidebar.tsx    # 聊天列表侧边栏
 │   │   │   │   ├── ContactsSidebar.tsx  # 联系人侧边栏
-│   │   │   │   ├── CreateGroupModal.tsx # 创建群组弹窗
-│   │   │   │   ├── GroupInfoSidebar.tsx # 群信息侧边栏
-│   │   │   │   ├── GroupSearchModal.tsx # 群搜索弹窗
 │   │   │   │   ├── MainLayout.tsx       # 主布局
 │   │   │   │   ├── MobileNav.tsx        # 移动端导航
 │   │   │   │   ├── RateLimitOverlay.tsx  # 限流提示
@@ -177,7 +164,6 @@ CDK IM/
 │   │   │       ├── Admin.tsx            # 管理后台
 │   │   │       ├── Chat.tsx             # 聊天页面
 │   │   │       ├── EmptyState.tsx       # 空状态
-│   │   │       ├── GroupChat.tsx        # 群聊页面
 │   │   │       ├── Login.tsx            # 登录页面
 │   │   │       ├── Moments.tsx         # 朋友圈
 │   │   │       ├── Profile.tsx          # 个人资料
@@ -416,7 +402,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | 方法 | 路径 | 描述 | 认证 |
 |------|------|------|------|
 | POST | /api/conversation/single | 创建单聊 | 是 |
-| POST | /api/conversation/group | 创建群聊 | 是 |
 | GET | /api/conversation/list | 获取会话列表 | 是 |
 | GET | /api/conversation/:id | 获取会话详情 | 是 |
 | GET | /api/conversation/:id/members | 获取成员列表 | 是 |
@@ -455,21 +440,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | GET | /api/moments/:id/comments | 获取评论列表 | 是 |
 | POST | /api/moments/:id/comments | 添加评论 | 是 |
 | DELETE | /api/moments/comments/:commentId | 删除评论 | 是 |
-
-### 群组接口
-
-| 方法 | 路径 | 描述 | 认证 |
-|------|------|------|------|
-| POST | /api/group | 创建群组 | 是 |
-| GET | /api/group | 获取我的群组 | 是 |
-| GET | /api/group/search | 搜索群组 | 是 |
-| GET | /api/group/:groupId | 获取群组信息 | 是 |
-| POST | /api/group/:groupId/join | 申请加入 | 是 |
-| POST | /api/group/:groupId/leave | 退出群组 | 是 |
-| PUT | /api/group/:groupId/admin/:userId | 设置管理员 | 是 |
-| DELETE | /api/group/:groupId/members/:userId | 移除成员 | 是 |
-| GET | /api/group/:groupId/requests | 获取加群申请 | 是 |
-| PUT | /api/group/:groupId/requests/:requestId | 处理加群申请 | 是 |
 
 ### 设置接口
 
@@ -522,7 +492,7 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | id | INT | NO | | 主键 |
-| type | ENUM('single','group') | YES | single | 类型 |
+| type | ENUM('single') | YES | single | 类型（仅支持单聊） |
 | name | VARCHAR(100) | YES | | 群聊名称 |
 | avatar | VARCHAR(500) | YES | | 群头像 |
 | created_by | INT | YES | | 创建者ID |
@@ -538,18 +508,6 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | type | ENUM('text','image','file','system') | YES | text | 类型 |
 | content | TEXT | YES | | 消息内容 |
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-
-### group 群组表
-| 字段 | 类型 | 可空 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| id | INT | NO | | 主键 |
-| name | VARCHAR(100) | NO | | 群组名称 |
-| description | TEXT | YES | | 群组介绍 |
-| avatar | VARCHAR(500) | YES | | 群头像 |
-| owner_id | INT | NO | | 群主ID |
-| need_approval | TINYINT | YES | 0 | 是否需要审批 |
-| created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
-| updated_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 更新时间 |
 
 ### moments 朋友圈表
 | 字段 | 类型 | 可空 | 默认值 | 说明 |
@@ -582,6 +540,8 @@ SOURCE /path/to/database/migrate_ban_system.sql;
 | created_at | TIMESTAMP | YES | CURRENT_TIMESTAMP | 创建时间 |
 | expires_at | TIMESTAMP | YES | | 到期时间 |
 | is_active | TINYINT | YES | 1 | 是否生效 |
+
+> **注意**：群组相关数据库表（如 `group`、`group_member` 等）在数据库中仍保留，但已不再使用。所有群组功能已从项目中完全移除。
 
 ## 安全特性
 
@@ -718,5 +678,5 @@ MIT License - 详见 [ATTRIBUTIONS.md](ATTRIBUTIONS.md)
 
 ---
 
-**版本**: v2.0.1
-**更新日期**: 2026-04-18
+**版本**: v2.1.0
+**更新日期**: 2026-05-22
