@@ -4,9 +4,9 @@ import { antiSpamService } from './antiSpamService.js';
 import { messageAuditor } from './MessageAuditor.js';
 
 export const MessageService = {
-  async getMessageList(conversationId, limit = 50, audit = false) {
+  async getMessageList(conversationId, limit = 200, audit = false) {
     try {
-      const safeLimit = parseInt(limit) || 50;
+      const safeLimit = parseInt(limit) || 200;
 
       const sql = `
         SELECT
@@ -198,7 +198,7 @@ export const MessageService = {
   async recallMessage(messageId, userId) {
     try {
       const messages = await query(
-        'SELECT * FROM message WHERE id = ? AND sender_id = ?',
+        'SELECT m.*, m.conversation_id FROM message m WHERE m.id = ? AND m.sender_id = ?',
         [messageId, userId]
       );
 
@@ -208,21 +208,30 @@ export const MessageService = {
 
       const message = messages[0];
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      if (new Date(message.created_at) < fiveMinutesAgo) {
+      const messageTime = new Date(message.created_at);
+      
+      if (messageTime < fiveMinutesAgo) {
         return { code: 400, data: null, msg: '超过5分钟，无法撤回' };
       }
 
-      await query(
-        "UPDATE message SET type = 'recalled', content = '此消息已撤回' WHERE id = ?",
+      const updateResult = await query(
+        "UPDATE message SET type = 'recalled', content = '此消息已撤回' WHERE id = ? AND type != 'recalled'",
         [messageId]
       );
 
-      triggerEvent(`chat-${message.conversation_id}`, 'message-recalled', { messageId, conversationId: message.conversation_id });
+      if (!updateResult || updateResult.affectedRows === 0) {
+        return { code: 400, data: null, msg: '消息已撤回或撤回失败' };
+      }
+
+      triggerEvent(`chat-${message.conversation_id}`, 'message-recalled', { 
+        messageId, 
+        conversationId: message.conversation_id 
+      });
 
       return { code: 200, data: { messageId, conversationId: message.conversation_id }, msg: '已撤回' };
     } catch (err) {
       console.error('recallMessage error:', err);
-      return { code: 200, data: null, msg: '撤回失败' };
+      return { code: 500, data: null, msg: '撤回失败: ' + err.message };
     }
   }
 };

@@ -38,9 +38,10 @@ export function Chat() {
   const conversation = conversations.find(c => c.id === conversationId);
 
   useWebSocket(conversationId || undefined, (newMessage) => {
-    if (newMessage.type === 'recalled') {
+    if (newMessage.type === 'recalled' || newMessage.type === 'message-recalled') {
+      const recalledMessageId = newMessage.messageId || newMessage.id;
       setMessages(prev => prev.map(m =>
-        m.id === newMessage.id
+        m.id === recalledMessageId
           ? { ...m, type: 'recalled', content: '此消息已撤回' }
           : m
       ));
@@ -60,6 +61,7 @@ export function Chat() {
 
   useEffect(() => {
     if (conversationId && token) {
+      setMessages([]);
       loadMessages();
       markAsRead();
       setTimeout(() => checkTempConversation(), 1000);
