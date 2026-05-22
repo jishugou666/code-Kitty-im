@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Users } from "lucide-react";
+import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
@@ -10,7 +10,6 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { uploadApi } from '../../api/upload';
-import { GroupInfoSidebar } from '../components/GroupInfoSidebar';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -26,8 +25,6 @@ export function Chat() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isTempConversation, setIsTempConversation] = useState(false);
   const [showAntiFraudTip, setShowAntiFraudTip] = useState(false);
-  const [showGroupInfo, setShowGroupInfo] = useState(false);
-  const [isGroupChat, setIsGroupChat] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [showMessageMenu, setShowMessageMenu] = useState(false);
   const [messageMenuPos, setMessageMenuPos] = useState({ x: 0, y: 0 });
@@ -367,7 +364,6 @@ export function Chat() {
           </button>
           <div>
             <h2 className={isMobile ? "font-semibold text-gray-900 dark:text-white text-xs sm:text-sm flex items-center gap-1.5" : "font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2"}>
-              {isGroupChat && <Users size={isMobile ? 14 : 16} className="text-[#007AFF]" />}
               {conversation?.name || '聊天'}
               {isTempConversation && <AlertTriangle size={isMobile ? 12 : 14} className="text-yellow-500" />}
             </h2>
@@ -376,14 +372,6 @@ export function Chat() {
             </p>
           </div>
         </div>
-        {isGroupChat ? (
-          <button
-            onClick={() => setShowGroupInfo(true)}
-            className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}
-          >
-            <Users size={isMobile ? 18 : 20} className="text-gray-600 dark:text-gray-300" />
-          </button>
-        ) : null}
       </div>
 
       {/* Temp Conversation Warning Banner */}
@@ -653,12 +641,6 @@ export function Chat() {
           </button>
         </div>
       </div>
-
-      <GroupInfoSidebar
-        groupId={conversationId}
-        isOpen={showGroupInfo}
-        onClose={() => setShowGroupInfo(false)}
-      />
 
       <ToastContainer />
     </div>

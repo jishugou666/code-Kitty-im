@@ -1,13 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, CheckCheck, MessageSquare, Users, MessageCircle } from "lucide-react";
+import { Search, CheckCheck, MessageSquare, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
-import { CreateGroupModal } from './CreateGroupModal';
 import { useIsMobile } from './ui/use-mobile';
 
 export function ChatsSidebar() {
@@ -20,11 +19,9 @@ export function ChatsSidebar() {
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [collapsedPrivate, setCollapsedPrivate] = useState(false);
-  const [collapsedGroup, setCollapsedGroup] = useState(false);
 
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
 
   useEffect(() => {
     fetchConversations();
@@ -95,18 +92,12 @@ export function ChatsSidebar() {
       return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
     });
 
-  const groupChats = conversations
-    .filter(c => c.type === 'group')
-    .sort((a, b) => {
-      return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
-    });
-
-  const renderChatItem = (chat: any, isGroup: boolean) => {
+  const renderChatItem = (chat: any) => {
     const isActive = id === String(chat.id);
-    const otherUser = isGroup ? null : getOtherUser(chat);
-    const displayName = isGroup ? (chat.name || '群聊') : (otherUser?.nickname || 'Unknown');
-    const displayAvatar = isGroup ? (chat.avatar || '') : (otherUser?.avatar || '');
-    const isTechGod = !isGroup && otherUser?.nickname === '技术狗';
+    const otherUser = getOtherUser(chat);
+    const displayName = otherUser?.nickname || 'Unknown';
+    const displayAvatar = otherUser?.avatar || '';
+    const isTechGod = otherUser?.nickname === '技术狗';
 
     return (
       <motion.div
@@ -114,7 +105,7 @@ export function ChatsSidebar() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        onClick={() => navigate(isGroup ? `/group/${chat.id}` : `/chat/${chat.id}`)}
+        onClick={() => navigate(`/chat/${chat.id}`)}
         className={clsx(
           "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
           isActive
@@ -130,7 +121,7 @@ export function ChatsSidebar() {
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
-          {!isGroup && otherUser?.status === 1 && (
+          {otherUser?.status === 1 && (
             <div className={clsx(
               "absolute bottom-0 right-0 w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2",
               isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]"
@@ -160,7 +151,7 @@ export function ChatsSidebar() {
 
           <div className="flex justify-between items-center gap-2">
             <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", isActive ? "text-white/80" : "text-black/50 dark:text-white/50")}>
-              {chat.last_message || (isGroup ? t('chat.groupConversation') : t('chat.noMessagesYet'))}
+              {chat.last_message || t('chat.noMessagesYet')}
             </p>
             {(chat.unread_count || 0) > 0 && (
               <div className={clsx(
@@ -219,7 +210,7 @@ export function ChatsSidebar() {
                 <p>{t('chat.noConversationsYet')}</p>
               </div>
             ) : (
-              chats.map(chat => renderChatItem(chat, chat.type === 'group'))
+              chats.map(chat => renderChatItem(chat))
             )}
           </motion.div>
         )}
@@ -232,15 +223,6 @@ export function ChatsSidebar() {
       <div className={isMobile ? "sticky top-0 z-40 bg-white/80 dark:bg-[#13161A]/80 backdrop-blur-3xl pt-4 pb-3 px-3 border-b border-black/5 dark:border-white/5 flex flex-col gap-3" : "sticky top-0 z-40 bg-white/60 dark:bg-[#13161A]/60 backdrop-blur-3xl pt-8 pb-4 px-4 border-b border-black/5 dark:border-white/5 flex flex-col gap-4"}>
         <div className="flex items-center justify-between px-1">
           <h1 className={isMobile ? "text-lg font-semibold text-black dark:text-white tracking-tight" : "text-xl font-semibold text-black dark:text-white tracking-tight"}>{t('chat.message')}</h1>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setShowCreateGroup(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007AFF] hover:bg-[#006CE0] text-white rounded-full transition-all text-[13px] font-medium shadow-sm"
-            >
-              <Users size={14} strokeWidth={2.5} />
-              <span className="hidden sm:inline">{t('chat.createGroup')}</span>
-            </button>
-          </div>
         </div>
 
         <div className="relative group">
@@ -327,20 +309,7 @@ export function ChatsSidebar() {
             collapsedPrivate,
             () => setCollapsedPrivate(!collapsedPrivate)
           )}
-
-          {renderCategory(
-            t('chat.groupChats'),
-            <Users size={14} className="text-purple-500" />,
-            groupChats,
-            collapsedGroup,
-            () => setCollapsedGroup(!collapsedGroup),
-            'text-purple-500'
-          )}
         </div>
-      )}
-
-      {showCreateGroup && (
-        <CreateGroupModal onClose={() => setShowCreateGroup(false)} />
       )}
     </div>
   );

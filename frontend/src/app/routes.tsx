@@ -3,7 +3,6 @@ import { Suspense, lazy } from "react";
 import { MainLayout } from "./components/MainLayout";
 import { Login } from "./pages/Login";
 import { Chat } from "./pages/Chat";
-import { GroupChat } from "./pages/GroupChat";
 import { Profile } from "./pages/Profile";
 import { EmptyState } from "./pages/EmptyState";
 import { Moments } from "./pages/Moments";
@@ -45,7 +44,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: EmptyState },
       { path: "chat/:id", Component: Chat },
-      { path: "group/:id", Component: GroupChat },
       { path: "contacts", Component: EmptyState },
       { path: "profile", Component: Profile },
       { path: "settings", Component: Settings },

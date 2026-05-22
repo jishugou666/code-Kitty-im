@@ -337,20 +337,8 @@ class AuditTaskQueue {
         return false;
       }
 
-      await antiSpamService.saveAIFeedback(
-        issue.type === 'longContent' ? 'malicious' : issue.type,
-        severity,
-        parseInt(userId),
-        'message',
-        targetMessageId,
-        contentPreview,
-        fullContentFinal,
-        metadata,
-        issue.score,
-        aiAnalysis
-      );
-      console.log(`[AuditQueue] 提交成功: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
-      return true;
+      console.log(`[AuditQueue] 已禁用AI反馈记录: userId=${userId}, messageId=${targetMessageId}, type=${issue.type}`);
+      return false;
     } catch (err) {
       console.error('[AuditQueue] 提交问题失败:', err);
       return false;

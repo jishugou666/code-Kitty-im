@@ -256,16 +256,15 @@ export const AIServiceManager = {
   },
 
   getAntiSpamStats() {
-    const realStats = antiSpamService.getServiceStats();
     const auditQueueStats = messageAuditor.getStatus();
 
     const details = {
-      monitoredConversations: realStats.monitoredConversations,
-      messagesProcessed: realStats.messagesProcessed,
-      threatsBlocked: realStats.threatsBlocked,
-      activeUsers: realStats.activeUsers,
-      cooldownUsers: realStats.cooldownUsers,
-      cooldownIPs: realStats.cooldownIPs,
+      monitoredConversations: 0,
+      messagesProcessed: 0,
+      threatsBlocked: 0,
+      activeUsers: 0,
+      cooldownUsers: 0,
+      cooldownIPs: 0,
       auditQueuePending: auditQueueStats.pending,
       auditQueueProcessing: auditQueueStats.processing,
       auditCompleted: auditQueueStats.completed
@@ -273,12 +272,7 @@ export const AIServiceManager = {
 
     const config = {
       maxMessagesPerWindow: 5,
-      windowMs: 5000,
-      repeatThreshold: 2,
-      cooldownMs: 3000,
-      maxConcurrent: 3,
-      blockThreshold: 50,
-      feedbackConfidence: 65
+      windowMs: 5000
     };
 
     const auditTasks = {
