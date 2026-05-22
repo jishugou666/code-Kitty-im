@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MessageCircle, Users, Settings, Globe, Shield, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -34,12 +34,15 @@ export function MainLayout() {
   const isContacts = location.pathname.startsWith('/contacts');
   const isAdmin = location.pathname.startsWith('/admin');
   const isChat = location.pathname.startsWith('/chat') || location.pathname.startsWith('/group');
+  const notifyNewMessageRef = useRef<(message: any) => void>(() => {});
+  notifyNewMessageRef.current = notifyNewMessage;
 
   useEffect(() => {
-    return messageEventBus.subscribe((message) => {
-      notifyNewMessage(message);
+    const unsubscribe = messageEventBus.subscribe((message) => {
+      notifyNewMessageRef.current(message);
     });
-  }, [notifyNewMessage]);
+    return unsubscribe;
+  }, []);
 
   if (isMobile) {
     const showChatsList = location.pathname === "/";

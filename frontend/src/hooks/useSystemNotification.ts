@@ -12,17 +12,13 @@ interface SystemNotificationOptions {
 
 const NOTIFICATION_REQUESTED_KEY = 'im_notification_requested';
 
-function getCurrentChatId(): string | null {
-  const match = window.location.pathname.match(/^\/chat\/(\d+)/);
-  return match ? match[1] : null;
-}
-
 export function useSystemNotification(autoRequest = true) {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
   const hasAutoRequested = useRef(false);
+  const notifyNewMessageRef = useRef<(message: any) => void>(() => {});
 
   useEffect(() => {
     const supported = 'Notification' in window;
@@ -68,9 +64,7 @@ export function useSystemNotification(autoRequest = true) {
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) return false;
     try {
-      console.log('[SystemNotification] Manual permission request...');
       const permission = await Notification.requestPermission();
-      console.log('[SystemNotification] Manual permission result:', permission);
       setPermissionStatus(permission);
       return permission === 'granted';
     } catch {
@@ -80,25 +74,13 @@ export function useSystemNotification(autoRequest = true) {
 
   const showNotification = useCallback((options: SystemNotificationOptions) => {
     const livePermission = Notification.permission;
-    console.log('[SystemNotification] showNotification called:', {
-      title: options.title,
-      isSupported,
-      livePermission,
-      permissionStatus,
-    });
 
-    if (!isSupported) {
-      console.warn('[SystemNotification] Blocked: Not supported');
+    if (!isSupported || livePermission !== 'granted') {
+      if (livePermission !== permissionStatus) {
+        setPermissionStatus(livePermission);
+      }
       return;
     }
-
-    if (livePermission !== 'granted') {
-      console.warn('[SystemNotification] Blocked: Permission not granted:', livePermission);
-      setPermissionStatus(livePermission);
-      return;
-    }
-
-    console.log('[SystemNotification] Creating notification...');
 
     try {
       const notification = new Notification(options.title, {
@@ -116,45 +98,34 @@ export function useSystemNotification(autoRequest = true) {
       };
 
       setTimeout(() => notification.close(), 8000);
-
-      console.log('[SystemNotification] ✅ Notification created successfully');
     } catch (err) {
       console.error('[SystemNotification] Failed to create notification:', err);
     }
   }, [isSupported, permissionStatus]);
 
   const notifyNewMessage = useCallback((message: any) => {
-    console.log('[SystemNotification] notifyNewMessage called:', {
-      messageId: message?.id,
+    console.log('[SystemNotification] 📨 notifyNewMessage triggered:', {
+      id: message?.id,
+      sender: message?.sender_nickname,
       senderId: message?.sender_id,
       myId: user?.id,
       conversationId: message?.conversation_id,
       type: message?.type,
+      url: window.location.pathname,
     });
 
-    if (!message) {
-      console.warn('[SystemNotification] Blocked: No message');
-      return;
-    }
-
+    if (!message) return;
     if (message.sender_id === user?.id) {
-      console.log('[SystemNotification] Blocked: Own message');
+      console.log('[SystemNotification] ⏭️ Skipped: own message');
       return;
     }
 
     const msgConversationId = String(message.conversation_id);
-    const viewingChatId = getCurrentChatId();
-    const isViewingThisChat = viewingChatId === msgConversationId;
+    const pathMatch = window.location.pathname.match(/^\/chat\/(\d+)/);
+    const viewingChatId = pathMatch ? pathMatch[1] : null;
 
-    console.log('[SystemNotification] Chat check:', {
-      msgConversationId,
-      viewingChatId,
-      isViewingThisChat,
-      pathname: window.location.pathname,
-    });
-
-    if (isViewingThisChat) {
-      console.log('[SystemNotification] Blocked: User is viewing this chat');
+    if (viewingChatId === msgConversationId) {
+      console.log('[SystemNotification] ⏭️ Skipped: viewing this chat', { viewingChatId, msgConversationId });
       return;
     }
 
@@ -171,6 +142,8 @@ export function useSystemNotification(autoRequest = true) {
       previewBody = '发来一条消息';
     }
 
+    console.log('[SystemNotification] 🔔 Showing notification for:', senderName);
+
     showNotification({
       title: `${senderName}`,
       body: previewBody,
@@ -183,6 +156,14 @@ export function useSystemNotification(autoRequest = true) {
       },
     });
   }, [user?.id, showNotification, navigate]);
+
+  notifyNewMessageRef.current = notifyNewMessage;
+
+  useEffect(() => {
+    return () => {
+      notifyNewMessageRef.current = () => {};
+    };
+  }, []);
 
   return {
     isSupported,
