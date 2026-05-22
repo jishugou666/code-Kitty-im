@@ -481,6 +481,32 @@
   - `frontend/src/hooks/useSystemNotification.ts` - 增加 autoRequest 参数和 localStorage 去重逻辑
 - **执行结果**: ✅ 完成
 
+### 任务24: 全局系统通知重构
+- **执行时间**: 2026-05-22
+- **任务内容**:
+  - 将系统通知从 Chat.tsx 页面级提升到 MainLayout 全局级
+  - 修改通知触发条件：仅在用户处于**同一会话窗口内**时不弹窗，其他情况一律弹窗
+  - 引入事件总线模式解耦消息接收与通知展示
+- **新增文件**:
+  - `frontend/src/lib/messageEventBus.ts` - 全局消息事件总线（发布/订阅模式）
+- **修改文件**:
+  - `frontend/src/hooks/useSystemNotification.ts` - 去掉 visibilityState 判断，改为 currentChatId 对比判断；增加 useParams 获取当前会话ID
+  - `frontend/src/app/components/MainLayout.tsx` - 挂载 useSystemNotification + 订阅 messageEventBus 全局监听
+  - `frontend/src/app/pages/Chat.tsx` - 移除 useSystemNotification 调用，改为 messageEventBus.emit 派发事件
+- **核心架构变化**:
+  ```
+  之前: Chat.tsx (useWebSocket回调) → notifyNewMessage() → 直接弹窗（仅Chat页面生效）
+  之后: Chat.tsx (useWebSocket回调) → messageEventBus.emit() → MainLayout订阅 → notifyNewMessage() → 弹窗（全局生效）
+  ```
+- **通知条件逻辑**:
+  ```
+  收到新消息
+    ├─ 是自己发的？ → ❌ 不通知
+    ├─ 当前正在看这个会话的聊天界面？ → ❌ 不通知（消息已直接显示）
+    └─ 其他所有情况（首页/联系人/设置/其他会话/页面最小化/后台） → ✅ 弹出系统通知！
+  ```
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

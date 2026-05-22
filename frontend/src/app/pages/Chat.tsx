@@ -7,7 +7,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { useSystemNotification } from '../../hooks/useSystemNotification';
+import { messageEventBus } from '../../lib/messageEventBus';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { uploadApi } from '../../api/upload';
@@ -38,7 +38,6 @@ export function Chat() {
   const { conversations, fetchConversations } = useChatStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
-  const { notifyNewMessage } = useSystemNotification();
 
   const conversation = conversations.find(c => c.id === conversationId);
 
@@ -56,7 +55,7 @@ export function Chat() {
       setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
     } else {
       if (!prev.some(m => m.id === newMessage.id)) {
-        notifyNewMessage(newMessage);
+        messageEventBus.emit(newMessage);
       }
       return [...prev, newMessage];
     }

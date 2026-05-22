@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { useAuthStore } from '../store/authStore';
 
 interface SystemNotificationOptions {
@@ -14,6 +14,7 @@ const NOTIFICATION_REQUESTED_KEY = 'im_notification_requested';
 
 export function useSystemNotification(autoRequest = true) {
   const navigate = useNavigate();
+  const { id: currentChatId } = useParams();
   const { user } = useAuthStore();
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
@@ -63,8 +64,6 @@ export function useSystemNotification(autoRequest = true) {
   const showNotification = useCallback((options: SystemNotificationOptions) => {
     if (!isSupported || permissionStatus !== 'granted') return;
 
-    if (document.visibilityState === 'visible') return;
-
     const notification = new Notification(options.title, {
       body: options.body,
       icon: options.icon || undefined,
@@ -84,6 +83,11 @@ export function useSystemNotification(autoRequest = true) {
 
   const notifyNewMessage = useCallback((message: any) => {
     if (!message || message.sender_id === user?.id) return;
+
+    const msgConversationId = String(message.conversation_id);
+    const isViewingThisChat = currentChatId === msgConversationId;
+
+    if (isViewingThisChat) return;
 
     const senderName = message.sender_nickname || 'Unknown';
     let previewBody = '';
@@ -109,7 +113,7 @@ export function useSystemNotification(autoRequest = true) {
         }
       },
     });
-  }, [user?.id, showNotification, navigate]);
+  }, [user?.id, currentChatId, showNotification, navigate]);
 
   return {
     isSupported,

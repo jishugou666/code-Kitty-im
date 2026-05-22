@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
+import { useEffect } from "react";
 import { MessageCircle, Users, Settings, Globe, Shield, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -8,6 +9,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from './ui/use-mobile';
 import { MobileNav } from "./MobileNav";
+import { useSystemNotification } from '../../hooks/useSystemNotification';
+import { messageEventBus } from '../../lib/messageEventBus';
 
 export function MainLayout() {
   const location = useLocation();
@@ -15,6 +18,7 @@ export function MainLayout() {
   const { user } = useAuthStore();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { notifyNewMessage } = useSystemNotification();
 
   const navItems = [
     { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
@@ -30,6 +34,12 @@ export function MainLayout() {
   const isContacts = location.pathname.startsWith('/contacts');
   const isAdmin = location.pathname.startsWith('/admin');
   const isChat = location.pathname.startsWith('/chat') || location.pathname.startsWith('/group');
+
+  useEffect(() => {
+    return messageEventBus.subscribe((message) => {
+      notifyNewMessage(message);
+    });
+  }, [notifyNewMessage]);
 
   if (isMobile) {
     const showChatsList = location.pathname === "/";
