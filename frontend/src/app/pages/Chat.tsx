@@ -21,6 +21,9 @@ export function Chat() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [firstMessageId, setFirstMessageId] = useState<number | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isTempConversation, setIsTempConversation] = useState(false);
@@ -110,7 +113,7 @@ export function Chat() {
     setIsLoading(true);
     try {
       const timestamp = Date.now();
-      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&t=${timestamp}`;
+      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&limit=50&t=${timestamp}`;
 
       const response = await fetch(url, {
         headers: {
@@ -124,6 +127,7 @@ export function Chat() {
       if (!response.ok) {
         console.error('消息加载失败，状态码:', response.status);
         setMessages([]);
+        setHasMore(false);
         return;
       }
 
@@ -131,13 +135,21 @@ export function Chat() {
 
       if (data.code === 200 && Array.isArray(data.data)) {
         setMessages(data.data || []);
+        setHasMore(data.hasMore || false);
+        if (data.data.length > 0) {
+          setFirstMessageId(data.data[0].id);
+        } else {
+          setFirstMessageId(null);
+        }
       } else {
         console.error('消息加载失败:', data.msg);
         setMessages([]);
+        setHasMore(false);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
       setMessages([]);
+      setHasMore(false);
     } finally {
       setIsLoading(false);
     }
@@ -147,8 +159,78 @@ export function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeight = useRef(0);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!conversationId || !token || !hasMore || isLoadingHistory) {
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    try {
+      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&limit=50&beforeId=${firstMessageId}`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+
+      if (!response.ok) {
+        setHasMore(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.code === 200 && Array.isArray(data.data)) {
+        setMessages(prev => [...data.data, ...prev]);
+        setHasMore(data.hasMore || false);
+        if (data.data.length > 0) {
+          setFirstMessageId(data.data[0].id);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+      setHasMore(false);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [conversationId, token, hasMore, isLoadingHistory, firstMessageId]);
+
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (container.scrollTop === 0 && hasMore && !isLoadingHistory) {
+        prevScrollHeight.current = container.scrollHeight;
+        loadOlderMessages();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isLoadingHistory, loadOlderMessages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container && prevScrollHeight.current > 0) {
+      const newScrollHeight = container.scrollHeight;
+      const diff = newScrollHeight - prevScrollHeight.current;
+      container.scrollTop = diff;
+      prevScrollHeight.current = 0;
+    }
   }, [messages]);
 
   const handleSend = async () => {
@@ -414,7 +496,12 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {isLoadingHistory && (
+          <div className="flex items-center justify-center py-4">
+            <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />

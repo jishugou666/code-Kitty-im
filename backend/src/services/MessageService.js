@@ -4,42 +4,71 @@ import { antiSpamService } from './antiSpamService.js';
 import { messageAuditor } from './MessageAuditor.js';
 
 export const MessageService = {
-  async getMessageList(conversationId, limit = 200, audit = false) {
+  async getMessageList(conversationId, limit = 50, beforeId = null, audit = false) {
     try {
-      const safeLimit = parseInt(limit) || 200;
-
-      const sql = `
-        SELECT
-          m.id,
-          m.conversation_id,
-          m.sender_id,
-          m.content,
-          m.type,
-          m.created_at,
-          COALESCE(u.nickname, 'Unknown') AS sender_nickname,
-          COALESCE(u.avatar, '') AS sender_avatar
-        FROM message m
-        LEFT JOIN user u ON m.sender_id = u.id
-        WHERE m.conversation_id = ?
-        ORDER BY m.created_at ASC
-        LIMIT ${safeLimit}
-      `;
-
-      const rows = await query(sql, [conversationId]);
-
-      if (!Array.isArray(rows)) {
-        return { code: 200, data: [], msg: '成功' };
+      const safeLimit = parseInt(limit) || 50;
+      
+      let sql;
+      let params;
+      
+      if (beforeId) {
+        const beforeIdNum = parseInt(beforeId);
+        sql = `
+          SELECT
+            m.id,
+            m.conversation_id,
+            m.sender_id,
+            m.content,
+            m.type,
+            m.created_at,
+            COALESCE(u.nickname, 'Unknown') AS sender_nickname,
+            COALESCE(u.avatar, '') AS sender_avatar
+          FROM message m
+          LEFT JOIN user u ON m.sender_id = u.id
+          WHERE m.conversation_id = ? AND m.id < ?
+          ORDER BY m.created_at DESC
+          LIMIT ${safeLimit}
+        `;
+        params = [conversationId, beforeIdNum];
+      } else {
+        sql = `
+          SELECT
+            m.id,
+            m.conversation_id,
+            m.sender_id,
+            m.content,
+            m.type,
+            m.created_at,
+            COALESCE(u.nickname, 'Unknown') AS sender_nickname,
+            COALESCE(u.avatar, '') AS sender_avatar
+          FROM message m
+          LEFT JOIN user u ON m.sender_id = u.id
+          WHERE m.conversation_id = ?
+          ORDER BY m.created_at DESC
+          LIMIT ${safeLimit}
+        `;
+        params = [conversationId];
       }
 
-      if (rows.length >= 5) {
+      const rows = await query(sql, params);
+
+      if (!Array.isArray(rows)) {
+        return { code: 200, data: [], hasMore: false, msg: '成功' };
+      }
+
+      const hasMore = rows.length === safeLimit;
+      
+      rows.reverse();
+
+      if (rows.length >= 5 && !beforeId) {
         console.log(`[MessageService] 会话${conversationId}有${rows.length}条消息，触发审计`);
         messageAuditor.addTask(conversationId);
       }
 
-      return { code: 200, data: rows, msg: '成功' };
+      return { code: 200, data: rows, hasMore, msg: '成功' };
     } catch (err) {
       console.error('getMessageList error:', err);
-      return { code: 200, data: [], msg: '成功' };
+      return { code: 200, data: [], hasMore: false, msg: '成功' };
     }
   },
 

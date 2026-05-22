@@ -32,12 +32,10 @@ export const MessageController = {
     console.log('req.query:', req.query);
     console.log('req.user:', req.user);
     try {
-      const { conversationId } = req.query;
-      const { limit } = req.query;
-      const { audit } = req.query;
+      const { conversationId, limit, audit, beforeId } = req.query;
       const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'tech_god');
 
-      console.log('conversationId:', conversationId, 'limit:', limit, 'audit:', audit, 'isAdmin:', isAdmin);
+      console.log('conversationId:', conversationId, 'limit:', limit, 'audit:', audit, 'beforeId:', beforeId, 'isAdmin:', isAdmin);
       if (!conversationId) {
         console.log('缺少 conversationId 参数');
         return res.status(400).json(error('Conversation ID is required', 400));
@@ -58,16 +56,27 @@ export const MessageController = {
       const result = await MessageService.getMessageList(
         parseInt(conversationId),
         parseInt(limit) || 50,
+        beforeId || null,
         shouldAudit
       );
       console.log('MessageService 返回结果:', result);
       console.log('返回消息数量:', result.data?.length || 0);
 
-      console.log('准备返回响应:', { code: 200, data: result.data || [], msg: result.msg || '成功' });
-      res.json({ code: 200, data: result.data || [], msg: result.msg || '成功' });
+      console.log('准备返回响应:', { 
+        code: 200, 
+        data: result.data || [], 
+        hasMore: result.hasMore || false,
+        msg: result.msg || '成功' 
+      });
+      res.json({ 
+        code: 200, 
+        data: result.data || [], 
+        hasMore: result.hasMore || false,
+        msg: result.msg || '成功' 
+      });
     } catch (err) {
       console.error('=== [Controller] getMessageList 错误 ===', err);
-      res.json({ code: 200, data: [], msg: '暂无消息' });
+      res.json({ code: 200, data: [], hasMore: false, msg: '暂无消息' });
     }
   },
 
