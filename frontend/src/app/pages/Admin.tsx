@@ -4,6 +4,7 @@ import { ArrowLeft, Users, MessageSquare, Globe, Database, Eye, Trash2, Shield, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
+import { systemNotificationApi } from '../../api/systemNotification';
 import { aiApi, AIStatsResponse } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
@@ -11,7 +12,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useIsMobile } from '../components/ui/use-mobile';
 import StudioConfigPreview from './StudioConfigPreview';
 
-type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'ai' | 'aiFeedback' | 'studio';
+type TabType = 'dashboard' | 'users' | 'conversations' | 'moments' | 'tables' | 'ai' | 'aiFeedback' | 'notifications' | 'studio';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#AF52DE', '#5856D6'];
 const STUDIO_ADMIN_EMAIL = '3121601311@qq.com';
@@ -66,6 +67,11 @@ export function Admin() {
   const [studioSettings, setStudioSettings] = useState<StudioSettings>({ hero: {}, about: {}, cta: {} });
   const [isSaving, setIsSaving] = useState(false);
   const [studioLoaded, setStudioLoaded] = useState(false);
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showCreateNotification, setShowCreateNotification] = useState(false);
+  const [editingNotification, setEditingNotification] = useState<any>(null);
+  const [notificationForm, setNotificationForm] = useState({ title: '', content: '', type: 'info' as string });
 
   const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
 
@@ -260,6 +266,63 @@ export function Admin() {
     }
   };
 
+  const loadNotifications = async () => {
+    setIsLoading(true);
+    try {
+      const res = await systemNotificationApi.adminGetList();
+      if (res.code === 200) {
+        setNotifications(res.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateNotification = async () => {
+    if (!notificationForm.title.trim() || !notificationForm.content.trim()) return;
+    try {
+      if (editingNotification) {
+        const res = await systemNotificationApi.update(editingNotification.id, notificationForm);
+        if (res.code === 200) {
+          setNotifications(prev => prev.map(n => n.id === editingNotification.id ? { ...n, ...notificationForm } : n));
+          toast('更新成功', 'success');
+        }
+      } else {
+        const res = await systemNotificationApi.create(notificationForm);
+        if (res.code === 200) {
+          loadNotifications();
+          toast('创建成功', 'success');
+        }
+      }
+      setShowCreateNotification(false);
+      setEditingNotification(null);
+      setNotificationForm({ title: '', content: '', type: 'info' });
+    } catch (error) {
+      toast('操作失败', 'error');
+    }
+  };
+
+  const handleDeleteNotification = async (id: number) => {
+    if (!confirm('确定要删除该通知吗？')) return;
+    try {
+      const res = await systemNotificationApi.delete(id);
+      if (res.code === 200) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        toast('删除成功', 'success');
+      }
+    } catch (error) {
+      toast('删除失败', 'error');
+    }
+  };
+
+  const openEditNotification = (notif: any) => {
+    setEditingNotification(notif);
+    setNotificationForm({ title: notif.title, content: notif.content, type: notif.type });
+    setShowCreateNotification(true);
+  };
+
   const handleAIFeedback = async () => {
     if (!handleModal) return;
     try {
@@ -363,6 +426,9 @@ export function Admin() {
       case 'aiFeedback':
         await loadAIFeedback();
         break;
+      case 'notifications':
+        await loadNotifications();
+        break;
       case 'studio':
         await loadStudioSettings();
         break;
@@ -457,8 +523,9 @@ export function Admin() {
     { key: 'conversations' as TabType, icon: MessageSquare, label: '消息管理' },
     { key: 'moments' as TabType, icon: Globe, label: '朋友圈' },
     { key: 'tables' as TabType, icon: Database, label: '数据库' },
+    { key: 'notifications' as TabType, icon: Bell, label: '系统通知' },
     { key: 'ai' as TabType, icon: Cpu, label: 'AI调度' },
-    { key: 'aiFeedback' as TabType, icon: Bell, label: 'AI反馈' },
+    { key: 'aiFeedback' as TabType, icon: AlertOctagon, label: 'AI反馈' },
     ...(isStudioAdmin ? [{ key: 'studio' as TabType, icon: Palette, label: '官网配置' }] : [])
   ];
 
@@ -1346,12 +1413,172 @@ export function Admin() {
             </div>
 
             {isLoading && (
-              <div className="text-center text-black/40 dark:text-white/40 py-12">
-                <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p>加载中...</p>
-              </div>
-            )}
+          <div className="text-center text-black/40 dark:text-white/40 py-12">
+            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p>加载中...</p>
           </div>
+        )}
+      </div>
+
+      {activeTab === 'notifications' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-black dark:text-white">系统通知管理</h2>
+            <button
+              onClick={() => { setEditingNotification(null); setNotificationForm({ title: '', content: '', type: 'info' }); setShowCreateNotification(true); }}
+              className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              <Bell size={16} />
+              发送新通知
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5">
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">标题</th>
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">类型</th>
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">状态</th>
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">时间</th>
+                    <th className="text-left px-4 py-4 text-sm font-semibold text-black/60 dark:text-white/60">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {notifications.map((n) => (
+                    <tr key={n.id} className="border-b border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-4">
+                        <div>
+                          <p className="font-medium text-black dark:text-white">{n.title}</p>
+                          <p className="text-xs text-black/40 dark:text-white/40 mt-1 line-clamp-1">{n.content}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          n.type === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                          n.type === 'warning' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                          n.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                          'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+                        }`}>
+                          {n.type === 'info' ? '信息' : n.type === 'warning' ? '警告' : n.type === 'success' ? '成功' : '公告'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          n.is_active ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                        }`}>
+                          {n.is_active ? '启用' : '禁用'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-black/60 dark:text-white/60 whitespace-nowrap">
+                        {new Date(n.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditNotification(n)}
+                            className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-blue-500"
+                            title="编辑"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNotification(n.id)}
+                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-red-500"
+                            title="删除"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {notifications.length === 0 && !isLoading && (
+                <div className="text-center py-12 text-black/40 dark:text-white/40">
+                  <Bell size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>暂无系统通知</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {showCreateNotification && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+                onClick={() => { setShowCreateNotification(false); setEditingNotification(null); }}
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                >
+                  <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+                    {editingNotification ? '编辑通知' : '发送新通知'}
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">标题</label>
+                      <input
+                        type="text"
+                        value={notificationForm.title}
+                        onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
+                        placeholder="请输入通知标题"
+                        className="w-full px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">内容</label>
+                      <textarea
+                        value={notificationForm.content}
+                        onChange={(e) => setNotificationForm({ ...notificationForm, content: e.target.value })}
+                        placeholder="请输入通知内容"
+                        rows={4}
+                        className="w-full px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">类型</label>
+                      <select
+                        value={notificationForm.type}
+                        onChange={(e) => setNotificationForm({ ...notificationForm, type: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-black/10 dark:border-white/10 bg-transparent text-black dark:text-white"
+                      >
+                        <option value="info">信息</option>
+                        <option value="warning">警告</option>
+                        <option value="success">成功</option>
+                        <option value="announcement">公告</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 justify-end mt-6">
+                    <button
+                      onClick={() => { setShowCreateNotification(false); setEditingNotification(null); }}
+                      className="px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleCreateNotification}
+                      className="px-4 py-2 text-sm text-white bg-gradient-to-r from-[#007AFF] to-[#5856D6] rounded-xl hover:opacity-90 transition-opacity"
+                    >
+                      {editingNotification ? '更新' : '发布'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
         )}
 
         {activeTab === 'studio' && isStudioAdmin && (

@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from "react-router";
-import { Search, CheckCheck, MessageSquare, MessageCircle } from "lucide-react";
+import { Search, CheckCheck, MessageSquare, MessageCircle, Megaphone } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
+import { systemNotificationApi } from '../../api/systemNotification';
 import { useIsMobile } from './ui/use-mobile';
 
 export function ChatsSidebar() {
@@ -19,6 +20,9 @@ export function ChatsSidebar() {
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [expandedNotification, setExpandedNotification] = useState<number | null>(null);
+
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
 
@@ -27,6 +31,20 @@ export function ChatsSidebar() {
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const res = await systemNotificationApi.getList();
+        if (res.code === 200) {
+          setNotifications(res.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+      }
+    };
+    loadNotifications();
+  }, []);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -242,6 +260,65 @@ export function ChatsSidebar() {
           {isLoading && conversations.length === 0 && (
             <div className="flex items-center justify-center h-32">
               <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {notifications.length > 0 && (
+            <div className="px-2 sm:px-2 mb-3 space-y-2">
+              {notifications.slice(0, 3).map((notif) => {
+                const isExpanded = expandedNotification === notif.id;
+                const typeGradient = notif.type === 'warning' ? 'from-orange-500 to-red-500' :
+                  notif.type === 'success' ? 'from-green-500 to-emerald-500' :
+                  notif.type === 'announcement' ? 'from-purple-500 to-pink-500' :
+                  'from-blue-500 to-cyan-500';
+                return (
+                  <motion.div
+                    key={notif.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => setExpandedNotification(isExpanded ? null : notif.id)}
+                    className={`relative overflow-hidden rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                      isExpanded ? 'shadow-lg' : ''
+                    }`}
+                  >
+                    <div className={`bg-gradient-to-r ${typeGradient} p-[1.5px]`}>
+                      <div className="bg-white dark:bg-[#13161A] rounded-[10px] sm:rounded-[13px] p-2.5 sm:p-3">
+                        <div className="flex items-start gap-2">
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${typeGradient} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                            <Megaphone size={isMobile ? 14 : 16} className="text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <h3 className={`font-semibold truncate ${isMobile ? 'text-[13px]' : 'text-sm'} text-black dark:text-white`}>{notif.title}</h3>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                notif.type === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                                notif.type === 'warning' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                                notif.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                                'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+                              }`}>
+                                {notif.type === 'info' ? '信息' : notif.type === 'warning' ? '警告' : notif.type === 'success' ? '成功' : '公告'}
+                              </span>
+                            </div>
+                            <p className={`${isMobile ? 'text-[11px]' : 'text-xs'} text-black/60 dark:text-white/60 ${isExpanded ? '' : 'line-clamp-2'} whitespace-pre-wrap`}>
+                              {notif.content}
+                            </p>
+                            {!isExpanded && (
+                              <p className={`mt-1 text-[10px] text-black/30 dark:text-white/30`}>
+                                {new Date(notif.created_at).toLocaleDateString('zh-CN')}
+                              </p>
+                            )}
+                            {isExpanded && (
+                              <p className={`mt-2 text-[10px] text-black/40 dark:text-white/40`}>
+                                {new Date(notif.created_at).toLocaleString('zh-CN')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 

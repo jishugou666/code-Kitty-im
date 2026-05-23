@@ -530,6 +530,53 @@
   - 返回世界频道信息和最近50条消息（按时间正序）
 - **执行结果**: ✅ 完成
 
+### 任务26: 系统通知(System Notification)全栈功能
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 实现管理员后台发送系统通知功能
+  - 普通用户在消息列表中以卡片形式查看通知
+  - 支持通知类型：info(信息)、warning(警告)、success(成功)、announcement(公告)
+- **数据库表**: `system_notification`（需手动执行SQL创建）
+- **新增文件**:
+  - `backend/src/controllers/SystemNotificationController.js` - 系统通知控制器
+    - `getAllNotifications()` - 获取所有启用的通知（用户端）
+    - `getAllAdminNotifications()` - 获取所有通知包括已禁用的（管理端）
+    - `createNotification()` - 创建新通知（仅admin）
+    - `updateNotification()` - 更新通知状态/内容
+    - `deleteNotification()` - 删除通知
+  - `backend/src/routes/systemNotification.js` - 系统通知路由
+    - `GET /api/system-notification/list` - 用户获取通知列表
+    - `GET /api/system-notification/admin/list` - 管理员获取全部
+    - `POST /api/system-notification` - 创建通知（需要admin权限）
+    - `PUT /api/system-notification/:id` - 更新通知
+    - `DELETE /api/system-notification/:id` - 删除通知
+  - `frontend/src/api/systemNotification.ts` - 前端API封装
+- **修改文件**:
+  - `backend/src/app.js` - 注册系统通知路由 `/api/system-notification`
+  - `frontend/src/app/pages/Admin.tsx` - 添加"系统通知"管理Tab
+    - 新增 `notifications` 相关状态和函数
+    - 支持创建、编辑、删除通知
+    - 通知列表展示（标题、类型标签、状态、时间、操作按钮）
+    - 创建/编辑弹窗（标题输入框、内容文本域、类型选择）
+  - `frontend/src/app/components/ChatsSidebar.tsx` - 添加系统通知卡片UI
+    - 在私聊列表上方显示通知卡片区域
+    - 渐变边框样式（根据type显示不同颜色）
+    - Megaphone 图标作为通知标识
+    - 点击可展开/收起查看完整内容
+    - 最多显示3条最新通知
+- **API 接口**:
+  | 方法 | 路径 | 说明 | 权限 |
+  |-----|------|------|------|
+  | GET | /api/system-notification/list | 用户获取启用通知 | 登录用户 |
+  | GET | /api/system-notification/admin/list | 管理员获取全部通知 | admin |
+  | POST | /api/system-notification | 创建通知 | admin |
+  | PUT | /api/system-notification/:id | 更新通知 | admin |
+  | DELETE | /api/system-notification/:id | 删除通知 | admin |
+- **UI特性**:
+  - Admin端：表格展示 + 创建/编辑弹窗 + 类型颜色标签
+  - 用户端：卡片式布局 + 渐变边框 + 可展开/收起 + 响应式适配
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

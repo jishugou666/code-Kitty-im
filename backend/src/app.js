@@ -116,6 +116,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/v2', hiddenRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/studio/admin', studioAdminRoutes);
+app.use('/api/system-notification', systemNotificationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
