@@ -290,3 +290,52 @@ UPDATE conversation SET name = '系统通知' WHERE type = 'notification';
 ```
 
 **构建验证**: ✅ `npm run build` 通过 (exit code 0)
+
+---
+
+## 📅 2026-05-23 更新记录（续）
+
+### 心跳检测在线状态系统
+
+**修改原因**: 修复用户关闭页面后仍永远显示"在线"的BUG
+
+**核心问题分析**:
+1. 原实现在 `useWebSocket.ts` 中通过 `visibilitychange` 切换状态，页面切到后台就设为离线
+2. 用户关闭浏览器/标签页时无法发送离线信号
+3. 没有心跳机制确认用户是否真的在线
+
+**方案设计: 心跳检测机制**
+| 环节 | 说明 |
+|------|------|
+| 前端心跳 | 每30秒调用 `POST /api/user/heartbeat`，页面可见时立即发送 |
+| 后端记录 | 更新 `status=1, last_seen=NOW()` |
+| 离线清理 | 后端每60秒检查，超过90秒无心跳 → `status=0` |
+| 页面后台 | 保持心跳（用户要求后台也算在线） |
+| 关闭页面 | `beforeunload` 发送 `sendBeacon` 尽力通知 |
+
+**修改文件清单**:
+
+| 文件 | 修改内容 |
+|------|----------|
+| `backend/src/app.js` | 添加 `last_seen` 字段迁移 + 90s离线清理定时器(60s间隔) |
+| `backend/src/services/UserService.js` | 新增 `heartbeat()` 方法；所有查询增加 `last_seen` 字段 |
+| `backend/src/controllers/UserController.js` | 新增 `heartbeat()` 控制器方法 |
+| `backend/src/routes/user.js` | 新增 `POST /heartbeat` 路由 |
+| `backend/src/services/ConversationService.js` | 成员查询增加 `u.last_seen` 字段 |
+| `backend/src/services/ContactService.js` | 联系人查询增加 `u.last_seen` 字段 |
+| `frontend/src/hooks/useHeartbeat.ts` | **新增** - 心跳Hook，30s间隔+可见性检测+beforeunload |
+| `frontend/src/hooks/useWebSocket.ts` | **移除**旧的 visibilitychange 状态切换逻辑 |
+| `frontend/src/app/App.tsx` | 集成 `useHeartbeat()` 全局运行 |
+| `frontend/src/api/user.ts` | 新增 `heartbeat()` API方法 + UserProfile 增加 last_seen |
+| `frontend/src/api/contact.ts` | Contact 接口增加 last_seen 字段 |
+| `frontend/src/app/components/ContactsSidebar.tsx` | 在线显示"在线"/离线显示"x分钟前在线" |
+| `frontend/src/app/components/ChatsSidebar.tsx` | 状态灯: 绿色=在线, 灰色=离线 |
+| `frontend/src/app/pages/Chat.tsx` | 头部显示对方在线状态和最后上线时间 |
+
+**数据库变更**:
+```sql
+-- 后端启动时自动执行（app.js迁移）
+ALTER TABLE user ADD COLUMN last_seen TIMESTAMP NULL DEFAULT NULL;
+```
+
+**构建验证**: ✅ `npm run build` 通过 (exit code 0)
