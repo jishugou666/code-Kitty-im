@@ -486,7 +486,7 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
             border: '1px solid #ccc',
             boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 2px 3px 6px rgba(0,0,0,0.35)',
             ...(isWin ? { boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 0 0 16px 4px rgba(34,197,94,0.7), 2px 3px 6px rgba(0,0,0,0.35)' } : {})
-          }
+          })
     }}
   >
     {isLast && (
