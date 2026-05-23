@@ -9,6 +9,15 @@ router.use(authMiddleware);
 
 router.post('/single', ConversationController.createSingle);
 router.post('/group', ConversationController.createGroup);
+router.get('/world', async (req, res) => {
+  try {
+    const WorldChannelService = (await import('../services/WorldChannelService.js')).default;
+    const data = await WorldChannelService.getFullWorldChannel(req.userId);
+    res.json({ code: 200, data, msg: 'ok' });
+  } catch (err) {
+    res.status(500).json({ code: 500, data: null, msg: err.message });
+  }
+});
 router.get('/list', ConversationController.getList);
 router.get('/debug/all', async (req, res) => {
   try {

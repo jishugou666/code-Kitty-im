@@ -507,6 +507,29 @@
   ```
 - **执行结果**: ✅ 完成
 
+### 任务25: 世界频道(World Channel)后端实现
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 实现世界频道后端服务（所有用户都能进入的公共聊天室）
+  - 自动创建世界频道会话（type='world'）
+  - 提供世界频道API接口
+- **新增文件**:
+  - `backend/src/services/WorldChannelService.js` - 世界频道服务
+    - `getOrCreateWorldChannel()` - 查找或创建世界频道会话
+    - `ensureMember()` - 确保用户是世界频道成员
+    - `getMessages()` - 获取世界频道消息
+    - `getFullWorldChannel()` - 获取完整世界频道数据
+- **修改文件**:
+  - `backend/src/app.js` - 添加世界频道自动创建迁移逻辑（启动时检查并创建）
+  - `backend/src/routes/conversation.js` - 添加 `GET /api/conversation/world` 路由
+- **API 接口**:
+  - `GET /api/conversation/world` - 获取世界频道信息及消息列表
+- **核心逻辑**:
+  - 服务启动时自动检测并创建 type='world' 的 conversation 记录
+  - 用户访问世界频道时自动加入为成员
+  - 返回世界频道信息和最近50条消息（按时间正序）
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

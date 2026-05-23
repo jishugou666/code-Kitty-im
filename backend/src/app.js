@@ -20,6 +20,7 @@ import hiddenRoutes from './routes/hidden.js';
 import aiRoutes from './routes/ai.js';
 import proxyRoutes from './routes/proxy.js';
 import studioAdminRoutes from './routes/studioAdmin.js';
+import systemNotificationRoutes from './routes/systemNotification.js';
 
 const app = express();
 
@@ -139,6 +140,17 @@ async function startServer() {
     console.log('[Migration] message.type ENUM updated: added recalled');
   } catch (err) {
     console.log('[Migration] message.type already has recalled or migration failed:', err.message?.substring(0, 80));
+  }
+
+  // 自动创建世界频道
+  try {
+    const [existing] = await query("SELECT id FROM conversation WHERE type = 'world' LIMIT 1");
+    if (!existing) {
+      await query("INSERT INTO conversation (type, name, created_at) VALUES ('world', '🌍 世界频道', NOW())");
+      console.log('[Migration] World channel created');
+    }
+  } catch (err) {
+    console.log('[Migration] World channel check failed:', err.message?.substring(0, 80));
   }
 
   server.listen(config.port, () => {
