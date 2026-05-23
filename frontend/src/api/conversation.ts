@@ -2,7 +2,7 @@ import apiClient from './client';
 
 export interface Conversation {
   id: number;
-  type: 'single' | 'group';
+  type: 'single' | 'group' | 'world';
   name: string;
   avatar: string;
   created_by: number;
@@ -44,5 +44,8 @@ export const conversationApi = {
     apiClient.post<ConversationMember[]>(`/conversation/${id}/members`, { memberIds }),
 
   removeMember: (id: number, userId: number) =>
-    apiClient.delete(`/conversation/${id}/members/${userId}`)
+    apiClient.delete(`/conversation/${id}/members/${userId}`),
+
+  getWorldChannel: () =>
+    apiClient.get<any>('/conversation/world'),
 };
