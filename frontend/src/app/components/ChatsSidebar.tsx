@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from "react-router";
 import { Search, CheckCheck, MessageSquare, MessageCircle, Megaphone, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -38,29 +38,34 @@ export function ChatsSidebar() {
     const loadNotifications = async () => {
       try {
         const res = await systemNotificationApi.getList();
+        console.log('[ChatsSidebar] Notifications API response:', res);
         if (res.code === 200) {
           setNotifications(res.data || []);
         }
       } catch (error) {
-        console.error('Failed to load notifications:', error);
+        console.error('[ChatsSidebar] Failed to load notifications:', error);
       }
     };
     loadNotifications();
   }, []);
 
-  useEffect(() => {
-    const loadWorldChannel = async () => {
-      try {
-        const res = await conversationApi.getWorldChannel();
-        if (res.code === 200 && res.data) {
-          setWorldChannel(res.data);
-        }
-      } catch (error) {
-        console.error('Failed to load world channel:', error);
+  const loadWorldChannel = useCallback(async () => {
+    try {
+      const res = await conversationApi.getWorldChannel();
+      console.log('[ChatsSidebar] WorldChannel API response:', res);
+      if (res.code === 200 && res.data) {
+        setWorldChannel(res.data);
+      } else {
+        console.warn('[ChatsSidebar] WorldChannel API returned non-200:', res);
       }
-    };
-    loadWorldChannel();
+    } catch (error) {
+      console.error('[ChatsSidebar] Failed to load world channel:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    loadWorldChannel();
+  }, [loadWorldChannel]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
@@ -279,36 +284,34 @@ export function ChatsSidebar() {
             </div>
           )}
 
-          {worldChannel && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => navigate(`/chat/${worldChannel.id}`)}
-              className={clsx(
-                "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
-                id === String(worldChannel.id)
-                  ? "bg-gradient-to-r from-[#5856D6] to-[#AF52DE] text-white shadow-[0_4px_16px_rgba(88,86,214,0.25)]"
-                  : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
-              )}
-            >
-              <div className="w-10 h-10 sm:w-[46px] sm:h-[46px] rounded-full bg-gradient-to-br from-[#5856D6] to-[#AF52DE] flex items-center justify-center flex-shrink-0 shadow-sm">
-                <Globe size={isMobile ? 18 : 22} className="text-white" />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => worldChannel ? navigate(`/chat/${worldChannel.id}`) : loadWorldChannel()}
+            className={clsx(
+              "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
+              worldChannel && id === String(worldChannel.id)
+                ? "bg-gradient-to-r from-[#5856D6] to-[#AF52DE] text-white shadow-[0_4px_16px_rgba(88,86,214,0.25)]"
+                : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
+            )}
+          >
+            <div className="w-10 h-10 sm:w-[46px] sm:h-[46px] rounded-full bg-gradient-to-br from-[#5856D6] to-[#AF52DE] flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Globe size={isMobile ? 18 : 22} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline mb-0.5">
+                <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", worldChannel && id === String(worldChannel.id) ? "text-white" : "text-black dark:text-white")}>
+                  🌍 世界频道
+                </h2>
+                <span className={clsx("text-[11px] sm:text-[12px]", worldChannel && id === String(worldChannel.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
+                  全局
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", id === String(worldChannel.id) ? "text-white" : "text-black dark:text-white")}>
-                    🌍 世界频道
-                  </h2>
-                  <span className={clsx("text-[11px] sm:text-[12px]", id === String(worldChannel.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
-                    全局
-                  </span>
-                </div>
-                <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", id === String(worldChannel.id) ? "text-white/80" : "text-black/50 dark:text-white/50")}>
-                  所有用户都能进入的公共聊天室
-                </p>
-              </div>
-            </motion.div>
-          )}
+              <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", worldChannel && id === String(worldChannel.id) ? "text-white/80" : "text-black/50 dark:text-white/50")}>
+                所有用户都能进入的公共聊天室
+              </p>
+            </div>
+          </motion.div>
 
           {notifications.length > 0 && (
             <div className="px-2 sm:px-2 mb-3 space-y-2">
