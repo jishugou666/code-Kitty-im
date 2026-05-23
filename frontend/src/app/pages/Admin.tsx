@@ -1418,8 +1418,10 @@ export function Admin() {
                 <p>加载中...</p>
               </div>
             )}
+          </div>
+        )}
 
-            {activeTab === 'notifications' && (
+        {activeTab === 'notifications' && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-black dark:text-white">系统通知管理</h2>
@@ -1577,7 +1579,6 @@ export function Admin() {
             )}
           </AnimatePresence>
         </div>
-      )}
       )}
 
       {activeTab === 'studio' && isStudioAdmin && (
