@@ -202,7 +202,7 @@ async function startServer() {
   // 心跳离线清理定时器：每30秒检查，超过45秒无心跳的用户标记为离线
   setInterval(async () => {
     try {
-      const result = await query("UPDATE user SET status = 0 WHERE status = 1 AND last_seen < DATE_SUB(NOW(), INTERVAL 45 SECOND)");
+      const result = await query("UPDATE user SET status = 0 WHERE status = 1 AND (last_seen IS NULL OR last_seen < DATE_SUB(NOW(), INTERVAL 45 SECOND))");
       if (result.affectedRows > 0) {
         console.log(`[HeartbeatCleanup] Marked ${result.affectedRows} users offline`);
       }

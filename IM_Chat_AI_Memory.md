@@ -60,6 +60,7 @@
 5. **所有前端地址从 `import.meta.env` 读取**
 6. **MySQL2 分页必须用 `LIMIT ${num} OFFSET ${num}` 拼接，禁止占位符 `?`**
 7. **前端调用 API 后，响应拦截器已返回 `{ code, data, msg }`，直接用 `response.code` 判断，不要再加 `.data`**
+8. **禁止自动执行 git push**：代码修改后只做 git commit，不自动推送到 GitHub，由用户自行决定何时推送
 
 ### ⚠️ 核心逻辑保护声明（绝对禁止修改）
 
