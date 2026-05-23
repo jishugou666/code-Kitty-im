@@ -6,6 +6,7 @@ export interface Contact {
   nickname: string;
   avatar: string;
   status: number;
+  last_seen: string | null;
   added_at: string;
 }
 

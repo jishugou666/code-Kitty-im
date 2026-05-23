@@ -16,6 +16,17 @@ import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+function formatLastSeen(lastSeen: string | null | undefined): string {
+  if (!lastSeen) return '离线';
+  const now = Date.now();
+  const time = new Date(lastSeen).getTime();
+  const diff = now - time;
+  if (diff < 60000) return '刚刚在线';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前在线`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前在线`;
+  return `${Math.floor(diff / 86400000)}天前在线`;
+}
+
 export function Chat() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -478,8 +489,18 @@ export function Chat() {
               {conversation?.name || '聊天'}
               {isTempConversation && <AlertTriangle size={isMobile ? 12 : 14} className="text-yellow-500" />}
             </h2>
-            <p className={isMobile ? "text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block" : "text-xs text-gray-500 dark:text-gray-400"}>
-              {(conversation?.members?.length || 0)} 位成员
+            <p className={isMobile ? "text-[10px] sm:text-xs hidden sm:block" : "text-xs"}>
+              {isNotificationConv ? (
+                <span className="text-gray-500 dark:text-gray-400">系统通知</span>
+              ) : conversation?.type === 'world' ? (
+                <span className="text-gray-500 dark:text-gray-400">世界频道</span>
+              ) : otherUser ? (
+                <span className={otherUser.status === 1 ? "text-[#34C759]" : "text-gray-400 dark:text-gray-500"}>
+                  {otherUser.status === 1 ? '在线' : formatLastSeen(otherUser.last_seen)}
+                </span>
+              ) : (
+                <span className="text-gray-500 dark:text-gray-400">{(conversation?.members?.length || 0)} 位成员</span>
+              )}
             </p>
           </div>
         </div>

@@ -20,6 +20,7 @@ export interface UserProfile {
   phone: string;
   role: 'user' | 'admin' | 'tech_god';
   status: number;
+  last_seen: string | null;
   created_at: string;
 }
 
@@ -49,6 +50,9 @@ export const userApi = {
 
   updateStatus: (status: number) =>
     apiClient.put('/user/status', { status }),
+
+  heartbeat: () =>
+    apiClient.post<{ status: number; last_seen: string }>('/user/heartbeat'),
 
   getTechGod: () =>
     apiClient.get<UserProfile>('/user/tech-god')

@@ -184,12 +184,30 @@ async function startServer() {
   try {
     const [notifConv] = await query("SELECT id FROM conversation WHERE type = 'notification' LIMIT 1");
     if (!notifConv) {
-      await query("INSERT INTO conversation (type, name, created_at) VALUES ('notification', '📢 系统通知', NOW())");
+      await query("INSERT INTO conversation (type, name, created_at) VALUES ('notification', '系统通知', NOW())");
       console.log('[Migration] Notification conversation created');
     }
   } catch (err) {
     console.log('[Migration] Notification conversation check failed:', err.message?.substring(0, 80));
   }
+
+  // 添加 last_seen 字段用于心跳在线检测
+  try {
+    await query("ALTER TABLE user ADD COLUMN last_seen TIMESTAMP NULL DEFAULT NULL");
+    console.log('[Migration] user.last_seen column added');
+  } catch (err) {
+    console.log('[Migration] user.last_seen column may already exist:', err.message?.substring(0, 80));
+  }
+
+  // 心跳离线清理定时器：每60秒检查，超过90秒无心跳的用户标记为离线
+  setInterval(async () => {
+    try {
+      await query("UPDATE user SET status = 0 WHERE status = 1 AND last_seen < DATE_SUB(NOW(), INTERVAL 90 SECOND)");
+    } catch (err) {
+      console.error('[HeartbeatCleanup] Failed:', err.message);
+    }
+  }, 60000);
+  console.log('[Heartbeat] Cleanup timer started (90s threshold, 60s interval)');
 
   server.listen(config.port, () => {
     console.log(`Server running on http://localhost:${config.port}`);

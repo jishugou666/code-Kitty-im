@@ -22,7 +22,7 @@ export const UserService = {
       [hashedPassword, nickname, email]
     );
 
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?', [result.insertId]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, last_seen, created_at FROM user WHERE id = ?', [result.insertId]);
     const user = users[0];
 
     const token = generateToken({ id: user.id, email: user.email });
@@ -72,7 +72,7 @@ export const UserService = {
   },
 
   async getProfile(userId) {
-    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, COALESCE(ban_status, "active") as ban_status, ban_expires_at, ban_reason, created_at FROM user WHERE id = ?', [userId]);
+    const users = await query('SELECT id, username, nickname, avatar, email, phone, role, status, last_seen, COALESCE(ban_status, "active") as ban_status, ban_expires_at, ban_reason, created_at FROM user WHERE id = ?', [userId]);
     if (users.length === 0) {
       throw new Error('User not found');
     }
@@ -135,7 +135,7 @@ export const UserService = {
     const trimmedKeyword = keyword.trim();
     const escapedKeyword = escapeLikeQuery(trimmedKeyword);
     const users = await query(
-      'SELECT id, username, nickname, avatar, status, role FROM user WHERE (username LIKE ? OR nickname LIKE ? OR email LIKE ?) LIMIT 20',
+      'SELECT id, username, nickname, avatar, status, last_seen, role FROM user WHERE (username LIKE ? OR nickname LIKE ? OR email LIKE ?) LIMIT 20',
       [`%${escapedKeyword}%`, `%${escapedKeyword}%`, `%${escapedKeyword}%`]
     );
     return users.map(u => this.sanitizeUser(u, true));
@@ -149,9 +149,15 @@ export const UserService = {
     await query('UPDATE user SET status = ? WHERE id = ?', [status, userId]);
   },
 
+  async heartbeat(userId) {
+    await query('UPDATE user SET status = 1, last_seen = NOW() WHERE id = ?', [userId]);
+    const users = await query('SELECT id, status, last_seen FROM user WHERE id = ?', [userId]);
+    return users[0] || null;
+  },
+
   async getTechGod() {
     const users = await query(
-      "SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE nickname = '技术狗' LIMIT 1"
+      "SELECT id, username, nickname, avatar, email, phone, role, status, last_seen, created_at FROM user WHERE nickname = '技术狗' LIMIT 1"
     );
     return users.length > 0 ? this.sanitizeUser(users[0]) : null;
   },
@@ -159,7 +165,7 @@ export const UserService = {
   async getUserById(userId) {
     try {
       const users = await query(
-        'SELECT id, username, nickname, avatar, email, phone, role, status, created_at FROM user WHERE id = ?',
+        'SELECT id, username, nickname, avatar, email, phone, role, status, last_seen, created_at FROM user WHERE id = ?',
         [userId]
       );
       return users.length > 0 ? this.sanitizeUser(users[0]) : null;

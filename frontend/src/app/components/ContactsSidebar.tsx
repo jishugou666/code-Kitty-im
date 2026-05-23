@@ -2,11 +2,23 @@ import { Search, UserPlus, Check, X, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { clsx } from "clsx";
 import { useContactStore } from '../../store/contactStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
 import { SearchModal } from './SearchModal';
 import { useTranslation } from 'react-i18next';
+
+function formatLastSeen(lastSeen: string | null | undefined): string {
+  if (!lastSeen) return '离线';
+  const now = Date.now();
+  const time = new Date(lastSeen).getTime();
+  const diff = now - time;
+  if (diff < 60000) return '刚刚在线';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前在线`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前在线`;
+  return `${Math.floor(diff / 86400000)}天前在线`;
+}
 
 export function ContactsSidebar() {
   const { t } = useTranslation();
@@ -168,16 +180,17 @@ export function ContactsSidebar() {
                         {(contact.nickname || contact.username || 'U')[0].toUpperCase()}
                       </div>
                     )}
-                    {contact.status === 1 && (
-                      <div className="absolute bottom-0 right-0 w-[12px] h-[12px] bg-[#34C759] border-2 border-white dark:border-[#13161A] rounded-full" />
-                    )}
+                    <div className={clsx(
+                      "absolute bottom-0 right-0 w-[12px] h-[12px] border-2 border-white dark:border-[#13161A] rounded-full",
+                      contact.status === 1 ? "bg-[#34C759]" : "bg-gray-400"
+                    )} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <h3 className="text-[15px] font-medium text-black dark:text-white truncate">
                       {contact.nickname || contact.username}
                     </h3>
-                    <p className={`text-[12px] truncate ${contact.status === 1 ? 'text-[#34C759]' : 'text-black/40 dark:text-white/40'}`}>
-                      {contact.status === 1 ? 'Online' : 'Offline'}
+                    <p className={clsx("text-[12px] truncate", contact.status === 1 ? "text-[#34C759]" : "text-black/40 dark:text-white/40")}>
+                      {contact.status === 1 ? '在线' : formatLastSeen(contact.last_seen)}
                     </p>
                   </div>
                 </motion.div>

@@ -4,7 +4,7 @@ export const ConversationService = {
   async getConversationMembers(conversationId) {
     try {
       const sql = `
-        SELECT u.id, u.nickname, u.avatar, u.status, cm.role,
+        SELECT u.id, u.nickname, u.avatar, u.status, u.last_seen, cm.role,
           COALESCE(gm.role, cm.role) as my_role,
           CASE WHEN u.id IS NULL THEN 1 ELSE 0 END as is_deleted
         FROM conversation_member cm

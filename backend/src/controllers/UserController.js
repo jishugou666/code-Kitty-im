@@ -117,6 +117,15 @@ export const UserController = {
     }
   },
 
+  async heartbeat(req, res, next) {
+    try {
+      const result = await UserService.heartbeat(req.user.id);
+      res.json(success(result, 'pong'));
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getTechGod(req, res, next) {
     try {
       const techGod = await UserService.getTechGod();

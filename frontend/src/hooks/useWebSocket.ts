@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback } from 'react';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
-import { userApi } from '../api/user';
 import { messageEventBus } from '../lib/messageEventBus';
 
 const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
@@ -26,21 +25,6 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
   const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
   const { token, isAuthenticated, user } = useAuthStore();
   const { addMessage, fetchConversations, fetchMessages } = useChatStore();
-
-  const handleVisibilityChange = useCallback(() => {
-    if (!isAuthenticated) return;
-    const isOnline = document.visibilityState === 'visible';
-    userApi.updateStatus(isOnline ? 1 : 0);
-  }, [isAuthenticated, user]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isAuthenticated, handleVisibilityChange]);
 
   const handleNewMessage = useCallback((data: any) => {
     if (data && data.id) {

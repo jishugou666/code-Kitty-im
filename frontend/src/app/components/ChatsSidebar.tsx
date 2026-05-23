@@ -156,10 +156,12 @@ export function ChatsSidebar() {
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
-          {otherUser?.status === 1 && (
+          {otherUser && (
             <div className={clsx(
               "absolute bottom-0 right-0 w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-full border-2",
-              isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]"
+              otherUser.status === 1
+                ? (isActive ? "bg-[#34C759] border-[#007AFF]" : "bg-[#34C759] border-white dark:border-[#13161A]")
+                : "bg-gray-400 border-white dark:border-[#13161A]"
             )} />
           )}
         </div>

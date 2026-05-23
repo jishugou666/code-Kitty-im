@@ -4,6 +4,7 @@ import { router } from "./routes";
 import { BanOverlay } from './components/BanOverlay';
 import { RateLimitOverlay } from './components/RateLimitOverlay';
 import { apiClient } from '../api/client';
+import { useHeartbeat } from '../hooks/useHeartbeat';
 
 export default function App() {
   const [showBanOverlay, setShowBanOverlay] = useState(false);
@@ -11,6 +12,8 @@ export default function App() {
   const [rateLimitReason, setRateLimitReason] = useState('');
   const pendingRetryRef = useRef<(() => void) | null>(null);
   const [isStudio, setIsStudio] = useState(false);
+
+  useHeartbeat();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -75,7 +75,7 @@ export const ContactService = {
 
   async getContactList(userId) {
     const contacts = await query(
-      `SELECT u.id, u.username, u.nickname, u.avatar, u.status, c.created_at as added_at
+      `SELECT u.id, u.username, u.nickname, u.avatar, u.status, u.last_seen, c.created_at as added_at
        FROM contact c
        JOIN user u ON c.contact_user_id = u.id
        WHERE c.user_id = ? AND c.status = 'accepted'`,
