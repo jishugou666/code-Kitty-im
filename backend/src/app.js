@@ -138,16 +138,17 @@ async function startServer() {
   const { query } = await import('./utils/db.js');
   try {
     await query("ALTER TABLE message MODIFY COLUMN type ENUM('text', 'image', 'file', 'system', 'recalled') DEFAULT 'text'");
-  console.log('[Migration] message.type ENUM updated: added recalled');
+    console.log('[Migration] message.type ENUM updated: added recalled');
   } catch (err) {
     console.log('[Migration] message.type already has recalled or migration failed:', err.message?.substring(0, 80));
   }
 
+  // TiDB兼容: 将 conversation.type 从 ENUM 改为 VARCHAR (ENUM修改在TiDB中不可靠)
   try {
-    await query("ALTER TABLE conversation MODIFY COLUMN type ENUM('single', 'group', 'world') DEFAULT 'single'");
-    console.log('[Migration] conversation.type ENUM updated: added world');
+    await query("ALTER TABLE conversation MODIFY COLUMN type VARCHAR(20) DEFAULT 'single'");
+    console.log('[Migration] conversation.type converted to VARCHAR (TiDB compatible)');
   } catch (err) {
-    console.log('[Migration] conversation.type already has world or migration failed:', err.message?.substring(0, 80));
+    console.log('[Migration] conversation.type conversion failed (may already be VARCHAR):', err.message?.substring(0, 80));
   }
 
   try {
@@ -155,10 +156,11 @@ async function startServer() {
       id INT PRIMARY KEY AUTO_INCREMENT,
       title VARCHAR(200) NOT NULL,
       content TEXT NOT NULL,
-      type ENUM('info','warning','success','announcement') DEFAULT 'info',
+      type VARCHAR(20) DEFAULT 'info',
       icon VARCHAR(500) DEFAULT NULL,
       is_active TINYINT DEFAULT 1,
       created_by INT DEFAULT NULL,
+      image_url VARCHAR(500) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`);
@@ -176,22 +178,6 @@ async function startServer() {
     }
   } catch (err) {
     console.log('[Migration] World channel check failed:', err.message?.substring(0, 80));
-  }
-
-  // 扩展 conversation.type ENUM 添加 notification
-  try {
-    await query("ALTER TABLE conversation MODIFY COLUMN type ENUM('single', 'group', 'world', 'notification') DEFAULT 'single'");
-    console.log('[Migration] conversation.type ENUM updated: added notification');
-  } catch (err) {
-    console.log('[Migration] conversation.type already has notification or migration failed:', err.message?.substring(0, 80));
-  }
-
-  // system_notification 表添加 image_url 字段
-  try {
-    await query("ALTER TABLE system_notification ADD COLUMN image_url VARCHAR(500) DEFAULT NULL");
-    console.log('[Migration] system_notification.image_url column added');
-  } catch (err) {
-    console.log('[Migration] system_notification.image_url already exists or migration failed:', err.message?.substring(0, 80));
   }
 
   // 自动创建系统通知会话
