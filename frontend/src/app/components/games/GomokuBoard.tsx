@@ -501,7 +501,9 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
 Stone.displayName = 'Stone';
 
 /* CSS Grid board styles - injected once */
-if (typeof document !== 'undefined' && !document.getElementById('gomoku-grid-styles')) {
+if (typeof document !== 'undefined') {
+  const oldStyle = document.getElementById('gomoku-grid-styles');
+  if (oldStyle) oldStyle.remove();
   const style = document.createElement('style');
   style.id = 'gomoku-grid-styles';
   style.textContent = `
@@ -513,6 +515,30 @@ if (typeof document !== 'undefined' && !document.getElementById('gomoku-grid-sty
       padding: 0;
       border: none;
       background: transparent;
+    }
+    .gomoku-cell::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 0.6px;
+      transform: translateY(-50%);
+      background: #5D3A1A;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .gomoku-cell::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 0.6px;
+      transform: translateX(-50%);
+      background: #5D3A1A;
+      pointer-events: none;
+      z-index: 1;
     }
     .gomoku-cell-label {
       display: block;
@@ -905,38 +931,19 @@ export function GomokuBoard({
                 })
               )}
 
-              {/* Grid lines overlay - covers entire grid area with lines at cell centers */}
-              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-                {/* Vertical lines */}
-                {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                  <div key={`vl-${i}`} className="absolute bg-[#5D3A1A]" style={{
-                    left: `calc(var(--gcs) * ${i} + var(--gcs) / 2)`,
-                    top: 'calc(var(--gcs) / 2)',
-                    width: '0.6px',
-                    height: `calc(var(--gcs) * 14)`
-                  }} />
-                ))}
-                {/* Horizontal lines */}
-                {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                  <div key={`hl-${i}`} className="absolute bg-[#5D3A1A]" style={{
-                    top: `calc(var(--gcs) * ${i} + var(--gcs) / 2)`,
-                    left: 'calc(var(--gcs) / 2)',
-                    height: '0.6px',
-                    width: `calc(var(--gcs) * 14)`
-                  }} />
-                ))}
-                {/* Outer border */}
-                <div className="absolute rounded-sm" style={{
-                  inset: 'calc(var(--gcs) / 2 - 1.5px)',
-                  border: '2.5px solid #5D3A1A',
-                  pointerEvents: 'none'
-                }} />
-                <div className="absolute rounded-sm" style={{
-                  inset: 'calc(var(--gcs) / 2 + 3px)',
-                  border: '1px solid #5D3A1A',
-                  pointerEvents: 'none'
-                }} />
-              </div>
+              {/* Outer border */}
+              <div className="absolute pointer-events-none" style={{
+                inset: 'calc(var(--gcs) / 2 - 1.5px)',
+                border: '2.5px solid #5D3A1A',
+                borderRadius: '2px',
+                zIndex: 6
+              }} />
+              <div className="absolute pointer-events-none" style={{
+                inset: 'calc(var(--gcs) / 2 + 3px)',
+                border: '1px solid #5D3A1A',
+                borderRadius: '2px',
+                zIndex: 6
+              }} />
             </div>
           </div>
         </div>
