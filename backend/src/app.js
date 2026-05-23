@@ -199,15 +199,18 @@ async function startServer() {
     console.log('[Migration] user.last_seen column may already exist:', err.message?.substring(0, 80));
   }
 
-  // 心跳离线清理定时器：每60秒检查，超过90秒无心跳的用户标记为离线
+  // 心跳离线清理定时器：每30秒检查，超过45秒无心跳的用户标记为离线
   setInterval(async () => {
     try {
-      await query("UPDATE user SET status = 0 WHERE status = 1 AND last_seen < DATE_SUB(NOW(), INTERVAL 90 SECOND)");
+      const result = await query("UPDATE user SET status = 0 WHERE status = 1 AND last_seen < DATE_SUB(NOW(), INTERVAL 45 SECOND)");
+      if (result.affectedRows > 0) {
+        console.log(`[HeartbeatCleanup] Marked ${result.affectedRows} users offline`);
+      }
     } catch (err) {
       console.error('[HeartbeatCleanup] Failed:', err.message);
     }
-  }, 60000);
-  console.log('[Heartbeat] Cleanup timer started (90s threshold, 60s interval)');
+  }, 30000);
+  console.log('[Heartbeat] Cleanup timer started (45s threshold, 30s interval)');
 
   server.listen(config.port, () => {
     console.log(`Server running on http://localhost:${config.port}`);

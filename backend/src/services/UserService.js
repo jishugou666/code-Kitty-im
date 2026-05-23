@@ -155,6 +155,10 @@ export const UserService = {
     return users[0] || null;
   },
 
+  async markOffline(userId) {
+    await query('UPDATE user SET status = 0 WHERE id = ?', [userId]);
+  },
+
   async getTechGod() {
     const users = await query(
       "SELECT id, username, nickname, avatar, email, phone, role, status, last_seen, created_at FROM user WHERE nickname = '技术狗' LIMIT 1"

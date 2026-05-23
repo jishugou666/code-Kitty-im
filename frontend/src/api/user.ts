@@ -54,6 +54,12 @@ export const userApi = {
   heartbeat: () =>
     apiClient.post<{ status: number; last_seen: string }>('/user/heartbeat'),
 
+  markOffline: () => {
+    const token = localStorage.getItem('token');
+    const url = `${import.meta.env.VITE_API_BASE_URL}/user/offline`;
+    return navigator.sendBeacon(url, JSON.stringify({ token }));
+  },
+
   getTechGod: () =>
     apiClient.get<UserProfile>('/user/tech-god')
 };

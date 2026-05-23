@@ -126,6 +126,15 @@ export const UserController = {
     }
   },
 
+  async markOffline(req, res, next) {
+    try {
+      await UserService.markOffline(req.user.id);
+      res.json(success(null, 'offline'));
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getTechGod(req, res, next) {
     try {
       const techGod = await UserService.getTechGod();
