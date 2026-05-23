@@ -1413,25 +1413,24 @@ export function Admin() {
             </div>
 
             {isLoading && (
-          <div className="text-center text-black/40 dark:text-white/40 py-12">
-            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p>加载中...</p>
-          </div>
-        )}
-      </div>
+              <div className="text-center text-black/40 dark:text-white/40 py-12">
+                <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p>加载中...</p>
+              </div>
+            )}
 
-      {activeTab === 'notifications' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-black dark:text-white">系统通知管理</h2>
-            <button
-              onClick={() => { setEditingNotification(null); setNotificationForm({ title: '', content: '', type: 'info' }); setShowCreateNotification(true); }}
-              className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              <Bell size={16} />
-              发送新通知
-            </button>
-          </div>
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-black dark:text-white">系统通知管理</h2>
+                  <button
+                    onClick={() => { setEditingNotification(null); setNotificationForm({ title: '', content: '', type: 'info' }); setShowCreateNotification(true); }}
+                    className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
+                  >
+                    <Bell size={16} />
+                    发送新通知
+                  </button>
+                </div>
 
           <div className="bg-white dark:bg-[#1A1D21] rounded-2xl overflow-hidden shadow-lg">
             <div className="overflow-x-auto">
@@ -1579,9 +1578,9 @@ export function Admin() {
           </AnimatePresence>
         </div>
       )}
-        )}
+      )}
 
-        {activeTab === 'studio' && isStudioAdmin && (
+      {activeTab === 'studio' && isStudioAdmin && (
           <div className="h-full -m-6 sm:-m-6 lg:-m-6" style={{ minHeight: 'calc(100vh - 64px)' }}>
             <StudioConfigPreview
               config={studioSettings}
