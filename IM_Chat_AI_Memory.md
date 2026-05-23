@@ -996,6 +996,69 @@
   - 提交代码前必须本地 `npm run build` 验证
 - **执行结果**: ✅ 已修复
 
+### 任务37: 修复TicTacToeBoard.tsx JSX语法错误（Fragment缺失）
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - Vercel 部署构建失败：`npm run build` 退出码1
+  - 错误信息：`Expected ")" but found "className"` at line 260
+  - esbuild 解析失败，无法完成前端构建
+- **根本原因分析**:
+  - **JSX Fragment缺失**：
+    - 第253行 `{isAIThinking && (` 开始条件渲染
+    - 内部包含3个相邻的 `<motion.span>` 元素（第255-268行）
+    - React/JSX要求条件渲染返回单一根元素或Fragment
+    - 缺少 `<>...</>` (Fragment) 包裹多个元素
+  - **语法错误结构**：
+    ```jsx
+    // ❌ 错误：多个相邻JSX元素无Fragment包裹
+    {isAIThinking && (
+      <motion.span ... />  // 元素1
+      <motion.span ... />  // 元素2 ← esbuild报错位置
+      <motion.span ... />  // 元素3
+    )}
+    ```
+  - **错误影响**：
+    - esbuild 将第2个 `<motion.span>` 的 `className` 属性解析为意外的表达式
+    - 导致整个文件解析失败，构建中断
+- **修复方案**:
+  - 在第254行添加 `<>` (Fragment开始标签)
+  - 在第270行添加 `</>` (Fragment结束标签)
+  - 将3个 `<motion.span>` 包裹在Fragment内
+- **修改文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` - 添加Fragment包裹（+2行）
+- **修改前后对比**:
+  ```jsx
+  // ❌ 修改前（缺少Fragment）
+  {isAIThinking && (
+    <motion.span className="..." animate={{...}} />
+    <motion.span className="..." animate={{...}} />  // 报错行
+    <motion.span className="..." animate={{...}} />
+  )}
+
+  // ✅ 修改后（正确的Fragment包裹）
+  {isAIThinking && (
+    <>
+    <motion.span className="..." animate={{...}} />
+    <motion.span className="..." animate={{...}} />
+    <motion.span className="..." animate={{...}} />
+    </>
+  )}
+  ```
+- **验证范围**:
+  - ✅ TicTacToeBoard.tsx: 已修复Fragment问题，括号匹配正确
+  - ✅ GomokuBoard.tsx: 经检查无类似语法错误
+  - ✅ RankBadge.tsx: 结构简单无此类风险
+  - ✅ Games.tsx: 导入路径已在任务36中修复
+- **技术规范回顾**:
+  - React JSX规则：条件渲染(`&&`/三元表达式)必须返回单个节点
+  - 多个相邻元素必须用 `<React.Fragment>` 或简写 `<>...</>` 包裹
+  - Fragment不会渲染真实DOM节点，仅用于语法包裹
+- **预防措施**:
+  - 使用ESLint + react/jsx-no-comment-textnodes 规则自动检测
+  - IDE实时提示可立即发现此类错误
+  - 提交前本地 `npm run build` 验证
+- **执行结果**: ✅ 已修复
+
 ---
 
 ## 重要问题修复记录

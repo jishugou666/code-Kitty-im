@@ -251,6 +251,7 @@ export function TicTacToeBoard({
         )}>
           {statusText}
           {isAIThinking && (
+            <>
             <motion.span
               className="inline-block w-1.5 h-1.5 ml-1 bg-blue-500 rounded-full"
               animate={{ opacity: [1, 0.3, 1] }}
@@ -266,6 +267,7 @@ export function TicTacToeBoard({
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ duration: 1.2, repeat: Infinity, delay: 0.6 }}
             />
+            </>
           )}
         </span>
 
