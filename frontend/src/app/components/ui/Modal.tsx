@@ -13,6 +13,7 @@ interface ModalProps {
   closeOnOverlayClick?: boolean;
   showCloseButton?: boolean;
   className?: string;
+  fullscreen?: boolean;
 }
 
 const sizes: Record<string, string> = {
@@ -32,7 +33,8 @@ export const Modal = ({
   size = 'md',
   closeOnOverlayClick = true,
   showCloseButton = true,
-  className
+  className,
+  fullscreen = false
 }: ModalProps) => {
   useEffect(() => {
     if (isOpen) {
@@ -70,7 +72,7 @@ export const Modal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className={fullscreen ? "fixed inset-0 bg-black/50 backdrop-blur-sm z-50" : "absolute inset-0 bg-black/50 backdrop-blur-sm z-50"}
             onClick={handleOverlayClick}
           />
           <motion.div
@@ -79,7 +81,7 @@ export const Modal = ({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className={clsx(
-              'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
+              fullscreen ? 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50' : 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50',
               'bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden',
               sizes[size],
               'max-h-[90vh] flex flex-col',

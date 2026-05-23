@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
+import { gameApi } from '../../api/game';
 
 interface GomokuBoardProps {
   matchId?: number;
@@ -72,6 +73,96 @@ const DIFFICULTY_CONFIG = {
   }
 };
 
+const PATTERN_SCORES = {
+  FIVE: 10000000,
+  LIVE_FOUR: 500000,
+  RUSH_FOUR: 50000,
+  LIVE_THREE: 10000,
+  SLEEP_THREE: 1000,
+  LIVE_TWO: 500,
+  SLEEP_TWO: 50,
+  LIVE_ONE: 10,
+} as const;
+
+const COMBO_SCORES = {
+  DOUBLE_FOUR: 500000,
+  DOUBLE_THREE: 50000,
+  FOUR_THREE: 500000,
+} as const;
+
+interface LineInfo {
+  count: number;
+  blocked: number;
+  openEnds: number;
+}
+
+function scanLine(board: Board, row: number, col: number, dx: number, dy: number, player: number): LineInfo {
+  let count = 1;
+  let blocked = 0;
+  let openEnds = 0;
+  for (let i = 1; i <= 5; i++) {
+    const nr = row + dx * i;
+    const nc = col + dy * i;
+    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { blocked++; break; }
+    if (board[nr][nc] === player) count++;
+    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
+    else { blocked++; break; }
+  }
+  for (let i = 1; i <= 5; i++) {
+    const nr = row - dx * i;
+    const nc = col - dy * i;
+    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { blocked++; break; }
+    if (board[nr][nc] === player) count++;
+    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
+    else { blocked++; break; }
+  }
+  return { count, blocked, openEnds };
+}
+
+function patternScoreFromLine(count: number, blocked: number, openEnds: number): number {
+  if (count >= 5) return PATTERN_SCORES.FIVE;
+  if (blocked >= 2) return 0;
+  if (count === 4) {
+    if (openEnds === 2) return PATTERN_SCORES.LIVE_FOUR;
+    if (openEnds === 1) return PATTERN_SCORES.RUSH_FOUR;
+    return 0;
+  }
+  if (count === 3) {
+    if (openEnds === 2) return PATTERN_SCORES.LIVE_THREE;
+    if (openEnds === 1) return PATTERN_SCORES.SLEEP_THREE;
+    return 0;
+  }
+  if (count === 2) {
+    if (openEnds === 2) return PATTERN_SCORES.LIVE_TWO;
+    if (openEnds === 1) return PATTERN_SCORES.SLEEP_TWO;
+    return 0;
+  }
+  if (count === 1 && openEnds === 2) return PATTERN_SCORES.LIVE_ONE;
+  return 0;
+}
+
+function evaluatePoint(board: Board, row: number, col: number, player: number): number {
+  let totalScore = 0;
+  for (const [dx, dy] of DIRECTIONS) {
+    const line = scanLine(board, row, col, dx, dy, player);
+    totalScore += patternScoreFromLine(line.count, line.blocked, line.openEnds);
+  }
+  return totalScore;
+}
+
+function analyzePatterns(board: Board, row: number, col: number, player: number): { liveFour: number; rushFour: number; liveThree: number; sleepThree: number } {
+  let liveFour = 0, rushFour = 0, liveThree = 0, sleepThree = 0;
+  for (const [dx, dy] of DIRECTIONS) {
+    const line = scanLine(board, row, col, dx, dy, player);
+    if (line.count >= 5) continue;
+    if (line.count === 4 && line.openEnds === 2) liveFour++;
+    else if (line.count === 4 && line.openEnds === 1) rushFour++;
+    else if (line.count === 3 && line.openEnds === 2) liveThree++;
+    else if (line.count === 3 && line.openEnds === 1) sleepThree++;
+  }
+  return { liveFour, rushFour, liveThree, sleepThree };
+}
+
 function createEmptyBoard(): Board {
   return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
 }
@@ -98,42 +189,15 @@ function checkFive(row: number, col: number, player: number, board: Board): Posi
   return [];
 }
 
-function countLine(board: Board, row: number, col: number, dx: number, dy: number, player: number): { count: number; openEnds: number } {
-  let count = 1;
-  let openEnds = 0;
-  for (let i = 1; i < 5; i++) {
-    const nr = row + dx * i;
-    const nc = col + dy * i;
-    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
-    if (board[nr][nc] === player) count++;
-    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
-    else break;
-  }
-  for (let i = 1; i < 5; i++) {
-    const nr = row - dx * i;
-    const nc = col - dy * i;
-    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
-    if (board[nr][nc] === player) count++;
-    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
-    else break;
-  }
-  return { count, openEnds };
-}
-
-function scorePosition(board: Board, row: number, col: number, player: number): number {
-  let totalScore = 0;
-  for (const [dx, dy] of DIRECTIONS) {
-    const { count, openEnds } = countLine(board, row, col, dx, dy, player);
-    if (count >= 5) totalScore += 100000;
-    else if (count === 4 && openEnds === 2) totalScore += 15000;
-    else if (count === 4 && openEnds === 1) totalScore += 5000;
-    else if (count === 3 && openEnds === 2) totalScore += 2000;
-    else if (count === 3 && openEnds === 1) totalScore += 500;
-    else if (count === 2 && openEnds === 2) totalScore += 100;
-    else if (count === 2 && openEnds === 1) totalScore += 10;
-    else if (count === 1 && openEnds === 2) totalScore += 10;
-  }
-  return totalScore;
+function hasNeighborWithinRadius(board: Board, r: number, c: number, radius: number): boolean {
+  for (let dr = -radius; dr <= radius; dr++)
+    for (let dc = -radius; dc <= radius; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] !== EMPTY)
+        return true;
+    }
+  return false;
 }
 
 function getCandidates(board: Board): Position[] {
@@ -142,86 +206,130 @@ function getCandidates(board: Board): Position[] {
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (board[r][c] !== EMPTY) continue;
-      const nearPiece = DIRECTIONS.some(([dx, dy]) => {
-        const nr = r + dx, nc = c + dy;
-        return nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] !== EMPTY;
-      });
-      if (nearPiece || !hasPiece) candidates.push([r, c]);
+      if (!hasPiece || hasNeighborWithinRadius(board, r, c, 2)) {
+        candidates.push([r, c]);
+      }
     }
   }
-  return candidates.length > 0 ? candidates : [[7, 7]];
+  if (candidates.length === 0) return [[7, 7]];
+  candidates.sort((a, b) => {
+    const scoreA = quickEval(board, a[0], a[1]);
+    const scoreB = quickEval(board, b[0], b[1]);
+    return scoreB - scoreA;
+  });
+  return candidates.slice(0, 20);
 }
 
-function evaluateBoard(board: Board): { attack: number; defense: number } {
-  let attack = 0, defense = 0;
+function quickEval(board: Board, r: number, c: number): number {
+  return Math.max(evaluatePoint(board, r, c, WHITE), evaluatePoint(board, r, c, BLACK));
+}
+
+function findWinningMove(board: Board, player: number): Position | null {
+  const candidates = getCandidates(board);
+  for (const [r, c] of candidates) {
+    if (board[r][c] !== EMPTY) continue;
+    for (const [dx, dy] of DIRECTIONS) {
+      const line = scanLine(board, r, c, dx, dy, player);
+      if (line.count >= 5) return [r, c];
+    }
+  }
+  for (const [r, c] of candidates) {
+    if (board[r][c] !== EMPTY) continue;
+    const patterns = analyzePatterns(board, r, c, player);
+    if (patterns.liveFour > 0) return [r, c];
+  }
+  return null;
+}
+
+function findCriticalDefensiveMove(board: Board, defender: number, attacker: number): Position | null {
+  const candidates = getCandidates(board);
+  let bestMove: Position | null = null;
+  let bestPriority = -1;
+  for (const [r, c] of candidates) {
+    if (board[r][c] !== EMPTY) continue;
+    const atkPatterns = analyzePatterns(board, r, c, attacker);
+    let priority = -1;
+    if (atkPatterns.liveFour > 0) priority = 50;
+    else if (atkPatterns.rushFour > 0) priority = 40;
+    else if (atkPatterns.liveThree >= 2) priority = 35;
+    else if (atkPatterns.liveThree >= 1 && atkPatterns.sleepThree >= 1) priority = 30;
+    else if (atkPatterns.liveThree >= 1) priority = 20;
+    else if (atkPatterns.sleepThree >= 2) priority = 15;
+    if (priority > bestPriority) {
+      bestPriority = priority;
+      bestMove = [r, c];
+    }
+  }
+  return bestMove;
+}
+
+function searchVCF(board: Board, depth: number, aiPlayer: number, humanPlayer: number): Position | null {
+  if (depth <= 0) return null;
+  const candidates = getCandidates(board).slice(0, 10);
+  const vcfMoves: Position[] = [];
+  for (const [r, c] of candidates) {
+    if (board[r][c] !== EMPTY) continue;
+    const patterns = analyzePatterns(board, r, c, aiPlayer);
+    if (patterns.rushFour > 0 || patterns.liveFour > 0) {
+      vcfMoves.push([r, c]);
+    }
+  }
+  for (const move of vcfMoves) {
+    const [mr, mc] = move;
+    board[mr][mc] = aiPlayer;
+    if (checkFive(mr, mc, aiPlayer, board).length > 0) {
+      board[mr][mc] = EMPTY;
+      return move;
+    }
+    const blockMove = findWinningMove(board, humanPlayer);
+    if (blockMove) {
+      const [br, bc] = blockMove;
+      board[br][bc] = humanPlayer;
+      const result = searchVCF(board, depth - 1, aiPlayer, humanPlayer);
+      board[br][bc] = EMPTY;
+      board[mr][mc] = EMPTY;
+      if (result) return move;
+    } else {
+      board[mr][mc] = EMPTY;
+    }
+  }
+  return null;
+}
+
+function evaluateBoardForAI(board: Board): number {
+  let score = 0;
   for (let r = 0; r < BOARD_SIZE; r++)
     for (let c = 0; c < BOARD_SIZE; c++) {
-      if (board[r][c] === WHITE) attack += scorePosition(board, r, c, WHITE);
-      else if (board[r][c] === BLACK) defense += scorePosition(board, r, c, BLACK);
-    }
-  return { attack, defense };
-}
-
-function aiEasy(board: Board): Position {
-  const candidates = getCandidates(board);
-  if (Math.random() < 0.5) return candidates[Math.floor(Math.random() * candidates.length)];
-  let bestScore = -Infinity;
-  let bestMove = candidates[0];
-  for (const [r, c] of candidates) {
-    let maxThreat = 0;
-    for (const [dx, dy] of DIRECTIONS) {
-      const bLine = countLine(board, r, c, dx, dy, BLACK);
-      if (bLine.count >= 4) maxThreat = Math.max(maxThreat, 100000);
-      else if (bLine.count === 3 && bLine.openEnds >= 1) maxThreat = Math.max(maxThreat, 5000);
-    }
-    const wLine = scorePosition(board, r, c, WHITE);
-    const combined = Math.max(wLine, maxThreat * 0.9);
-    if (combined > bestScore) { bestScore = combined; bestMove = [r, c]; }
-  }
-  return bestMove;
-}
-
-function aiMedium(board: Board): Position {
-  const candidates = getCandidates(board);
-  let bestScore = -Infinity;
-  let bestMove = candidates[0];
-  for (const [r, c] of candidates) {
-    let score = scorePosition(board, r, c, WHITE) - scorePosition(board, r, c, BLACK) * 1.1;
-    board[r][c] = WHITE;
-    let minDefense = Infinity;
-    const oppCandidates = getCandidates(board).slice(0, 15);
-    for (const [or, oc] of oppCandidates) {
-      const defScore = scorePosition(board, or, oc, BLACK) - scorePosition(board, or, oc, WHITE) * 1.1;
-      minDefense = Math.min(minDefense, defScore);
-    }
-    board[r][c] = EMPTY;
-    score -= minDefense * 0.5;
-    if (score > bestScore) { bestScore = score; bestMove = [r, c]; }
-  }
-  return bestMove;
-}
-
-function alphaBeta(board: Board, depth: number, alpha: number, beta: number, isMaximizing: boolean, moveCount: number): number {
-  if (depth <= 0 || moveCount > 200) {
-    let score = 0;
-    for (let r = 0; r < BOARD_SIZE; r++)
-      for (let c = 0; c < BOARD_SIZE; c++) {
-        if (board[r][c] === WHITE) score += scorePosition(board, r, c, WHITE) * 1.05;
-        else if (board[r][c] === BLACK) score -= scorePosition(board, r, c, BLACK) * 1.1;
+      if (board[r][c] === WHITE) {
+        const ep = evaluatePoint(board, r, c, WHITE);
+        score += ep * 1.05;
+        const centerBonus = (6 - Math.abs(r - 7)) + (6 - Math.abs(c - 7));
+        score += centerBonus * 8;
+      } else if (board[r][c] === BLACK) {
+        score -= evaluatePoint(board, r, c, BLACK) * 1.1;
       }
-    return score;
-  }
-  const candidates = getCandidates(board).slice(0, 12);
-  const scored = candidates.map(([r, c]) => ({
-    pos: [r, c] as Position,
-    s: scorePosition(board, r, c, isMaximizing ? WHITE : BLACK) + scorePosition(board, r, c, isMaximizing ? BLACK : WHITE)
-  })).sort((a, b) => b.s - a.s).slice(0, 8);
+    }
+  return score;
+}
 
+function minimaxAB(board: Board, depth: number, alpha: number, beta: number, isMaximizing: boolean): number {
+  if (depth <= 0) return evaluateBoardForAI(board);
+  const candidates = getCandidates(board).slice(0, 15);
+  const scored = candidates
+    .map(([r, c]) => ({
+      pos: [r, c] as Position,
+      s: evaluatePoint(board, r, c, isMaximizing ? WHITE : BLACK) +
+         evaluatePoint(board, r, c, isMaximizing ? BLACK : WHITE) * 0.9
+    }))
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 10);
   if (isMaximizing) {
     let maxEval = -Infinity;
     for (const { pos: [r, c] } of scored) {
       board[r][c] = WHITE;
-      const eval_ = alphaBeta(board, depth - 1, alpha, beta, false, moveCount + 1);
+      const winCheck = checkFive(r, c, WHITE, board);
+      if (winCheck.length > 0) { board[r][c] = EMPTY; return PATTERN_SCORES.FIVE; }
+      const eval_ = minimaxAB(board, depth - 1, alpha, beta, false);
       board[r][c] = EMPTY;
       maxEval = Math.max(maxEval, eval_);
       alpha = Math.max(alpha, eval_);
@@ -232,7 +340,9 @@ function alphaBeta(board: Board, depth: number, alpha: number, beta: number, isM
     let minEval = Infinity;
     for (const { pos: [r, c] } of scored) {
       board[r][c] = BLACK;
-      const eval_ = alphaBeta(board, depth - 1, alpha, beta, true, moveCount + 1);
+      const winCheck = checkFive(r, c, BLACK, board);
+      if (winCheck.length > 0) { board[r][c] = EMPTY; return -PATTERN_SCORES.FIVE; }
+      const eval_ = minimaxAB(board, depth - 1, alpha, beta, true);
       board[r][c] = EMPTY;
       minEval = Math.min(minEval, eval_);
       beta = Math.min(beta, eval_);
@@ -242,36 +352,77 @@ function alphaBeta(board: Board, depth: number, alpha: number, beta: number, isM
   }
 }
 
-function aiHard(board: Board, moveNum: number): Position {
-  if (moveNum === 0) return [7, 7];
+function aiEasy(board: Board): Position {
   const candidates = getCandidates(board);
-  let mustBlock: Position | null = null;
-  let mustAttack: Position | null = null;
-
-  for (const [r, c] of candidates) {
-    for (const [dx, dy] of DIRECTIONS) {
-      const wLine = countLine(board, r, c, dx, dy, WHITE);
-      if (wLine.count === 4 && wLine.openEnds >= 1) { mustAttack = [r, c]; break; }
-      const bLine = countLine(board, r, c, dx, dy, BLACK);
-      if (bLine.count === 4 && bLine.openEnds >= 1) { mustBlock = [r, c]; break; }
-    }
-    if (mustAttack) break;
+  if (candidates.length === 0) return [7, 7];
+  if (Math.random() < 0.6) {
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
-
-  if (mustAttack) return mustAttack;
-  if (mustBlock) return mustBlock;
-
   let bestScore = -Infinity;
   let bestMove = candidates[0];
+  for (const [r, c] of candidates) {
+    let maxThreat = 0;
+    const defPatterns = analyzePatterns(board, r, c, BLACK);
+    if (defPatterns.liveFour > 0) maxThreat = PATTERN_SCORES.LIVE_FOUR;
+    else if (defPatterns.rushFour > 0) maxThreat = PATTERN_SCORES.RUSH_FOUR;
+    else if (defPatterns.liveThree > 0) maxThreat = PATTERN_SCORES.LIVE_THREE;
+    const atkScore = evaluatePoint(board, r, c, WHITE);
+    const combined = Math.max(atkScore, maxThreat * 0.85);
+    if (combined > bestScore) { bestScore = combined; bestMove = [r, c]; }
+  }
+  return bestMove;
+}
 
+function aiMedium(board: Board): Position {
+  const winMove = findWinningMove(board, WHITE);
+  if (winMove) return winMove;
+  const blockMove = findWinningMove(board, BLACK);
+  if (blockMove) return blockMove;
+  const candidates = getCandidates(board).slice(0, 15);
+  let bestScore = -Infinity;
+  let bestMove = candidates[0] || [7, 7];
   const scored = candidates.map(([r, c]) => ({
     pos: [r, c] as Position,
-    s: scorePosition(board, r, c, WHITE) * 1.15 + scorePosition(board, r, c, BLACK) * 1.1
+    s: evaluatePoint(board, r, c, WHITE) + evaluatePoint(board, r, c, BLACK) * 1.0
   })).sort((a, b) => b.s - a.s).slice(0, 10);
-
   for (const { pos: [r, c] } of scored) {
     board[r][c] = WHITE;
-    const score = alphaBeta(board, 2, -Infinity, Infinity, false, moveNum);
+    const score = minimaxAB(board, 2, -Infinity, Infinity, false);
+    board[r][c] = EMPTY;
+    if (score > bestScore) { bestScore = score; bestMove = [r, c]; }
+  }
+  return bestMove;
+}
+
+function aiHard(board: Board, moveNum: number): Position {
+  if (moveNum === 0) return [7, 7];
+  if (moveNum === 1 && board[7][7] === BLACK) {
+    const offsets = [[7,8],[8,8],[8,7],[7,6],[6,6],[6,7],[6,8],[8,6]];
+    for (const [r, c] of offsets) if (board[r][c] === EMPTY) return [r, c];
+  }
+  const aiWin = findWinningMove(board, WHITE);
+  if (aiWin) return aiWin;
+  const humanWin = findWinningMove(board, BLACK);
+  if (humanWin) return humanWin;
+  const criticalBlock = findCriticalDefensiveMove(board, WHITE, BLACK);
+  if (criticalBlock) {
+    const blockPatterns = analyzePatterns(board, criticalBlock[0], criticalBlock[1], BLACK);
+    if (blockPatterns.liveFour > 0 || blockPatterns.rushFour > 0 ||
+        blockPatterns.liveThree >= 2 || (blockPatterns.liveThree >= 1 && blockPatterns.sleepThree >= 1))
+      return criticalBlock;
+  }
+  const vcfResult = searchVCF(board, 8, WHITE, BLACK);
+  if (vcfResult) return vcfResult;
+  const candidates = getCandidates(board);
+  let bestScore = -Infinity;
+  let bestMove = candidates[0] || [7, 7];
+  const scored = candidates.map(([r, c]) => ({
+    pos: [r, c] as Position,
+    s: evaluatePoint(board, r, c, WHITE) * 1.15 + evaluatePoint(board, r, c, BLACK) * 1.1
+  })).sort((a, b) => b.s - a.s).slice(0, 10);
+  for (const { pos: [r, c] } of scored) {
+    board[r][c] = WHITE;
+    const score = minimaxAB(board, 4, -Infinity, Infinity, false);
     board[r][c] = EMPTY;
     const centerBonus = (6 - Math.abs(r - 7)) + (6 - Math.abs(c - 7));
     const finalScore = score + centerBonus * 30;
@@ -287,6 +438,16 @@ function getAIPosition(board: Board, difficulty: string, moveNum: number): Posit
     case 'hard': return aiHard(board, moveNum);
     default: return aiMedium(board);
   }
+}
+
+function evaluateBoard(board: Board): { attack: number; defense: number } {
+  let attack = 0, defense = 0;
+  for (let r = 0; r < BOARD_SIZE; r++)
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] === WHITE) attack += evaluatePoint(board, r, c, WHITE);
+      else if (board[r][c] === BLACK) defense += evaluatePoint(board, r, c, BLACK);
+    }
+  return { attack, defense };
 }
 
 function formatTime(seconds: number): string {
@@ -355,8 +516,27 @@ export function GomokuBoard({
   const [previewBoard, setPreviewBoard] = useState<Board | null>(null);
   const [aiThinkProgress, setAiThinkProgress] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [matchId, setMatchId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const config = DIFFICULTY_CONFIG[aiDifficulty as keyof typeof DIFFICULTY_CONFIG] || DIFFICULTY_CONFIG.medium;
+
+  useEffect(() => {
+    const initMatch = async () => {
+      try {
+        const res = await gameApi.createMatch({
+          game_type: 'gomoku',
+          mode: 'ai',
+          ai_difficulty: aiDifficulty
+        });
+        if (res.code === 200 && res.data) {
+          setMatchId(res.data.id);
+        }
+      } catch (e) {
+        console.log('[Gomoku] 创建对局失败，离线模式');
+      }
+    };
+    initMatch();
+  }, []);
 
   useEffect(() => {
     if (gameStatus === 'playing' && !isAIThinking) {
@@ -389,6 +569,9 @@ export function GomokuBoard({
       setHistory(h => [...h, { row: aiRow, col: aiCol, player: WHITE, timestamp: Date.now() }]);
       setIsAIThinking(false);
       setAiThinkProgress(0);
+      if (matchId) {
+        gameApi.move(matchId, { position: [aiRow, aiCol], symbol: 'W' }).catch(() => {});
+      }
       const winCells = checkFive(aiRow, aiCol, WHITE, newBoard);
       if (winCells.length > 0) {
         setWinningCells(winCells);
@@ -404,7 +587,7 @@ export function GomokuBoard({
       }
     }, config.thinkTime);
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); };
-  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver, config.thinkTime, history]);
+  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver, config.thinkTime, history, matchId]);
 
   const stats: GameStats = useMemo(() => ({
     totalMoves: history.length,
@@ -428,6 +611,9 @@ export function GomokuBoard({
     setHistory(h => [...h, { row, col, player: BLACK, timestamp: Date.now() }]);
     setPreviewStep(null);
     setPreviewBoard(null);
+    if (matchId) {
+      gameApi.move(matchId, { position: [row, col], symbol: 'B' }).catch(() => {});
+    }
     const winCells = checkFive(row, col, BLACK, newBoard);
     if (winCells.length > 0) {
       setWinningCells(winCells);
@@ -443,7 +629,7 @@ export function GomokuBoard({
       return;
     }
     setIsAIThinking(true);
-  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver]);
+  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId]);
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
@@ -487,10 +673,26 @@ export function GomokuBoard({
     setPreviewBoard(null);
     setShowAnalysis(false);
     setAiThinkProgress(0);
+    const initNewMatch = async () => {
+      try {
+        const res = await gameApi.createMatch({
+          game_type: 'gomoku',
+          mode: 'ai',
+          ai_difficulty: aiDifficulty
+        });
+        if (res.code === 200 && res.data) {
+          setMatchId(res.data.id);
+        }
+      } catch (e) {}
+    };
+    initNewMatch();
   };
 
-  const surrender = () => {
+  const surrender = async () => {
     if (gameStatus === 'playing') {
+      if (matchId) {
+        try { await gameApi.surrender(matchId); } catch (e) {}
+      }
       setGameStatus('lost');
       saveGameResult('lost');
       onGameOver?.('loss');
@@ -526,7 +728,7 @@ export function GomokuBoard({
     STAR_POINTS.some(([sr, sc]) => sr === r && sc === c);
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start">
+    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start relative overflow-hidden">
       <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
         {/* Top Info Bar */}
         <div className="w-full max-w-[560px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm border border-gray-200/60 dark:border-gray-700/50">
@@ -907,7 +1109,7 @@ export function GomokuBoard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onClick={resetBoard}
           >
             <motion.div
@@ -982,7 +1184,7 @@ export function GomokuBoard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onClick={() => setShowAnalysis(false)}
           >
             <motion.div

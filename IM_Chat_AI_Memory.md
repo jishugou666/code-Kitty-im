@@ -1301,6 +1301,141 @@
   | 功能模块 | 基础游戏 | 游戏+坐标+悔棋+历史+统计+计时+分析 |
 - **执行结果**: ✅ 完成
 
+### 任务42: TicTacToeBoard.tsx AI算法重写与段位API对接
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 重写井字棋AI算法，从基础版升级为专业级AI（完美不可战胜）
+  - 对接后端段位系统API，实现积分加减和段位变化
+  - 解决原AI太弱智、无开局库、不调用后端API等问题
+- **修改文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — AI算法重写+API对接（659行→754行，+95行）
+- **AI算法重大改进**:
+  | 难度 | 原版逻辑 | 重写后逻辑 |
+  |------|---------|-----------|
+  | Easy | 30%随机+minimax深度1 | **开局库**+30%随机+深度1+**有意犯错**(同分时40%选次优) |
+  | Medium | 完整minimax(与Hard相同) | **完整Minimax+Alpha-Beta**+**前3优解随机选择**(有差异化) |
+  | Hard | Alpha-Beta(但可战胜) | **完美Minimax+Alpha-Beta**+**专业开局库**+**中心偏向加权**(**不可战胜**) |
+- **新增常量和数据结构**:
+  - `OPENING_BOOK`: 9个位置的最优回应策略（角落→中心/边角，边缘→中心，中心→任意角落）
+  - `SYMMETRY_MAP`: 棋盘对称性映射（预留扩展）
+  - `DIFFICULTY_DESC`: 更新难度描述反映真实AI能力
+- **核心算法变更**:
+  1. **Minimax修复**: 原版角色反转（X/O评分反了），重写后正确：O(AI)最大化，X(玩家)最小化
+  2. **移除maxDepth参数**: 改为完整搜索（9层=穷举所有可能），easy模式单独限制depth=1
+  3. **开局库逻辑**: 前3步使用预定义最优走法（第1步回应玩家首手，第3步抢中心）
+  4. **Easy模式增强**: 同分解集合+40%概率选择次优解（模拟人类犯错）
+  5. **Medium模式差异化**: 收集所有走法评分→排序→取前3名→随机选1（不再总是最优）
+  6. **Hard模式完美**: 中心偏向加权（centerBias: 中心+2分，四角+1分）确保最优策略
+- **段位API对接**:
+  | API调用 | 触发时机 | 参数 | 失败处理 |
+  |---------|---------|------|---------|
+  | `gameApi.createMatch` | 游戏开始/重开 | game_type, mode, ai_difficulty | 离线模式运行 |
+  | `gameApi.move` (X) | 玩家落子后 | matchId, position[row,col], symbol='X' | 静默失败 |
+  | `gameApi.move` (O) | AI落子后 | matchId, position[row,col], symbol='O' | 静默失败 |
+  | `gameApi.surrender` | 玩家认输 | matchId | 静默失败 |
+- **新增State变量**:
+  - `matchId: number \| null` — 当前对局ID（来自createMatch响应）
+  - `scoreChange: string` — 积分变化显示（'+10'/ '-5'/ '+0'）
+  - `initializingRef: boolean` — 防止重复创建对局的锁
+- **新增函数**:
+  - `initMatch()`: 异步创建对局，带防重复锁（initializingRef），失败不影响游戏
+- **修改的函数**:
+  - `handleClick()`: 新增gameApi.move(X)调用 + setScoreChange
+  - `aiMove()`: 新增gameApi.move(O)调用 + setScoreChange
+  - `resetBoard()`: 新增setMatchId(null) + setScoreChange('')
+  - `surrender()`: 改为async，新增gameApi.surrender()调用 + setScoreChange
+- **结果显示优化**:
+  - resultConfig.score 从硬编码改为动态读取 scoreChange state
+  - 胜利: +10 / 失败: -5 / 平局: +0（与后端RankingService.SCORE_MAP一致）
+- **技术实现要点**:
+  - 所有API调用使用try-catch包裹，失败时不影响游戏进行（离线模式兼容）
+  - 使用useCallback缓存initMatch函数避免重复创建
+  - initializingRef防止useEffect多次触发导致重复创建对局
+  - position格式: [row, col] = [Math.floor(index/3), index%3]
+- **执行结果**: ✅ 完成
+
+### 任务43: GomokuBoard.tsx 专业级AI引擎重写与段位API对接
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 重写五子棋AI算法，从基础评分函数升级为专业级AI引擎（Pattern-Based Evaluation + VCF搜索 + Alpha-Beta剪枝）
+  - 对接后端段位系统API，实现积分加减和段位变化
+  - 解决原AI太弱智（hard模式可轻松击败）、评分函数过于简单（无棋型识别）、对局结果不调用后端API等问题
+- **修改文件**:
+  - `frontend/src/app/components/games/GomokuBoard.tsx` — AI引擎全面重写+API对接（1024行→1225行，+201行）
+- **AI引擎架构重大改进**:
+  | 模块 | 原版实现 | 重写后实现 |
+  |------|---------|-----------|
+  | 评分函数 | countLine+简单if-else分级(7级) | **scanLine+patternScoreFromLine** (8级精确棋型) |
+  | 棋型识别 | 无（仅count+openEnds） | **analyzePatterns**(liveFour/rushFour/liveThree/sleepThree四维分析) |
+  | 候选点生成 | 邻居1格内全部空位 | **radius=2范围 + quickEval排序 + top20截断** |
+  | Easy难度 | 50%随机+简单威胁检测 | **60%随机+只看活三以上威胁**(更友好) |
+  | Medium深度 | 简单评分搜索(depth=2,无AB) | **findWinningMove优先 + minimaxAB(depth=2)** |
+  | Hard深度 | alphaBeta(depth=2,无VCF) | **五层决策: 必胜→防守→VCF(depth=8)→minimaxAB(depth=4)** |
+  | VCT/VCF搜索 | 无 | **searchVCF递归冲四取胜序列**(连续威胁杀法) |
+  | API对接 | 无（纯localStorage） | **createMatch/move/surrender完整生命周期** |
+- **新增常量和数据结构**:
+  - `PATTERN_SCORES`: 8级棋型评分表（FIVE:10000000 → LIVE_ONE:10，跨度100万倍）
+  - `COMBO_SCORES`: 组合棋型评分（DOUBLE_FOUR/DOUBLE_THREE/FOUR_THREE必胜分）
+  - `LineInfo`接口: { count, blocked, openEnds } 三维度线信息
+- **核心AI函数清单**（共15个）:
+  1. `scanLine()`: 增强版方向扫描（含blocked计数+边界检测）
+  2. `patternScoreFromLine()`: 从线信息映射到棋型评分（8级精确分类）
+  3. `evaluatePoint()`: 四方向综合位置评分
+  4. `analyzePatterns()`: 棋型模式分析器（liveFour/rushFour/liveThree/sleep三维计数）
+  5. `hasNeighborWithinRadius()`: radius范围内邻居检测
+  6. `getCandidates()`: 候选点生成优化（radius=2 + 排序截断top20）
+  7. `quickEval()`: 快速评估（取进攻/防守最大值）
+  8. `findWinningMove()`: 必胜点检测（连五+活四）
+  9. `findCriticalDefensiveMove()`: 关键防守点检测（6级优先级：活四>冲四>双活三...）
+  10. `searchVCF()`: VCF连续冲四搜索（递归深度8层，对手被迫应答）
+  11. `evaluateBoardForAI()`: 全局局面评估（含中心加权bonus）
+  12. `minimaxAB()`: Alpha-Beta剪枝搜索（含即时胜负检测cut-off）
+  13. `aiEasy()`: 新手AI（60%随机+直接威胁检测）
+  14. `aiMedium()`: 中级AI（必胜/防守优先+depth=2搜索）
+  15. `aiHard()`: 专家AI（五层决策链+VCF+depth=4深搜+开局库）
+- **Hard模式五层决策链**:
+  ```
+  Layer 1: 开局库 → 天元(首手) / 八邻域(次手)
+  Layer 2: findWinningMove(WHITE) → AI有活四/连五？直接赢
+  Layer 3: findWinningMove(BLACK) → 玩家有活四？必须堵
+  Layer 4: findCriticalDefensiveMove → 玩家有冲四/双三等？判断是否关键需防
+  Layer 5: searchVCF(depth=8) → 连续冲四杀法搜索
+  Layer 6: minimaxAB(depth=4) → 深度优先全搜索 + 中心加权
+  ```
+- **段位API对接**:
+  | API调用 | 触发时机 | 参数 | 失败处理 |
+  |---------|---------|------|---------|
+  | `gameApi.createMatch` | 组件挂载时(gameState初始化) | game_type='gomoku', mode='ai', ai_difficulty | 离线模式运行 |
+  | `gameApi.move` (B) | 玩家落子后(handleClick) | matchId, position[row,col], symbol='B' | 静默失败(.catch) |
+  | `gameApi.move` (W) | AI落子后(AI思考useEffect) | matchId, position[row,col], symbol='W' | 静默失败(.catch) |
+  | `gameApi.surrender` | 玩家认输(surrender async) | matchId | try-catch静默 |
+  | `gameApi.createMatch` | 重开一局(resetBoard) | 同上 | 静默失败 |
+- **新增State变量**:
+  - `matchId: number \| null` — 当前对局ID（来自createMatch响应，用于后续move/surrender调用）
+- **修改的函数**:
+  - `handleClick()`: 新增gameApi.move(matchId, {position:[row,col], symbol:'B'})
+  - AI思考useEffect: 新增gameApi.move(matchId, {position:[aiRow,aiCol], symbol:'W'})
+  - `surrender()`: 改为async，新增await gameApi.surrender(matchId)
+  - `resetBoard()`: 新增initNewMatch异步重新创建对局
+  - 组件mount: 新增useEffect调用initMatch创建初始对局
+- **技术实现要点**:
+  - 所有API调用使用try-catch/.catch包裹，失败时不影响游戏进行（离线完全兼容）
+  - matchId存入state后，所有后续API调用通过闭包捕获最新值
+  - VCF搜索使用board直接修改+恢复（makeMove/unMove模式），避免内存开销
+  - minimaxAB在每层搜索前先checkFive做即时cut-off，大幅减少无效搜索
+  - getCandidates的top20截断确保搜索空间可控（20^4=160K vs 225^4~256亿）
+- **三种难度真正差异化对比**:
+  | 能力 | Easy | Medium | Hard |
+  |------|------|--------|------|
+  | 随机性 | 60%随机落子 | 0% | 0% |
+  | 威胁检测 | 仅活三以上 | 五连+活四 | 全棋型分析 |
+  | 搜索深度 | 无(depth=1等效) | depth=2 | depth=4 |
+  | VCF搜索 | 无 | 无 | depth=8递归 |
+  | 必胜检测 | 无 | 有(findWinningMove) | 五层完整决策链 |
+  | 开局策略 | 无 | 无 | 天元定式+八邻域回应 |
+  | 目标用户 | 完全新手 | 有一定基础 | 接近职业水平 |
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

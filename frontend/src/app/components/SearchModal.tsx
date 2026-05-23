@@ -12,9 +12,10 @@ interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddSuccess?: () => void;
+  fullscreen?: boolean;
 }
 
-export function SearchModal({ isOpen, onClose, onAddSuccess }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, onAddSuccess, fullscreen = false }: SearchModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -76,13 +77,13 @@ export function SearchModal({ isOpen, onClose, onAddSuccess }: SearchModalProps)
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            className={fullscreen ? "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" : "absolute inset-0 z-50 bg-black/40 backdrop-blur-sm"}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-x-4 top-[10%] z-50 mx-auto max-w-lg bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden"
+            className={fullscreen ? "fixed inset-x-4 top-[10%] z-50 mx-auto max-w-lg bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden" : "absolute inset-x-4 top-[10%] z-50 mx-auto max-w-lg bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden"}
           >
             <div className="flex items-center gap-3 p-4 border-b border-black/5 dark:border-white/5">
               <div className="flex-1 relative">

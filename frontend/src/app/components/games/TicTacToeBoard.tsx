@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft } from 'lucide-react';
+import { gameApi } from '../../api/game';
 
 interface TicTacToeBoardProps {
   matchId?: number;
@@ -28,9 +29,25 @@ const AI_THINKING_TEXT: Record<string, string> = {
   hard: 'AI正在深度计算...'
 };
 const DIFFICULTY_DESC: Record<string, string> = {
-  easy: '简单模式：AI有30%概率随机落子，搜索深度为1，适合新手练习',
-  medium: '中等模式：AI使用完整Minimax算法，适合有一定基础的玩家',
-  hard: '困难模式：AI使用Alpha-Beta剪枝优化，几乎不可战胜'
+  easy: '简单模式：AI使用开局库+30%随机落子，搜索深度1，有意犯错，适合新手',
+  medium: '中等模式：AI使用完整Minimax+Alpha-Beta剪枝，前3优解随机选择，适合进阶玩家',
+  hard: '困难模式：AI使用完美Minimax+Alpha-Beta剪枝+专业开局库，不可战胜，最多平局'
+};
+
+const OPENING_BOOK: Record<number, number[]> = {
+  0: [4, 2, 6, 8],
+  2: [4, 0, 6, 8],
+  6: [4, 0, 2, 8],
+  8: [4, 0, 2, 6],
+  1: [4, 0, 2, 6],
+  3: [4, 0, 2, 8],
+  5: [4, 0, 2, 6],
+  7: [4, 0, 2, 8],
+  4: [0, 2, 6, 8]
+};
+
+const SYMMETRY_MAP: Record<number, number> = {
+  0: 0, 1: 2, 2: 8, 3: 6, 4: 4, 5: 8, 6: 2, 7: 0, 8: 6
 };
 
 function checkWinner(board: Board): { winner: 'X' | 'O' | null; line: number[] | null } {
@@ -55,13 +72,11 @@ function minimax(
   depth: number,
   isMaximizing: boolean,
   alpha: number,
-  beta: number,
-  maxDepth: number = 9
+  beta: number
 ): number {
   const result = checkWinner(board);
-  if (result.winner === 'X') return 10 - depth;
-  if (result.winner === 'O') return depth - 10;
-  if (depth >= maxDepth) return 0;
+  if (result.winner === 'X') return depth - 10;
+  if (result.winner === 'O') return 10 - depth;
 
   const empty = getEmptyIndices(board);
   if (empty.length === 0) return 0;
@@ -69,8 +84,8 @@ function minimax(
   if (isMaximizing) {
     let maxEval = -Infinity;
     for (const idx of empty) {
-      board[idx] = 'X';
-      const eval_ = minimax(board, depth + 1, false, alpha, beta, maxDepth);
+      board[idx] = 'O';
+      const eval_ = minimax(board, depth + 1, false, alpha, beta);
       board[idx] = null;
       maxEval = Math.max(maxEval, eval_);
       alpha = Math.max(alpha, eval_);
@@ -80,8 +95,8 @@ function minimax(
   } else {
     let minEval = Infinity;
     for (const idx of empty) {
-      board[idx] = 'O';
-      const eval_ = minimax(board, depth + 1, true, alpha, beta, maxDepth);
+      board[idx] = 'X';
+      const eval_ = minimax(board, depth + 1, true, alpha, beta);
       board[idx] = null;
       minEval = Math.min(minEval, eval_);
       beta = Math.min(beta, eval_);
@@ -96,30 +111,65 @@ function getAIMove(
   difficulty: 'easy' | 'medium' | 'hard'
 ): number {
   const empty = getEmptyIndices(board);
+  const moveCount = 9 - empty.length;
+
+  const openingResponse = () => {
+    if (moveCount === 1) {
+      const firstMove = board.findIndex(c => c === 'X');
+      if (firstMove !== -1 && OPENING_BOOK[firstMove]) {
+        const candidates = OPENING_BOOK[firstMove].filter(c => board[c] === null);
+        if (candidates.length > 0) return candidates[0];
+      }
+    }
+    if (moveCount === 3 && board[4] === null) return 4;
+    return null;
+  };
+
+  const openMove = openingResponse();
+  if (openMove !== null) return openMove;
 
   if (difficulty === 'easy') {
     if (Math.random() < 0.3) {
       return empty[Math.floor(Math.random() * empty.length)];
     }
     let bestScore = -Infinity;
-    let bestMove = empty[0];
+    let bestMoves: number[] = [];
     for (const idx of empty) {
       board[idx] = 'O';
-      const score = minimax(board, 0, false, -Infinity, Infinity, 1);
+      const score = minimax(board, 1, false, -Infinity, Infinity);
       board[idx] = null;
       if (score > bestScore) {
         bestScore = score;
-        bestMove = idx;
+        bestMoves = [idx];
+      } else if (score === bestScore) {
+        bestMoves.push(idx);
       }
     }
-    return bestMove;
+    if (bestMoves.length > 1 && Math.random() < 0.4) {
+      return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+    return bestMoves[0];
+  }
+
+  if (difficulty === 'medium') {
+    const scoredMoves: { move: number; score: number }[] = [];
+    for (const idx of empty) {
+      board[idx] = 'O';
+      const score = minimax(board, 0, false, -Infinity, Infinity);
+      board[idx] = null;
+      scoredMoves.push({ move: idx, score });
+    }
+    scoredMoves.sort((a, b) => b.score - a.score);
+    const topN = scoredMoves.slice(0, Math.min(3, scoredMoves.length));
+    return topN[Math.floor(Math.random() * topN.length)].move;
   }
 
   let bestScore = -Infinity;
   let bestMove = empty[0];
+  const centerBias: Record<number, number> = { 4: 2, 0: 1, 2: 1, 6: 1, 8: 1 };
   for (const idx of empty) {
     board[idx] = 'O';
-    const score = minimax(board, 0, false, -Infinity, Infinity);
+    const score = minimax(board, 0, false, -Infinity, Infinity) + (centerBias[idx] || 0);
     board[idx] = null;
     if (score > bestScore) {
       bestScore = score;
@@ -170,8 +220,11 @@ export function TicTacToeBoard({
   const [boardShake, setBoardShake] = useState(false);
   const [boardGlow, setBoardGlow] = useState(false);
   const [stats, setStats] = useState(() => getStatsFromStorage());
+  const [matchId, setMatchId] = useState<number | null>(null);
+  const [scoreChange, setScoreChange] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const initializingRef = useRef(false);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -179,6 +232,31 @@ export function TicTacToeBoard({
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [gameStatus]);
+
+  const initMatch = useCallback(async () => {
+    if (initializingRef.current) return;
+    initializingRef.current = true;
+    try {
+      const res = await gameApi.createMatch({
+        game_type: 'tictactoe',
+        mode: 'ai',
+        ai_difficulty: aiDifficulty
+      });
+      if (res.code === 200 && res.data?.id) {
+        setMatchId(res.data.id);
+      }
+    } catch {
+      console.log('创建对局失败，离线模式运行');
+    } finally {
+      initializingRef.current = false;
+    }
+  }, [aiDifficulty]);
+
+  useEffect(() => {
+    if (gameStatus === 'playing' && !matchId && !isAIThinking) {
+      initMatch();
+    }
+  }, [gameStatus, matchId, isAIThinking, initMatch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -217,6 +295,10 @@ export function TicTacToeBoard({
     setFlashCell(index);
     setTimeout(() => setFlashCell(null), 300);
 
+    if (matchId) {
+      gameApi.move(matchId, { position: [Math.floor(index / 3), index % 3], symbol: 'X' }).catch(() => {});
+    }
+
     const result = checkWinner(newBoard);
     if (result.winner === 'X') {
       setWinningLine(result.line);
@@ -226,6 +308,7 @@ export function TicTacToeBoard({
       const newStats = { ...stats, wins: stats.wins + 1 };
       setStats(newStats);
       saveStatsToStorage(newStats);
+      setScoreChange('+10');
       onGameOver?.('win');
       return;
     }
@@ -235,12 +318,13 @@ export function TicTacToeBoard({
       const newStats = { ...stats, draws: stats.draws + 1 };
       setStats(newStats);
       saveStatsToStorage(newStats);
+      setScoreChange('+0');
       onGameOver?.('draw');
       return;
     }
 
     setIsAIThinking(true);
-  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver]);
+  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId]);
 
   const aiMove = useCallback(() => {
     setTimeout(() => {
@@ -259,6 +343,10 @@ export function TicTacToeBoard({
       setTimeout(() => setFlashCell(null), 300);
       setIsAIThinking(false);
 
+      if (matchId) {
+        gameApi.move(matchId, { position: [Math.floor(aiIdx / 3), aiIdx % 3], symbol: 'O' }).catch(() => {});
+      }
+
       const result = checkWinner(newBoard);
       if (result.winner === 'O') {
         setWinningLine(result.line);
@@ -268,6 +356,7 @@ export function TicTacToeBoard({
         const newStats = { ...stats, losses: stats.losses + 1 };
         setStats(newStats);
         saveStatsToStorage(newStats);
+        setScoreChange('-5');
         onGameOver?.('loss');
         return;
       }
@@ -277,10 +366,11 @@ export function TicTacToeBoard({
         const newStats = { ...stats, draws: stats.draws + 1 };
         setStats(newStats);
         saveStatsToStorage(newStats);
+        setScoreChange('+0');
         onGameOver?.('draw');
       }
     }, THINKING_TIME[aiDifficulty]);
-  }, [board, aiDifficulty, lastMoveIndex, stats, onGameOver]);
+  }, [board, aiDifficulty, lastMoveIndex, stats, onGameOver, matchId]);
 
   useEffect(() => {
     if (isAIThinking && gameStatus === 'playing') aiMove();
@@ -310,17 +400,23 @@ export function TicTacToeBoard({
     setFlashCell(null);
     setBoardShake(false);
     setBoardGlow(false);
+    setMatchId(null);
+    setScoreChange('');
   };
 
-  const surrender = () => {
+  const surrender = async () => {
     if (gameStatus !== 'playing') return;
     if (!window.confirm('确定要认输吗？这将判为失败。')) return;
+    if (matchId) {
+      try { await gameApi.surrender(matchId); } catch {}
+    }
     setGameStatus('lost');
     setBoardShake(true);
     setTimeout(() => setBoardShake(false), 500);
     const newStats = { ...stats, losses: stats.losses + 1 };
     setStats(newStats);
     saveStatsToStorage(newStats);
+    setScoreChange('-5');
     onGameOver?.('loss');
   };
 
@@ -349,9 +445,9 @@ export function TicTacToeBoard({
     : '你的回合';
 
   const resultConfig = {
-    won: { emoji: '🎉', text: '胜利!', score: '+10', color: 'text-green-500' },
-    lost: { emoji: '😔', text: '失败', score: '-5', color: 'text-red-500' },
-    draw: { emoji: '🤝', text: '平局', score: '+3', color: 'text-yellow-500' }
+    won: { emoji: '🎉', text: '胜利!', score: scoreChange || '+10', color: 'text-green-500' },
+    lost: { emoji: '😔', text: '失败', score: scoreChange || '-5', color: 'text-red-500' },
+    draw: { emoji: '🤝', text: '平局', score: scoreChange || '+0', color: 'text-yellow-500' }
   };
   const rc = resultConfig[gameStatus];
 
@@ -359,7 +455,7 @@ export function TicTacToeBoard({
   const winRate = totalGames > 0 ? ((stats.wins / totalGames) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4">
+    <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4 relative overflow-hidden">
       <div className="w-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl p-[1px] shadow-lg">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-5 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
@@ -547,7 +643,7 @@ export function TicTacToeBoard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
             onClick={(e) => { if (e.target === e.currentTarget) resetBoard(); }}
           >
             <motion.div

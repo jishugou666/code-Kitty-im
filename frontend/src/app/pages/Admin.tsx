@@ -583,7 +583,7 @@ export function Admin() {
   }
 
   return (
-    <div className={isMobile ? "h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] pb-20" : "h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A]"}>
+    <div className={isMobile ? "h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] pb-20 relative overflow-hidden" : "h-full flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#0A0C10] dark:to-[#13161A] relative overflow-hidden"}>
       {isMobile && (
         <div className="flex items-center justify-between px-4 py-3 bg-white/50 dark:bg-[#13161A]/50 backdrop-blur-xl border-b border-black/10 dark:border-white/10">
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors">
@@ -1512,7 +1512,7 @@ export function Admin() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
                 onClick={() => { setShowCreateNotification(false); setEditingNotification(null); }}
               >
                 <motion.div
@@ -1689,7 +1689,7 @@ export function Admin() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setBanModal(null)}
           >
             <motion.div
@@ -1757,7 +1757,7 @@ export function Admin() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setFeedbackDetailModal(false)}
           >
             <motion.div
@@ -1881,7 +1881,7 @@ export function Admin() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setHandleModal(null)}
           >
             <motion.div

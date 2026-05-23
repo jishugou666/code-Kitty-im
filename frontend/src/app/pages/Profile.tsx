@@ -161,7 +161,7 @@ export function Profile() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#FAFAFC] dark:bg-[#0A0C10] relative overflow-y-auto scrollbar-hide">
+    <div className="flex flex-col h-full bg-[#FAFAFC] dark:bg-[#0A0C10] relative overflow-hidden overflow-y-auto scrollbar-hide">
       <div className="absolute top-0 left-0 right-0 h-[400px] bg-gradient-to-b from-blue-100/30 via-[#FAFAFC] to-[#FAFAFC] dark:from-blue-900/10 dark:via-[#0A0C10] dark:to-[#0A0C10] z-0" />
 
       <div className={isMobile ? "relative z-10 w-full pt-12 pb-24 px-4 flex flex-col items-center" : "relative z-10 max-w-3xl mx-auto w-full pt-16 pb-28 px-8 flex flex-col items-center"}>
@@ -361,7 +361,7 @@ export function Profile() {
       <ConfirmDialogComponent />
 
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#1A1D21] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-lg font-semibold text-black dark:text-white mb-4">{t('settings.changePassword')}</h3>
             <div className="space-y-4">
