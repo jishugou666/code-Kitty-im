@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Circle, CircleDotBig, Crown, Clock, Trophy, TrendingUp, Gamepad2, Lock } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
-import { RankBadge } from '../games/RankBadge';
-import { TicTacToeBoard } from '../games/TicTacToeBoard';
-import { GomokuBoard } from '../games/GomokuBoard';
+import { RankBadge } from '../components/games/RankBadge';
+import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
+import { GomokuBoard } from '../components/games/GomokuBoard';
 
 type ActiveGame = null | 'tictactoe' | 'gomoku';
 type TabType = 'leaderboard' | 'history';

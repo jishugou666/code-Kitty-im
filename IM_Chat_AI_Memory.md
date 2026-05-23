@@ -947,6 +947,55 @@
   - 每个迁移块独立try-catch，避免单个表创建失败导致整个应用崩溃
 - **执行结果**: ✅ 已修复
 
+### 任务36: 修复前端部署构建失败（Games.tsx导入路径错误）
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - Vercel 部署失败：`npm run build` 退出码1
+  - 错误信息：`Could not resolve "../games/RankBadge" from "src/app/pages/Games.tsx"`
+  - Rollup 无法解析模块路径，导致整个构建失败
+- **根本原因分析**:
+  - **导入路径计算错误**：
+    - Games.tsx 文件位置：`src/app/pages/Games.tsx`
+    - 原始导入路径：`import { RankBadge } from '../games/RankBadge'`
+    - 实际解析位置：`src/app/games/RankBadge`（❌ 不存在）
+    - 正确文件位置：`src/app/components/games/RankBadge.tsx`（✅ 存在）
+  - **相对路径层级错误**：
+    - 从 `pages/` 目录需要先 `../` 回到 `app/`
+    - 再 `components/games/` 进入组件目录
+    - 正确路径应该是：`../components/games/RankBadge`
+- **错误影响范围**:
+  - 3个游戏组件全部无法解析：
+    - ❌ `../games/RankBadge` → 应为 `../components/games/RankBadge`
+    - ❌ `../games/TicTacToeBoard` → 应为 `../components/games/TicTacToeBoard`
+    - ❌ `../games/GomokuBoard` → 应为 `../components/games/GomokuBoard`
+  - 导致 Vercel 构建完全失败，前端无法部署
+- **修复方案**:
+  - 修改 [Games.tsx](frontend/src/app/pages/Games.tsx) 第6-8行的3个导入语句
+  - 将所有 `../games/` 路径改为 `../components/games/`
+- **修改文件**:
+  - `frontend/src/app/pages/Games.tsx` - 修正3行导入路径（第6、7、8行）
+- **修改前后对比**:
+  ```typescript
+  // ❌ 修改前（错误路径）
+  import { RankBadge } from '../games/RankBadge';
+  import { TicTacToeBoard } from '../games/TicTacToeBoard';
+  import { GomokuBoard } from '../games/GomokuBoard';
+
+  // ✅ 修改后（正确路径）
+  import { RankBadge } from '../components/games/RankBadge';
+  import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
+  import { GomokuBoard } from '../components/games/GomokuBoard';
+  ```
+- **验证方法**:
+  1. 本地执行 `npm run build` 应该成功（0退出码）
+  2. Vercel 自动重新部署应该通过
+  3. 访问 `/games` 页面应正常渲染游戏大厅
+- **预防措施**:
+  - 使用绝对路径别名（如 `@/components/games/`）可避免此类问题
+  - IDE 路径自动补全可实时检测导入错误
+  - 提交代码前必须本地 `npm run build` 验证
+- **执行结果**: ✅ 已修复
+
 ---
 
 ## 重要问题修复记录
