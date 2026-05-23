@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft } from 'lucide-react';
-import { gameApi } from '../../api/game';
+import { gameApi } from '../../../api/game';
 
 interface TicTacToeBoardProps {
   matchId?: number;

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { gameApi } from '../../api/game';
+import { gameApi } from '../../../api/game';
 
 interface GomokuBoardProps {
   matchId?: number;
