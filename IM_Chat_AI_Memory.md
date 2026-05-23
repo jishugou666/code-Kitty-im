@@ -621,6 +621,44 @@
   - `backend/src/app.js` — 启动迁移新增 2 个 try-catch 块（+24行）
 - **执行结果**: ✅ 完成（本地已提交 def4c01，待网络恢复后推送）
 
+### 任务29: 系统通知会话化(Notification Conversation)
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 将系统通知从独立功能提升为会话化架构（类似世界频道模式）
+  - 添加 `notification` 类型到 conversation 表 ENUM
+  - 为 system_notification 表添加 `image_url` 字段支持图片通知
+  - 创建通知会话服务，自动将用户添加为通知会话成员
+  - 提供统一的 API 接口获取通知会话数据
+- **新增文件**:
+  - `backend/src/services/NotificationConversationService.js` - 通知会话服务
+    - `getOrCreateNotificationConversation()` - 查找或创建通知会话
+    - `getNotifications()` - 获取所有启用的通知列表
+    - `getFullNotificationConversation(userId)` - 获取完整通知会话数据（含成员自动加入）
+- **修改文件**:
+  - `backend/src/app.js` - 启动迁移新增 3 个逻辑块：
+    - `ALTER TABLE conversation MODIFY COLUMN type ENUM(..., 'notification')` - 扩展ENUM
+    - `ALTER TABLE system_notification ADD COLUMN image_url VARCHAR(500)` - 添加图片字段
+    - 自动创建 type='notification' 的 conversation 记录
+  - `backend/src/controllers/SystemNotificationController.js` - 全面支持 image_url：
+    - `getAllNotifications()` SELECT 添加 image_url 字段
+    - `getAllAdminNotifications()` SELECT 添加 image_url 字段
+    - `createNotification()` 从 req.body 解构 image_url 并写入数据库
+    - `updateNotification()` 支持 image_url 字段更新
+  - `backend/src/routes/conversation.js` - 添加 `GET /api/conversation/notification` 路由
+- **API 接口**:
+  | 方法 | 路径 | 说明 | 权限 |
+  |-----|------|------|------|
+  | GET | /api/conversation/notification | 获取通知会话信息及通知列表 | 登录用户 |
+- **核心逻辑**:
+  - 服务启动时自动检测并创建 type='notification' 的 conversation 记录
+  - 用户访问通知会话时自动加入为 conversation_member（确保能访问）
+  - 返回通知会话信息和所有启用的系统通知列表（按时间倒序）
+  - 与世界频道采用相同的 Service + Route 架构模式
+- **数据库变更**:
+  - `conversation.type` ENUM 新增 `'notification'` 值
+  - `system_notification` 表新增 `image_url VARCHAR(500) DEFAULT NULL` 字段
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

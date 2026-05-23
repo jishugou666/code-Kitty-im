@@ -71,7 +71,7 @@ export function Admin() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showCreateNotification, setShowCreateNotification] = useState(false);
   const [editingNotification, setEditingNotification] = useState<any>(null);
-  const [notificationForm, setNotificationForm] = useState({ title: '', content: '', type: 'info' as string });
+  const [notificationForm, setNotificationForm] = useState({ title: '', content: '', type: 'info' as string, image_url: '' });
 
   const isStudioAdmin = user?.email === STUDIO_ADMIN_EMAIL || user?.nickname === STUDIO_ADMIN_NICKNAME || user?.role === 'tech_god';
 
@@ -298,7 +298,7 @@ export function Admin() {
       }
       setShowCreateNotification(false);
       setEditingNotification(null);
-      setNotificationForm({ title: '', content: '', type: 'info' });
+      setNotificationForm({ title: '', content: '', type: 'info', image_url: '' });
     } catch (error) {
       toast('操作失败', 'error');
     }
@@ -319,7 +319,7 @@ export function Admin() {
 
   const openEditNotification = (notif: any) => {
     setEditingNotification(notif);
-    setNotificationForm({ title: notif.title, content: notif.content, type: notif.type });
+    setNotificationForm({ title: notif.title, content: notif.content, type: notif.type, image_url: notif.image_url || '' });
     setShowCreateNotification(true);
   };
 
@@ -1426,7 +1426,7 @@ export function Admin() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-black dark:text-white">系统通知管理</h2>
                   <button
-                    onClick={() => { setEditingNotification(null); setNotificationForm({ title: '', content: '', type: 'info' }); setShowCreateNotification(true); }}
+                    onClick={() => { setEditingNotification(null); setNotificationForm({ title: '', content: '', type: 'info', image_url: '' }); setShowCreateNotification(true); }}
                     className="px-4 py-2 bg-gradient-to-r from-[#007AFF] to-[#5856D6] text-white rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
                   >
                     <Bell size={16} />
@@ -1558,6 +1558,53 @@ export function Admin() {
                         <option value="success">成功</option>
                         <option value="announcement">公告</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black/60 dark:text-white/60 mb-2">封面图片（可选）</label>
+                      {notificationForm.image_url ? (
+                        <div className="relative inline-block">
+                          <img src={notificationForm.image_url} alt="封面预览" className="w-full max-w-[200px] h-auto rounded-xl border border-black/10 dark:border-white/10" />
+                          <button
+                            type="button"
+                            onClick={() => setNotificationForm({ ...notificationForm, image_url: '' })}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex items-center justify-center w-full h-24 border-2 border-dashed border-black/20 dark:border-white/20 rounded-xl cursor-pointer hover:border-[#007AFF] hover:bg-[#007AFF]/5 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const token = localStorage.getItem('token');
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                const uploadRes = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/upload/image`, {
+                                  method: 'POST',
+                                  headers: { Authorization: `Bearer ${token}` },
+                                  body: formData,
+                                });
+                                const uploadData = await uploadRes.json();
+                                if (uploadData.code === 200 && uploadData.data?.url) {
+                                  setNotificationForm({ ...notificationForm, image_url: uploadData.data.url });
+                                }
+                              } catch (err) {
+                                console.error('Upload failed:', err);
+                              }
+                            }}
+                          />
+                          <div className="text-center">
+                            <p className="text-sm text-black/40 dark:text-white/40">点击上传图片</p>
+                            <p className="text-xs text-black/20 dark:text-white/20 mt-1">支持 JPG、PNG、GIF</p>
+                          </div>
+                        </label>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-3 justify-end mt-6">
