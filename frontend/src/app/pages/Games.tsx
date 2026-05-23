@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Circle, CircleDotBig, Crown, Clock, Trophy, TrendingUp, Gamepad2, Lock } from 'lucide-react';
+import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, Lock } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
@@ -166,7 +166,7 @@ export function Games() {
 
             <div className="relative z-10 space-y-4">
               <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-[14px] flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <CircleDotBig size={28} className="text-white" strokeWidth={2.5} />
+                <CircleDot size={28} className="text-white" strokeWidth={2.5} />
               </div>
 
               <div>

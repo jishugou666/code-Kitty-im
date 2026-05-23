@@ -1059,6 +1059,65 @@
   - 提交前本地 `npm run build` 验证
 - **执行结果**: ✅ 已修复
 
+### 任务38: 修复Games.tsx lucide-react无效图标导入（CircleDotBig不存在）
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - Vercel 部署构建失败：`npm run build` 退出码1
+  - 错误位置：`Games.tsx:4:17` - lucide-react 图标导入行
+  - Rollup 无法解析模块，构建完全失败
+- **根本原因分析**:
+  - **不存在的图标名称**：
+    - 第4行导入了 `CircleDotBig` 图标
+    - lucide-react 图标库中**不存在** `CircleDotBig` 这个图标名
+    - 正确的图标名应该是 `CircleDot` 或其他有效名称
+  - **错误影响范围**：
+    - 导入阶段就失败，导致整个 Games.tsx 模块无法解析
+    - 影响所有依赖此文件的组件和路由
+    - 构建直接中断，无法继续检查其他错误
+- **lucide-react 图标验证**（v0.487.0）:
+  ```typescript
+  // ❌ 无效图标（已移除）
+  CircleDotBig  // 不存在
+
+  // ✅ 有效图标（已确认）
+  Circle        // 空心圆 ✅
+  CircleDot     // 圆点（正确替代）✅
+  Crown         // 皇冠 ✅
+  Clock         // 时钟 ✅
+  Trophy        // 奖杯 ✅
+  TrendingUp    // 上升趋势 ✅
+  Gamepad2      // 游戏手柄 ✅
+  Lock          // 锁定 ✅
+  ```
+- **修复方案**:
+  - 第4行：将 `CircleDotBig` 替换为 `CircleDot`
+  - 第169行：将 `<CircleDotBig>` 替换为 `<CircleDot>`
+- **修改文件**:
+  - `frontend/src/app/pages/Games.tsx` - 修正图标名称（2处）
+- **修改前后对比**:
+  ```tsx
+  // ❌ 修改前（第4行 + 第169行）
+  import { Circle, CircleDotBig, ... } from 'lucide-react';
+  <CircleDotBig size={28} className="text-white" />
+
+  // ✅ 修改后
+  import { Circle, CircleDot, ... } from 'lucide-react';
+  <CircleDot size={28} className="text-white" />
+  ```
+- **全面审查结果**:
+  - ✅ Games.tsx: 所有8个图标均为有效名称
+  - ✅ TicTacToeBoard.tsx: 仅使用 Trophy（有效）
+  - ✅ GomokuBoard.tsx: 未导入 lucide-react 图标
+  - ✅ RankBadge.tsx: 使用 Crown + Trophy（均有效）
+  - ✅ 所有 import 路径正确解析
+  - ✅ 所有 JSX 语法完整（Fragment、括号、标签闭合）
+  - ✅ TypeScript 类型定义无误
+- **预防措施**:
+  - 使用 TypeScript 严格模式可在编译期检测无效导入
+  - IDE（VS Code）安装 lucide-react 类型定义可提供自动补全
+  - 参考 [Lucide Icons 官方文档](https://lucide.dev/icons) 验证图标名称
+- **执行结果**: ✅ 已修复
+
 ---
 
 ## 重要问题修复记录
