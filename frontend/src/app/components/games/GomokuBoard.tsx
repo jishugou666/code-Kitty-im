@@ -500,6 +500,32 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
 
 Stone.displayName = 'Stone';
 
+/* CSS Grid board styles - injected once */
+if (typeof document !== 'undefined' && !document.getElementById('gomoku-grid-styles')) {
+  const style = document.createElement('style');
+  style.id = 'gomoku-grid-styles';
+  style.textContent = `
+    .gomoku-board-grid { isolation: isolate; }
+    .gomoku-cell {
+      width: 100% !important;
+      aspect-ratio: 1 / 1 !important;
+      position: relative;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+    .gomoku-cell-label {
+      display: block;
+      text-align: center;
+      width: var(--gcs);
+      height: var(--gcs);
+      line-height: var(--gcs) !important;
+      font-size: 10px !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export function GomokuBoard({
   matchId: _matchId,
   onGameOver,
@@ -786,7 +812,7 @@ export function GomokuBoard({
         {/* Board Container with Coordinates */}
         <div className="relative overflow-hidden rounded-2xl shadow-xl" style={{
           background: 'linear-gradient(145deg, #DEB887 0%, #D2A679 20%, #C9956A 50%, #BF8E5F 75%, #B58555 100%)',
-          padding: '14px'
+          padding: '16px'
         }}>
           {/* Wood grain noise overlay */}
           <div className="absolute inset-0 opacity-[0.07] pointer-events-none rounded-2xl"
@@ -795,160 +821,121 @@ export function GomokuBoard({
               backgroundSize: '180px 180px'
             }} />
 
-          {/* Unified board layout with proper alignment */}
-          <div
-            className="relative inline-block"
-            style={{
-              '--cell-size': 'min(30px, calc((100vw - 160px) / 16))',
-              '--label-w': '22px'
-            } as React.CSSProperties}
-          >
-            {/* Column Labels Top + Board Grid Container */}
-            <div>
-              {/* Column Labels Row */}
-              <div style={{ marginLeft: 'var(--label-w)', marginBottom: '2px' }}>
-                <div className="flex" style={{ width: 'calc(var(--cell-size) * 15)' }}>
-                  {COL_LABELS.split('').map(label => (
-                    <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none block text-center" style={{ width: 'var(--cell-size)', fontSize: '10px', lineHeight: '1' }}>{label}</span>
-                  ))}
-                </div>
-              </div>
+          {/* Column Labels */}
+          <div className="flex mb-1 ml-6">
+            {COL_LABELS.split('').map(label => (
+              <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none text-center gomoku-cell-label">{label}</span>
+            ))}
+          </div>
 
-              {/* Main Area: Row Labels + Chess Board */}
-              <div className="flex">
-                {/* Row Labels Left */}
-                <div className="flex flex-col" style={{ width: 'var(--label-w)', paddingRight: '2px', height: 'calc(var(--cell-size) * 15)' }}>
-                  {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                    <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none flex items-center justify-end" style={{ height: 'var(--cell-size)', fontSize: '10px', lineHeight: 'var(--cell-size)' }}>{i + 1}</span>
-                  ))}
-                </div>
+          {/* Main board area: row labels + grid */}
+          <div className="flex">
+            {/* Row Labels */}
+            <div className="flex flex-col mr-1 pr-1">
+              {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none flex items-center justify-end gomoku-cell-label">{i + 1}</span>
+              ))}
+            </div>
 
-                {/* Chess Board Grid - Pure CSS coordinate system */}
-                <div
-                  className="relative"
-                  style={{
-                    width: 'calc(var(--cell-size) * 15)',
-                    height: 'calc(var(--cell-size) * 15)'
-                  }}
-                >
-                  {/* CSS Grid Lines - no SVG, pure CSS for perfect alignment */}
-                  <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-                    {Array.from({ length: BOARD_SIZE }).map((_, i) => {
-                      const pos = `calc(var(--cell-size) * ${i} + var(--cell-size) / 2)`;
-                      return (
-                        <React.Fragment key={`gl-${i}`}>
-                          {/* Vertical line */}
-                          <div className="absolute bg-[#5D3A1A]" style={{
-                            left: pos,
-                            top: 'calc(var(--cell-size) / 2)',
-                            width: '0.6px',
-                            height: 'calc(var(--cell-size) * 14)'
-                          }} />
-                          {/* Horizontal line */}
-                          <div className="absolute bg-[#5D3A1A]" style={{
-                            top: pos,
-                            left: 'calc(var(--cell-size) / 2)',
-                            height: '0.6px',
-                            width: 'calc(var(--cell-size) * 14)'
-                          }} />
-                        </React.Fragment>
-                      );
-                    })}
-                    {/* Outer border lines using CSS */}
-                    <div className="absolute rounded-sm" style={{
-                      inset: 'calc(var(--cell-size) / 2 - 1px)',
-                      border: '2.5px solid #5D3A1A',
-                      pointerEvents: 'none'
-                    }} />
-                    <div className="absolute rounded-sm" style={{
-                      inset: 'calc(var(--cell-size) / 2 + 3px)',
-                      border: '1px solid #5D3A1A',
-                      pointerEvents: 'none'
-                    }} />
-                  </div>
+            {/* Chess Board - CSS Grid for pixel-perfect alignment */}
+            <div
+              className="gomoku-board-grid"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${BOARD_SIZE}, var(--gcs))`,
+                gridTemplateRows: `repeat(${BOARD_SIZE}, var(--gcs))`,
+                '--gcs': 'min(28px, calc((100vw - 220px) / 15))',
+                position: 'relative'
+              } as React.CSSProperties}
+            >
+              {displayBoard.map((row, rowIndex) =>
+                row.map((cell, colIndex) => {
+                  const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
+                  const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
+                  const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
+                  const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
+                    && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
 
-                  {/* Star Points - centered on intersections */}
-                  {STAR_POINTS.map(([sr, sc], idx) => {
-                    const cellVal = displayBoard[sr]?.[sc];
-                    if (cellVal !== EMPTY) return null;
-                    return (
-                      <div key={`star-${idx}`}
-                        className="absolute pointer-events-none z-[2]"
-                        style={{
-                          left: `calc(var(--cell-size) * ${sc} + var(--cell-size) / 2)`,
-                          top: `calc(var(--cell-size) * ${sr} + var(--cell-size) / 2)`,
-                          transform: 'translate(-50%, -50%)'
-                        }}
-                      >
-                        <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
-                      </div>
-                    );
-                  })}
+                  return (
+                    <button
+                      key={`${rowIndex}-${colIndex}`}
+                      onClick={() => handleClick(rowIndex, colIndex)}
+                      onMouseEnter={() => setHoverPos([rowIndex, colIndex])}
+                      onMouseLeave={() => setHoverPos(null)}
+                      disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
+                      className={clsx(
+                        'gomoku-cell cursor-pointer outline-none relative',
+                        cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
+                          ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
+                          : ''
+                      )}
+                      style={{ zIndex: isWinCell ? 12 : 5 }}
+                    >
+                      {/* Star point dot at center */}
+                      {star && (
+                        <div className="absolute w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40 pointer-events-none z-[2]"
+                          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+                      )}
 
-                  {/* Board Cells - each cell is a clickable area, intersection at center */}
-                  {displayBoard.map((row, rowIndex) =>
-                    row.map((cell, colIndex) => {
-                      const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
-                      const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
-                      const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
-                      const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
-                        && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
-
-                      return (
-                        <button
-                          key={`${rowIndex}-${colIndex}`}
-                          onClick={() => handleClick(rowIndex, colIndex)}
-                          onMouseEnter={() => setHoverPos([rowIndex, colIndex])}
-                          onMouseLeave={() => setHoverPos(null)}
-                          disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
-                          className={clsx(
-                            'absolute cursor-pointer outline-none rounded-sm',
-                            'transition-colors duration-100',
-                            cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
-                              ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
-                              : ''
-                          )}
+                      {/* Ghost piece on hover */}
+                      {isHover && (
+                        <motion.div
+                          initial={{ scale: 0.7, opacity: 0 }}
+                          animate={{ scale: 0.8, opacity: 0.45 }}
+                          exit={{ scale: 0.7, opacity: 0 }}
+                          className="absolute rounded-full z-[3] pointer-events-none"
                           style={{
-                            left: `calc(var(--cell-size) * ${colIndex})`,
-                            top: `calc(var(--cell-size) * ${rowIndex})`,
-                            width: 'var(--cell-size)',
-                            height: 'var(--cell-size)',
-                            zIndex: isWinCell ? 12 : 5
+                            width: '75%',
+                            height: '75%',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
+                            opacity: 0.35
                           }}
-                        >
-                          {star && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
-                              <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
-                            </div>
-                          )}
+                        />
+                      )}
 
-                          {/* Ghost piece on hover - centered on intersection */}
-                          {isHover && (
-                            <motion.div
-                              initial={{ scale: 0.7, opacity: 0 }}
-                              animate={{ scale: 0.85, opacity: 0.45 }}
-                              exit={{ scale: 0.7, opacity: 0 }}
-                              className="absolute rounded-full z-[3] pointer-events-none"
-                              style={{
-                                width: '80%',
-                                height: '80%',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
-                                opacity: 0.35
-                              }}
-                            />
-                          )}
+                      {/* Stone piece */}
+                      {cell !== EMPTY && (
+                        <Stone player={cell} isWin={isWinCell} isLast={isLast} />
+                      )}
+                    </button>
+                  );
+                })
+              )}
 
-                          {cell !== EMPTY && (
-                            <Stone player={cell} isWin={isWinCell} isLast={isLast} />
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+              {/* Grid lines overlay - covers entire grid area with lines at cell centers */}
+              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+                {/* Vertical lines */}
+                {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                  <div key={`vl-${i}`} className="absolute bg-[#5D3A1A]" style={{
+                    left: `calc(var(--gcs) * ${i} + var(--gcs) / 2)`,
+                    top: 'calc(var(--gcs) / 2)',
+                    width: '0.6px',
+                    height: `calc(var(--gcs) * 14)`
+                  }} />
+                ))}
+                {/* Horizontal lines */}
+                {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                  <div key={`hl-${i}`} className="absolute bg-[#5D3A1A]" style={{
+                    top: `calc(var(--gcs) * ${i} + var(--gcs) / 2)`,
+                    left: 'calc(var(--gcs) / 2)',
+                    height: '0.6px',
+                    width: `calc(var(--gcs) * 14)`
+                  }} />
+                ))}
+                {/* Outer border */}
+                <div className="absolute rounded-sm" style={{
+                  inset: 'calc(var(--gcs) / 2 - 1.5px)',
+                  border: '2.5px solid #5D3A1A',
+                  pointerEvents: 'none'
+                }} />
+                <div className="absolute rounded-sm" style={{
+                  inset: 'calc(var(--gcs) / 2 + 3px)',
+                  border: '1px solid #5D3A1A',
+                  pointerEvents: 'none'
+                }} />
               </div>
             </div>
           </div>
