@@ -602,6 +602,25 @@
   - 发现 notifications tab 起始深度为 3 而其他 tab 为 1，定位到 aiFeedback 未闭合
 - **执行结果**: ✅ 完成（构建通过，已推送到 GitHub c7edfba）
 
+### 任务28: 修复世界频道和系统通知不显示
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - 世界频道在消息列表中不显示（前端代码已写好但数据加载失败）
+  - 系统通知卡片不显示（同上）
+  - 用户要求：站长权限也要显示，所有人都能看到
+- **根本原因分析**:
+  1. **conversation.type ENUM 缺少 'world' 值**: 数据库定义为 `ENUM('single', 'group')`，启动迁移直接 INSERT `type='world'` 因 ENUM 约束违反而失败 → API 返回 500 → 前端 worldChannel 为 null → 不显示
+  2. **system_notification 表不存在**: 用户未手动执行建表 SQL → 控制器 catch 返回空数组 `[]` → notifications.length === 0 → 不显示
+  3. **前端无权限问题**: ChatsSidebar 中世界频道和系统通知对所有登录用户显示（仅需 authMiddleware），无需额外权限
+- **修复方案**:
+  1. 在 `backend/src/app.js` 启动迁移中添加：
+     - `ALTER TABLE conversation MODIFY COLUMN type ENUM('single', 'group', 'world')` — 先扩展 ENUM 再 INSERT
+     - `CREATE TABLE IF NOT EXISTS system_notification (...)` — 自动建表，无需手动执行 SQL
+  2. 保持原有世界频道自动创建逻辑不变（ENUM 扩展后即可正常 INSERT）
+- **涉及文件**:
+  - `backend/src/app.js` — 启动迁移新增 2 个 try-catch 块（+24行）
+- **执行结果**: ✅ 完成（本地已提交 def4c01，待网络恢复后推送）
+
 ---
 
 ## 重要问题修复记录
@@ -812,10 +831,25 @@ CREATE TABLE user_settings (
 ```sql
 CREATE TABLE conversation (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  type ENUM('single', 'group') DEFAULT 'single',
+  type ENUM('single', 'group', 'world') DEFAULT 'single',
   name VARCHAR(100) COMMENT '群聊名称',
   avatar VARCHAR(500),
   created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### system_notification 系统通知表
+```sql
+CREATE TABLE system_notification (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  type ENUM('info','warning','success','announcement') DEFAULT 'info',
+  icon VARCHAR(500) DEFAULT NULL,
+  is_active TINYINT DEFAULT 1,
+  created_by INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
