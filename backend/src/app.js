@@ -138,9 +138,33 @@ async function startServer() {
   const { query } = await import('./utils/db.js');
   try {
     await query("ALTER TABLE message MODIFY COLUMN type ENUM('text', 'image', 'file', 'system', 'recalled') DEFAULT 'text'");
-    console.log('[Migration] message.type ENUM updated: added recalled');
+  console.log('[Migration] message.type ENUM updated: added recalled');
   } catch (err) {
     console.log('[Migration] message.type already has recalled or migration failed:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query("ALTER TABLE conversation MODIFY COLUMN type ENUM('single', 'group', 'world') DEFAULT 'single'");
+    console.log('[Migration] conversation.type ENUM updated: added world');
+  } catch (err) {
+    console.log('[Migration] conversation.type already has world or migration failed:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS system_notification (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(200) NOT NULL,
+      content TEXT NOT NULL,
+      type ENUM('info','warning','success','announcement') DEFAULT 'info',
+      icon VARCHAR(500) DEFAULT NULL,
+      is_active TINYINT DEFAULT 1,
+      created_by INT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`);
+    console.log('[Migration] system_notification table ready');
+  } catch (err) {
+    console.log('[Migration] system_notification table check failed:', err.message?.substring(0, 80));
   }
 
   // 自动创建世界频道
