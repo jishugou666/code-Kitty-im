@@ -1118,6 +1118,91 @@
   - 参考 [Lucide Icons 官方文档](https://lucide.dev/icons) 验证图标名称
 - **执行结果**: ✅ 已修复
 
+### 任务39: 修复世界频道500错误（SQL列名错误 - mr.message_id不存在）
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - 世界频道仍然返回500错误：`GET /api/conversation/world 500 (Internal Server Error)`
+  - 错误信息：`{"code":500,"data":null,"msg":"Unknown column 'mr.message_id' in 'on clause'"}`
+  - message_read表已成功创建，但SQL查询使用了不存在的列
+- **根本原因分析**:
+  - **表结构设计与查询逻辑不匹配**：
+    - `message_read` 表实际结构（会话级已读标记）：
+      ```sql
+      CREATE TABLE message_read (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        conversation_id INT NOT NULL,
+        user_id INT NOT NULL,
+        seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_conversation_user (conversation_id, user_id)
+      )
+      ```
+    - 该表设计意图：记录用户在某会话中的**最后阅读时间**（seen_at），不是逐条消息标记已读
+    - 表中**没有 `message_id` 列**！
+  - **错误的SQL查询**（WorldChannelService.js 第62-67行）：
+    ```sql
+    -- ❌ 错误：假设 message_read 有 message_id 列
+    SELECT COUNT(*) as count FROM message m
+    LEFT JOIN message_read mr ON m.id = mr.message_id AND mr.user_id = ?
+    WHERE m.conversation_id = ? AND m.sender_id != ? AND mr.message_id IS NULL
+    
+    -- 错误原因：mr.message_id 列不存在 → Unknown column 'mr.message_id'
+    ```
+  - **正确的业务逻辑**：
+    - 未读消息 = 在用户最后阅读时间(seen_at)之后发送的消息
+    - 应该用 `m.created_at > mr.seen_at` 来判断是否未读
+- **修复方案**:
+  - 修改 SQL 查询为基于时间戳的未读计算
+  - JOIN 条件改为匹配 conversation_id + user_id
+  - WHERE 条件改为检查消息创建时间 > 最后阅读时间
+- **修改文件**:
+  - `backend/src/services/WorldChannelService.js` - 第62-67行 SQL查询重写
+- **修改前后对比**:
+  ```sql
+  -- ❌ 修改前（错误的列名引用）
+  LEFT JOIN message_read mr ON m.id = mr.message_id AND mr.user_id = ?
+  WHERE ... AND mr.message_id IS NULL
+
+  -- ✅ 修改后（正确的时间戳比较）
+  LEFT JOIN message_read mr ON mr.conversation_id = m.conversation_id AND mr.user_id = ?
+  WHERE ... AND (mr.seen_at IS NULL OR m.created_at > mr.seen_at)
+  ```
+- **新查询逻辑解析**:
+  ```sql
+  SELECT COUNT(*) as count 
+  FROM message m
+  LEFT JOIN message_read mr 
+    ON mr.conversation_id = m.conversation_id   -- 匹配同一会话
+    AND mr.user_id = ?                           -- 匹配当前用户
+  WHERE m.conversation_id = ?                    -- 世界频道ID
+    AND m.sender_id != ?                         -- 排除自己发的消息
+    AND (
+      mr.seen_at IS NULL                         -- 用户从未阅读过该会话（全部未读）
+      OR m.created_at > mr.seen_at               -- 消息在最后阅读时间之后发送（未读）
+    )
+  ```
+- **边界情况处理**:
+  - ✅ 用户首次进入世界频道（seen_at = NULL）→ 所有消息都算未读
+  - ✅ 用户已阅读过部分消息 → 只统计新消息
+  - ✅ 用户自己发的消息不算未读（sender_id != user_id）
+  - ✅ 性能优化：LEFT JOIN 确保即使无 message_read 记录也能正常工作
+- **验证方法**:
+  1. 部署后端后测试世界频道加载
+  2. 控制台不应再出现500错误
+  3. 未读红点应显示正确的数字
+- **技术要点**:
+  - **会话级 vs 消息级已读标记**：
+    - 会话级（当前方案）：只存 seen_at 时间戳，节省空间，适合IM场景
+    - 消息级：每条消息一个记录，精确但数据量大
+  - **为什么选择会话级**：
+    - IM应用通常只需要"有多少条未读"，不需要知道具体哪些
+    - 数据量小（每个会话每用户只有1条记录）
+    - 查询简单高效（一次JOIN即可计算）
+- **预防措施**:
+  - 编写SQL前必须先确认表结构（DESCRIBE table 或查看建表语句）
+  - 使用IDE的数据库插件可实时提示列名
+  - 单元测试应覆盖SQL查询的正确性
+- **执行结果**: ✅ 已修复
+
 ---
 
 ## 重要问题修复记录

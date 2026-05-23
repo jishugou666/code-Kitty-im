@@ -61,8 +61,8 @@ const WorldChannelService = {
     const lastMsg = messages[0] || null;
     const [unreadRow] = await query(
       `SELECT COUNT(*) as count FROM message m
-       LEFT JOIN message_read mr ON m.id = mr.message_id AND mr.user_id = ?
-       WHERE m.conversation_id = ? AND m.sender_id != ? AND mr.message_id IS NULL`,
+       LEFT JOIN message_read mr ON mr.conversation_id = m.conversation_id AND mr.user_id = ?
+       WHERE m.conversation_id = ? AND m.sender_id != ? AND (mr.seen_at IS NULL OR m.created_at > mr.seen_at)`,
       [userId, world.id, userId]
     );
     return {
