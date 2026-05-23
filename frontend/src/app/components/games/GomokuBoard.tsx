@@ -823,7 +823,7 @@ export function GomokuBoard({
                   ))}
                 </div>
 
-                {/* Chess Board Grid */}
+                {/* Chess Board Grid - Pure CSS coordinate system */}
                 <div
                   className="relative"
                   style={{
@@ -831,24 +831,43 @@ export function GomokuBoard({
                     height: 'calc(var(--cell-size) * 15)'
                   }}
                 >
-                  {/* SVG Grid Lines - aligned to cell centers */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                    {/* Outer double border */}
-                    <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" fill="none" stroke="#5D3A1A" strokeWidth="2.5" rx="1" />
-                    <rect x="5" y="5" width="calc(100% - 10px)" height="calc(100% - 10px)" fill="none" stroke="#5D3A1A" strokeWidth="1" rx="1" />
-                    {/* Inner grid lines - each line passes through cell center */}
+                  {/* CSS Grid Lines - no SVG, pure CSS for perfect alignment */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
                     {Array.from({ length: BOARD_SIZE }).map((_, i) => {
                       const pos = `calc(var(--cell-size) * ${i} + var(--cell-size) / 2)`;
                       return (
-                        <g key={`g-${i}`}>
-                          <line x1={pos} y1="calc(var(--cell-size) / 2)" x2={pos} y2="calc(100% - var(--cell-size) / 2)" stroke="#5D3A1A" strokeWidth="0.6" />
-                          <line x1="calc(var(--cell-size) / 2)" y1={pos} x2="calc(100% - var(--cell-size) / 2)" y2={pos} stroke="#5D3A1A" strokeWidth="0.6" />
-                        </g>
+                        <React.Fragment key={`gl-${i}`}>
+                          {/* Vertical line */}
+                          <div className="absolute bg-[#5D3A1A]" style={{
+                            left: pos,
+                            top: 'calc(var(--cell-size) / 2)',
+                            width: '0.6px',
+                            height: 'calc(var(--cell-size) * 14)'
+                          }} />
+                          {/* Horizontal line */}
+                          <div className="absolute bg-[#5D3A1A]" style={{
+                            top: pos,
+                            left: 'calc(var(--cell-size) / 2)',
+                            height: '0.6px',
+                            width: 'calc(var(--cell-size) * 14)'
+                          }} />
+                        </React.Fragment>
                       );
                     })}
-                  </svg>
+                    {/* Outer border lines using CSS */}
+                    <div className="absolute rounded-sm" style={{
+                      inset: 'calc(var(--cell-size) / 2 - 1px)',
+                      border: '2.5px solid #5D3A1A',
+                      pointerEvents: 'none'
+                    }} />
+                    <div className="absolute rounded-sm" style={{
+                      inset: 'calc(var(--cell-size) / 2 + 3px)',
+                      border: '1px solid #5D3A1A',
+                      pointerEvents: 'none'
+                    }} />
+                  </div>
 
-                  {/* Star Points */}
+                  {/* Star Points - centered on intersections */}
                   {STAR_POINTS.map(([sr, sc], idx) => {
                     const cellVal = displayBoard[sr]?.[sc];
                     if (cellVal !== EMPTY) return null;
@@ -856,20 +875,17 @@ export function GomokuBoard({
                       <div key={`star-${idx}`}
                         className="absolute pointer-events-none z-[2]"
                         style={{
-                          left: `calc(var(--cell-size) * ${sc})`,
-                          top: `calc(var(--cell-size) * ${sr})`,
-                          width: 'var(--cell-size)',
-                          height: 'var(--cell-size)'
+                          left: `calc(var(--cell-size) * ${sc} + var(--cell-size) / 2)`,
+                          top: `calc(var(--cell-size) * ${sr} + var(--cell-size) / 2)`,
+                          transform: 'translate(-50%, -50%)'
                         }}
                       >
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
-                        </div>
+                        <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
                       </div>
                     );
                   })}
 
-                  {/* Board Cells - each cell is a clickable area centered on grid intersection */}
+                  {/* Board Cells - each cell is a clickable area, intersection at center */}
                   {displayBoard.map((row, rowIndex) =>
                     row.map((cell, colIndex) => {
                       const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
@@ -886,7 +902,7 @@ export function GomokuBoard({
                           onMouseLeave={() => setHoverPos(null)}
                           disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
                           className={clsx(
-                            'absolute cursor-pointer outline-none',
+                            'absolute cursor-pointer outline-none rounded-sm',
                             'transition-colors duration-100',
                             cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
                               ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
@@ -906,7 +922,7 @@ export function GomokuBoard({
                             </div>
                           )}
 
-                          {/* Ghost piece on hover - precisely centered on intersection */}
+                          {/* Ghost piece on hover - centered on intersection */}
                           {isHover && (
                             <motion.div
                               initial={{ scale: 0.7, opacity: 0 }}
