@@ -44,6 +44,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: EmptyState },
       { path: "chat/:id", Component: Chat },
+      { path: "chat", loader: () => redirect("/") },
       { path: "contacts", Component: EmptyState },
       { path: "profile", Component: Profile },
       { path: "settings", Component: Settings },
