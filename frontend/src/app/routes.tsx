@@ -8,6 +8,7 @@ import { EmptyState } from "./pages/EmptyState";
 import { Moments } from "./pages/Moments";
 import { Settings } from "./pages/Settings";
 import { Admin } from "./pages/Admin";
+import { Games } from "./pages/Games";
 
 const Studio = lazy(() => import("./pages/Studio"));
 
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: "profile", Component: Profile },
       { path: "settings", Component: Settings },
       { path: "moments", Component: Moments },
+      { path: "games", Component: Games },
       { path: "admin", Component: Admin },
     ],
   },

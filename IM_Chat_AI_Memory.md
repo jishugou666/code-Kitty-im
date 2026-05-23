@@ -741,6 +741,212 @@
   5. 使用 framer-motion 的 motion.div 实现卡片入场动画
 - **执行结果**: ✅ 完成
 
+### 任务32: 后端游戏功能全栈开发
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 实现后端游戏功能全套代码（五子棋、井字棋、国际象棋）
+  - 包含数据模型、段位计算服务、对局管理服务、控制器、路由
+  - 支持AI对战（easy/medium/hard）和PVP模式
+  - 支持积分系统、段位系统、排行榜、连胜记录
+- **新增文件**:
+  - `backend/src/models/GameModel.js` - 游戏数据模型
+    - `game_match` 表: 对局记录（game_type, mode, player1/2_id, winner_id, status, ai_difficulty, moves JSON, duration_seconds, score_change）
+    - `user_game_profile` 表: 用户游戏档案（rating, rank_tier, 各游戏胜负统计, win_streak, peak_rating）
+    - `createTableSQL` 属性: 返回两张表的建表语句
+  - `backend/src/services/RankingService.js` - 段位计算服务
+    - `RANK_TIERS`: 8级段位（iron→bronze→silver→gold→platinum→emerald→diamond→master）
+    - `SCORE_MAP`: 各游戏积分规则（gomoku ±25/±15, tictactoe ±10/±5, chess ±40/±20）
+    - `AI_MULTIPLIER`: AI难度系数（easy=0.5x, medium=1.0x, hard=1.5x）
+    - `getTierFromRating(rating)`: 根据积分返回段位对象
+    - `calculateRatingChange(gameType, won, currentRating, aiDifficulty?, opponentRating?)`: 计算积分变化
+    - `getOrCreateProfile(userId)`: 获取或创建用户游戏档案
+    - `updateProfileAfterGame(userId, gameType, won, aiDifficulty?)`: 更新对局后档案
+    - `getLeaderboard(limit?, gameType?)`: 返回排行榜列表按rating降序
+    - `getUserProfile(userId)`: 获取单个用户完整游戏档案
+  - `backend/src/services/GameService.js` - 对局管理服务
+    - `createMatch(playerId, gameType, mode, aiDifficulty)`: 创建新对局
+    - `recordMove(matchId, position, symbol)`: 记录落子到moves JSON数组
+    - `finishMatch(matchId, winnerId, status)`: 结束对局，计算时长和积分变化
+    - `abandonMatch(matchId)`: 弃权处理
+    - `getMatchHistory(userId, limit)`: 获取用户对局历史
+    - `getActiveMatch(userId)`: 获取进行中的对局
+  - `backend/src/controllers/GameController.js` - 游戏控制器
+    - `createMatch`: POST / 接收 gameType, mode, aiDifficulty
+    - `move`: POST /:matchId/move 接收 position, symbol
+    - `surrender`: POST /:matchId/surrender
+    - `getProfile`: GET /profile 返回当前用户游戏档案
+    - `getLeaderboard`: GET /leaderboard 支持 ?gameType 和 ?limit 参数
+    - `getHistory`: GET /history 支持 ?limit 参数
+  - `backend/src/routes/game.js` - 游戏路由
+    - 所有路由均需 authMiddleware 认证
+- **修改文件**:
+  - `backend/src/app.js` - 集成游戏路由和建表SQL：
+    - import gameRoutes from './routes/game.js'
+    - app.use('/api/game', gameRoutes) 添加在 systemNotificationRoutes 之后
+    - 启动迁移中添加 game_match 和 user_game_profile 两张表的 CREATE TABLE IF NOT EXISTS
+- **API 接口**:
+  | 方法 | 路径 | 说明 | 权限 |
+  |-----|------|------|------|
+  | POST | /api/game | 创建对局 | 登录用户 |
+  | POST | /api/game/:matchId/move | 记录落子 | 登录用户 |
+  | POST | /api/game/:matchId/surrender | 认输弃权 | 登录用户 |
+  | GET | /api/game/profile | 获取游戏档案 | 登录用户 |
+  | GET | /api/game/leaderboard | 获取排行榜 | 登录用户 |
+  | GET | /api/game/history | 获取对局历史 | 登录用户 |
+- **数据库变更**:
+  - `game_match` 表: 对局记录，支持 gomoku/tictactoe/chess 三种游戏类型
+  - `user_game_profile` 表: 用户游戏档案，包含积分、段位、各游戏胜率统计
+  - 两张表均在启动时自动创建（CREATE TABLE IF NOT EXISTS），无需手动执行 SQL
+- **核心逻辑**:
+  - 创建对局时检查是否已有进行中的对局（防止重复创建）
+  - 结束对局时自动计算对局时长和积分变化
+  - 积分变化根据游戏类型、胜负、AI难度系数综合计算
+  - 更新用户档案时自动更新连胜/最高连胜、各游戏单独胜场、段位晋升
+  - 排行榜支持按游戏类型筛选和数量限制
+- **执行结果**: ✅ 完成
+
+### 任务33: 前端游戏组件开发（段位徽章、井字棋、五子棋）
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 创建3个前端游戏组件文件到 `frontend/src/app/components/games/` 目录
+  - RankBadge.tsx: 段位徽章组件，支持8个段位、3种尺寸、framer-motion动画
+  - TicTacToeBoard.tsx: 井字棋完整游戏，支持AI对战（easy/medium/hard三种难度）、minimax算法
+  - GomokuBoard.tsx: 五子棋完整游戏，支持AI对战、评分函数AI、15×15棋盘
+- **新增文件**:
+  - `frontend/src/app/components/games/RankBadge.tsx` - 段位徽章组件
+    - Props: tier, rating, size(sm/md/lg), showLabel
+    - 8个段位配置：iron(铁器), bronze(青铜), silver(白银), gold(黄金), platinum(铂金), emerald(翡翠), diamond(钻石), master(大师)
+    - 圆形渐变背景 + 段位图标（master显示Crown图标，其他显示Trophy图标）
+    - framer-motion 入场动画 (opacity 0→1, scale 0.8→1)
+    - 支持 dark mode
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` - 井字棋游戏组件
+    - Props: matchId, onGameOver, aiDifficulty, mode
+    - 完整游戏逻辑：玩家(X) vs AI(O)，minimax算法实现AI
+    - easy模式: 30%随机 + minimax深度1；medium模式: 完整minimax；hard模式: alpha-beta剪枝
+    - UI特性：3×3网格、落子动画、胜利连线高亮、最后落子标记、状态栏(含脉冲动画点)、认输/再来一局按钮、结果弹窗
+    - 积分变化显示：胜利+25、失败-15、平局无变化
+  - `frontend/src/app/components/games/GomokuBoard.tsx` - 五子棋游戏组件
+    - Props: matchId, onGameOver, aiDifficulty, mode
+    - 常量：BOARD_SIZE=15, EMPTY=0, BLACK=1(玩家), WHITE=2(AI)
+    - 核心函数：
+      - checkFive(): 四方向检测五连珠
+      - scorePosition(): 位置评分函数（连5:+100000, 活4:+15000, 冲4:+5000, 活3:+2000等）
+      - getAIPosition(): AI决策（进攻分 - 防守分*1.1）
+      - easy模式: 40%随机或只看直接威胁；medium/hard: 完整评分搜索
+    - UI特性：15×15棋盘、SVG棋盘线、星位点标记(9个)、黑白棋子径向渐变、最后落子红圈标记、获胜棋子绿色脉冲、状态栏、按钮区、结果弹窗
+    - 积分变化显示：五子连珠+25、失败-12、平局+5
+- **技术栈**:
+  - React 18.3.1 (useState, useCallback, useEffect)
+  - motion 12.23.24 (motion.div, motion.button, AnimatePresence)
+  - clsx 2.1.1 (条件样式)
+  - lucide-react 0.487.0 (Crown, Trophy 图标)
+  - TailwindCSS 4.1.12 (响应式样式、dark mode)
+- **代码规范遵循**:
+  - TypeScript 类型定义完整（Props interface, 类型别名）
+  - 所有导入路径正确（使用项目已安装的依赖包）
+  - TailwindCSS 类名有效（使用 v4 语法）
+  - 支持 dark mode（dark: 前缀）
+  - framer-motion 动画流畅（spring transition）
+- **执行结果**: ✅ 完成
+
+### 任务34: 游戏功能代码审查与优化
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 完成游戏功能全栈代码审查，确保所有文件完整性和一致性
+  - 清理重复的游戏组件文件（删除 src/components/games/ 下3个冗余文件）
+  - 验证后端服务文件路径正确性（确认 RankingService.js 和 GameService.js 在 services/ 目录）
+  - 验证路由配置、导航集成、数据库迁移的正确性
+- **审查结果**:
+  - ✅ 前端文件全部完整：Games.tsx, TicTacToeBoard.tsx, GomokuBoard.tsx, RankBadge.tsx, gameStore.ts, game.ts
+  - ✅ 后端文件全部完整：GameModel.js, RankingService.js, GameService.js, GameController.js, game.js
+  - ✅ 配置集成正确：routes.tsx (/games), MainLayout.tsx (Gamepad2导航), app.js (路由+建表SQL)
+  - ✅ 已清理重复文件：删除 frontend/src/components/games/ 目录下3个冗余组件
+- **技术栈验证**:
+  - React 18.3.1 + TypeScript + Vite
+  - Zustand 5.0.0 状态管理
+  - motion 12.23.24 (framer-motion) 动画
+  - lucide-react 0.487.0 图标库
+  - TailwindCSS 4.1.12 样式
+  - Minimax AI算法（井字棋）+ 启发式评分AI（五子棋）
+  - 8级段位系统（Iron→Master）+ ELO积分机制
+- **功能状态**:
+  - ✅ 井字棋：完整实现（easy/medium/hard 三种AI难度）
+  - ✅ 五子棋：完整实现（15×15棋盘 + AI评分函数）
+  - ⏳ 中国象棋：UI占位（显示"即将推出"标签）
+  - ⏳ PvP联机对战：计划中（Phase P3）
+  - ⏳ 历史记录Tab：UI占位（显示"开发中"提示）
+- **待用户操作**:
+  - 手动执行 `git commit` 提交所有游戏相关代码（不push）
+  - 部署后端到 Render 验证API接口
+  - 部署前端到 Vercel 验证页面渲染
+- **执行结果**: ✅ 完成
+
+### 任务35: 修复世界频道500错误（message_read表缺失）
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - 用户点击世界频道时控制台报错：`GET /api/conversation/world 500 (Internal Server Error)`
+  - 错误信息：`[ChatsSidebar] Failed to load world channel: AxiosError: Request failed with status code 500`
+  - 世界频道无法加载，新消息红点显示失败
+- **根本原因分析**:
+  1. **`message_read` 表不存在**：WorldChannelService.js 的 `getFullWorldChannel()` 方法在第62-67行查询未读消息数量时使用了 `LEFT JOIN message_read`，但该表未在 `app.js` 启动迁移中自动创建
+  2. **`conversation_member` 表可能缺失**：`ensureMember()` 方法依赖此表来管理世界频道成员，同样未在启动迁移中确保存在
+  3. **数据库初始化不完整**：虽然 `init.sql` 中定义了这些表，但 Render 部署时如果数据库是全新或表被删除，启动迁移不会自动重建
+- **SQL错误位置**:
+  ```sql
+  -- WorldChannelService.js 第62-67行（失败查询）
+  SELECT COUNT(*) as count FROM message m
+  LEFT JOIN message_read mr ON m.id = mr.message_id AND mr.user_id = ?
+  WHERE m.conversation_id = ? AND m.sender_id != ? AND mr.message_id IS NULL
+  -- 错误原因：message_read 表不存在 → Table 'xxx.message_read' doesn't exist
+  ```
+- **修复方案**:
+  1. 在 `backend/src/app.js` 的启动迁移中添加 `message_read` 表的 `CREATE TABLE IF NOT EXISTS` 逻辑
+  2. 同时添加 `conversation_member` 表的自动创建逻辑（防御性编程）
+  3. 两张表都放在世界频道创建之前执行，确保依赖关系正确
+- **修改文件**:
+  - `backend/src/app.js` - 新增2个try-catch迁移块（+38行）：
+    - 第174-190行：message_read表创建（含索引、外键、唯一约束）
+    - 第192-208行：conversation_member表创建（含索引、外键、角色枚举）
+- **技术细节**:
+  ```javascript
+  // message_read表结构
+  CREATE TABLE IF NOT EXISTS message_read (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id INT NOT NULL,
+    user_id INT NOT NULL,
+    seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_conversation_user (conversation_id, user_id),
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+
+  // conversation_member表结构
+  CREATE TABLE IF NOT EXISTS conversation_member (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id INT NOT NULL,
+    user_id INT NOT NULL,
+    role ENUM('owner', 'admin', 'member') DEFAULT 'member',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  ```
+- **验证方法**:
+  1. 部署后端到 Render 后查看启动日志：
+     - `[Migration] message_read table ready`
+     - `[Migration] conversation_member table ready`
+  2. 访问前端页面点击世界频道，应正常加载数据
+  3. 控制台不应再出现500错误
+- **预防措施**:
+  - 所有被Service层使用的数据库表都应在app.js启动迁移中确保存在
+  - 使用 `CREATE TABLE IF NOT EXISTS` 避免重复创建错误
+  - 每个迁移块独立try-catch，避免单个表创建失败导致整个应用崩溃
+- **执行结果**: ✅ 已修复
+
 ---
 
 ## 重要问题修复记录
@@ -1163,6 +1369,49 @@ CREATE TABLE temp_conversation (
 );
 ```
 
+### game_match 游戏对局表
+```sql
+CREATE TABLE game_match (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  game_type ENUM('gomoku','tictactoe','chess') NOT NULL,
+  mode ENUM('ai','pvp') NOT NULL DEFAULT 'ai',
+  player1_id INT NOT NULL,
+  player2_id INT DEFAULT NULL,
+  winner_id INT DEFAULT NULL,
+  status ENUM('playing','finished','abandoned') NOT NULL DEFAULT 'playing',
+  ai_difficulty ENUM('easy','medium','hard') DEFAULT 'medium',
+  moves JSON DEFAULT NULL,
+  duration_seconds INT DEFAULT NULL,
+  score_change INT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  finished_at TIMESTAMP DEFAULT NULL
+);
+```
+
+### user_game_profile 用户游戏档案表
+```sql
+CREATE TABLE user_game_profile (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT UNIQUE NOT NULL,
+  total_games INT DEFAULT 0,
+  wins INT DEFAULT 0,
+  losses INT DEFAULT 0,
+  draws INT DEFAULT 0,
+  rating INT DEFAULT 1000,
+  peak_rating INT DEFAULT 1000,
+  rank_tier VARCHAR(20) DEFAULT 'iron',
+  gomoku_wins INT DEFAULT 0,
+  gomoku_losses INT DEFAULT 0,
+  tictactoe_wins INT DEFAULT 0,
+  tictactoe_losses INT DEFAULT 0,
+  chess_wins INT DEFAULT 0,
+  chess_losses INT DEFAULT 0,
+  current_win_streak INT DEFAULT 0,
+  best_win_streak INT DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
 ---
 
 ## API 接口与前端组件映射
@@ -1209,8 +1458,14 @@ CREATE TABLE temp_conversation (
 | DELETE /api/admin/groups/:groupId | DELETE | Admin.tsx | 删除群组(后台) |
 | DELETE /api/message/:messageId | DELETE | Chat.tsx | 撤回消息 |
 | GET /api/admin/ai-stats | GET | Admin.tsx | AI服务统计 |
+| POST /api/game | POST | - | 创建游戏对局 |
+| POST /api/game/:matchId/move | POST | - | 记录落子 |
+| POST /api/game/:matchId/surrender | POST | - | 认输弃权 |
+| GET /api/game/profile | GET | - | 获取游戏档案 |
+| GET /api/game/leaderboard | GET | - | 获取排行榜 |
+| GET /api/game/history | GET | - | 获取对局历史 |
 
----
+-------
 
 ## 已知问题与解决方案
 

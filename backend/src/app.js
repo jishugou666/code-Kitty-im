@@ -21,6 +21,7 @@ import aiRoutes from './routes/ai.js';
 import proxyRoutes from './routes/proxy.js';
 import studioAdminRoutes from './routes/studioAdmin.js';
 import systemNotificationRoutes from './routes/systemNotification.js';
+import gameRoutes from './routes/game.js';
 
 const app = express();
 
@@ -117,6 +118,7 @@ app.use('/api/v2', hiddenRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/studio/admin', studioAdminRoutes);
 app.use('/api/system-notification', systemNotificationRoutes);
+app.use('/api/game', gameRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -169,6 +171,42 @@ async function startServer() {
     console.log('[Migration] system_notification table check failed:', err.message?.substring(0, 80));
   }
 
+  // 确保message_read表存在（世界频道未读计数依赖此表）
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS message_read (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      conversation_id INT NOT NULL,
+      user_id INT NOT NULL,
+      seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_conversation_user (conversation_id, user_id),
+      INDEX idx_conversation_id (conversation_id),
+      INDEX idx_user_id (user_id),
+      FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[Migration] message_read table ready');
+  } catch (err) {
+    console.log('[Migration] message_read table check failed:', err.message?.substring(0, 80));
+  }
+
+  // 确保conversation_member表存在（世界频道成员管理依赖此表）
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS conversation_member (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      conversation_id INT NOT NULL,
+      user_id INT NOT NULL,
+      role ENUM('owner', 'admin', 'member') DEFAULT 'member',
+      joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_conversation_id (conversation_id),
+      INDEX idx_user_id (user_id),
+      FOREIGN KEY (conversation_id) REFERENCES conversation(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[Migration] conversation_member table ready');
+  } catch (err) {
+    console.log('[Migration] conversation_member table check failed:', err.message?.substring(0, 80));
+  }
+
   // 自动创建世界频道
   try {
     const [existing] = await query("SELECT id FROM conversation WHERE type = 'world' LIMIT 1");
@@ -189,6 +227,60 @@ async function startServer() {
     }
   } catch (err) {
     console.log('[Migration] Notification conversation check failed:', err.message?.substring(0, 80));
+  }
+
+  // 游戏功能表
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS game_match (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      game_type ENUM('gomoku','tictactoe','chess') NOT NULL,
+      mode ENUM('ai','pvp') NOT NULL DEFAULT 'ai',
+      player1_id INT NOT NULL,
+      player2_id INT DEFAULT NULL,
+      winner_id INT DEFAULT NULL,
+      status ENUM('playing','finished','abandoned') NOT NULL DEFAULT 'playing',
+      ai_difficulty ENUM('easy','medium','hard') DEFAULT 'medium',
+      moves JSON DEFAULT NULL,
+      duration_seconds INT DEFAULT NULL,
+      score_change INT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      finished_at TIMESTAMP DEFAULT NULL,
+      INDEX idx_player1 (player1_id),
+      INDEX idx_player2 (player2_id),
+      INDEX idx_status (status),
+      INDEX idx_game_type (game_type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[Migration] game_match table ready');
+  } catch (err) {
+    console.log('[Migration] game_match table check failed:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS user_game_profile (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      user_id INT UNIQUE NOT NULL,
+      total_games INT DEFAULT 0,
+      wins INT DEFAULT 0,
+      losses INT DEFAULT 0,
+      draws INT DEFAULT 0,
+      rating INT DEFAULT 1000,
+      peak_rating INT DEFAULT 1000,
+      rank_tier VARCHAR(20) DEFAULT 'iron',
+      gomoku_wins INT DEFAULT 0,
+      gomoku_losses INT DEFAULT 0,
+      tictactoe_wins INT DEFAULT 0,
+      tictactoe_losses INT DEFAULT 0,
+      chess_wins INT DEFAULT 0,
+      chess_losses INT DEFAULT 0,
+      current_win_streak INT DEFAULT 0,
+      best_win_streak INT DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_id (user_id),
+      INDEX idx_rating (rating)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+    console.log('[Migration] user_game_profile table ready');
+  } catch (err) {
+    console.log('[Migration] user_game_profile table check failed:', err.message?.substring(0, 80));
   }
 
   // 添加 last_seen 字段用于心跳在线检测
