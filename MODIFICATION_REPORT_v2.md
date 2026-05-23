@@ -266,3 +266,27 @@ git push origin main
 3. 表情包功能
 4. 文件传输功能
 5. 语音/视频通话（需要第三方服务）
+
+---
+
+## 📅 2026-05-23 更新记录
+
+### 移除世界频道和系统通知的Emoji表情
+
+**修改原因**: 用户反馈 Emoji 表情显得不正式，提升界面专业感
+
+**修改文件**:
+| 文件 | 修改内容 |
+|------|----------|
+| `frontend/src/app/components/ChatsSidebar.tsx` L301 | `🌍 世界频道` → `世界频道` |
+| `frontend/src/app/components/ChatsSidebar.tsx` L330 | `📢 系统通知` → `系统通知` |
+| `backend/src/app.js` L176 | INSERT name: `'🌍 世界频道'` → `'世界频道'` |
+| `backend/src/app.js` L187 | INSERT name: `'📢 系统通知'` → `'系统通知'` |
+
+**注意**: 如果数据库中已存在带 Emoji 的记录，需手动执行以下 SQL 更新：
+```sql
+UPDATE conversation SET name = '世界频道' WHERE type = 'world';
+UPDATE conversation SET name = '系统通知' WHERE type = 'notification';
+```
+
+**构建验证**: ✅ `npm run build` 通过 (exit code 0)
