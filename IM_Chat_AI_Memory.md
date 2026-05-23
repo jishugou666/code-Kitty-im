@@ -691,6 +691,55 @@
   ```
 - **执行结果**: ✅ 完成
 
+### 任务31: Chat.tsx系统通知会话卡片展示功能
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 在 Chat.tsx 中实现系统通知会话的卡片展示功能（而非聊天气泡）
+  - 当用户进入系统通知会话时（conversation.type === 'notification'），以漂亮的卡片形式渲染每条通知
+  - 隐藏输入框（不能在通知会话中发消息）
+  - 不加载普通消息列表，改用 conversationApi.getNotificationChannel() 获取通知数据
+- **新增 State**:
+  - `isNotificationConv` - 是否为通知会话的标志
+  - `notifications` - 通知数据数组
+- **新增函数**:
+  - `loadNotifications()` - 加载通知列表数据
+- **修改文件**:
+  - `frontend/src/app/pages/Chat.tsx` — 核心改造：
+    - Import: 添加 Megaphone, CheckCircle, Info 图标 + conversationApi 导入
+    - State: 新增 isNotificationConv, notifications 状态变量
+    - useEffect: 添加通知会话检测分支逻辑
+    - Messages 区域: 条件渲染通知卡片 vs 聊天消息
+    - Input 区域: 通知会话时隐藏输入框
+- **UI特性**:
+  - 渐变边框卡片设计（根据通知类型显示不同颜色）
+    - info: 蓝色渐变 (from-blue-500 to-cyan-500)
+    - warning: 橙红渐变 (from-orange-500 to-red-500)
+    - success: 绿色渐变 (from-green-500 to-emerald-500)
+    - announcement: 紫粉渐变 (from-purple-500 to-pink-500)
+  - 类型图标显示（AlertTriangle/CheckCircle/Megaphone/Info）
+  - 类型标签（信息/警告/成功/公告）
+  - 支持图片显示（image_url 字段）
+  - 时间格式化显示（中文本地化）
+  - 动画效果（framer-motion 入场动画）
+  - 空状态提示（Megaphone 图标 + "暂无系统通知"）
+  - 响应式设计（移动端/桌面端自适应）
+- **核心逻辑**:
+  ```
+  用户进入会话
+    ├─ conversation.type === 'notification'?
+    │   ├─ 是 → setIsNotificationConv(true) + loadNotifications()
+    │   │   └─ 渲染通知卡片列表 + 隐藏输入框
+    │   └─ 否 → setIsNotificationConv(false) + loadMessages()
+    │       └─ 渲染普通聊天消息 + 显示输入框
+  ```
+- **技术实现要点**:
+  1. 使用 conversation?.type 检测会话类型（从 chatStore 的 conversations 数组中获取）
+  2. 条件渲染使用三元表达式 `{isNotificationConv ? (<通知卡片>) : (<聊天消息>)}`
+  3. 输入框使用 `{!isNotificationConv && (<输入框>)}` 条件包裹
+  4. 所有原有聊天功能保持不变（通过条件分支隔离）
+  5. 使用 framer-motion 的 motion.div 实现卡片入场动画
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

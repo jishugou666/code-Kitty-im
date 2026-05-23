@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
@@ -11,6 +11,7 @@ import { messageEventBus } from '../../lib/messageEventBus';
 import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { uploadApi } from '../../api/upload';
+import { conversationApi } from '../../api/conversation';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -32,6 +33,8 @@ export function Chat() {
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [showMessageMenu, setShowMessageMenu] = useState(false);
   const [messageMenuPos, setMessageMenuPos] = useState({ x: 0, y: 0 });
+  const [isNotificationConv, setIsNotificationConv] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
@@ -64,11 +67,35 @@ export function Chat() {
   useEffect(() => {
     if (conversationId && token) {
       setMessages([]);
-      loadMessages();
+      if (conversation?.type === 'notification') {
+        setIsNotificationConv(true);
+        loadNotifications();
+      } else {
+        setIsNotificationConv(false);
+        loadMessages();
+      }
       markAsRead();
       setTimeout(() => checkTempConversation(), 1000);
     }
   }, [conversationId, token]);
+
+  const loadNotifications = async () => {
+    if (!conversationId || !token) return;
+    setIsLoading(true);
+    try {
+      const res = await conversationApi.getNotificationChannel();
+      if (res.code === 200 && res.data?.notifications) {
+        setNotifications(res.data.notifications);
+      } else {
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+      setNotifications([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const checkTempConversation = async () => {
     if (!conversationId || !token) return;
@@ -496,6 +523,87 @@ export function Chat() {
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {isNotificationConv ? (
+          <div className="space-y-3 px-0 py-2">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="text-center text-black/40 dark:text-white/40 py-12">
+                <Megaphone size={48} className="mx-auto mb-4 opacity-30" />
+                <p className="text-sm">暂无系统通知</p>
+              </div>
+            ) : (
+              notifications.map((notif) => {
+                const typeGradient = notif.type === 'warning' ? 'from-orange-500 to-red-500' :
+                  notif.type === 'success' ? 'from-green-500 to-emerald-500' :
+                  notif.type === 'announcement' ? 'from-purple-500 to-pink-500' :
+                  'from-blue-500 to-cyan-500';
+                const typeLabel = notif.type === 'info' ? '信息' :
+                  notif.type === 'warning' ? '警告' :
+                  notif.type === 'success' ? '成功' : '公告';
+
+                return (
+                  <motion.div
+                    key={notif.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="overflow-hidden rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className={`bg-gradient-to-r ${typeGradient} p-[1.5px]`}>
+                      <div className="bg-white dark:bg-[#1A1D21] rounded-[14px] p-4">
+                        {/* 头部：标题 + 类型标签 + 时间 */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${typeGradient} flex items-center justify-center flex-shrink-0`}>
+                              {notif.type === 'warning' ? (
+                                <AlertTriangle size={16} className="text-white" />
+                              ) : notif.type === 'success' ? (
+                                <CheckCircle size={16} className="text-white" />
+                              ) : notif.type === 'announcement' ? (
+                                <Megaphone size={16} className="text-white" />
+                              ) : (
+                                <Info size={16} className="text-white" />
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-black dark:text-white truncate">{notif.title}</h3>
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                            notif.type === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                            notif.type === 'warning' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                            notif.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                            'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+                          }`}>
+                            {typeLabel}
+                          </span>
+                        </div>
+
+                        {/* 内容 */}
+                        <p className="text-sm text-black/70 dark:text-white/60 whitespace-pre-wrap mb-3 leading-relaxed">
+                          {notif.content}
+                        </p>
+
+                        {/* 图片 */}
+                        {notif.image_url && (
+                          <div className="rounded-xl overflow-hidden mb-2">
+                            <img src={notif.image_url} alt="通知配图" className="w-full max-h-[300px] object-cover" />
+                          </div>
+                        )}
+
+                        {/* 时间 */}
+                        <p className="text-xs text-black/30 dark:text-white/30">
+                          {new Date(notif.created_at).toLocaleString('zh-CN')}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <>
         {isLoadingHistory && (
           <div className="flex items-center justify-center py-4">
             <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
@@ -611,6 +719,8 @@ export function Chat() {
               })}
             </div>
           ))
+        )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -761,6 +871,7 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Input */}
+      {!isNotificationConv && (
       <div className={isMobile ? "px-3 py-2.5 border-t border-gray-200/50 dark:border-white/10 bg-white/90 dark:bg-[#1A1D21]/90 backdrop-blur-xl" : "p-4 border-t border-gray-200/50 dark:border-white/10 bg-white/80 dark:bg-[#1A1D21]/80 backdrop-blur-xl"}>
         <div className="flex items-end gap-2 sm:gap-3">
           <div className="relative">
@@ -798,6 +909,7 @@ export function Chat() {
           </button>
         </div>
       </div>
+      )}
 
       <ToastContainer />
     </div>
