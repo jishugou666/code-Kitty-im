@@ -57,10 +57,11 @@ export function Chat() {
     } else if (newMessage.type === 'messages-deleted') {
       setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
     } else {
-      if (!prev.some(m => m.id === newMessage.id)) {
+      setMessages(prev => {
+        if (prev.some(m => m.id === newMessage.id)) return prev;
         messageEventBus.emit(newMessage);
-      }
-      return [...prev, newMessage];
+        return [...prev, newMessage];
+      });
     }
   });
 

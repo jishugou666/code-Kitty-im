@@ -46,7 +46,8 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
     if (data && data.id) {
       addMessage(data.conversation_id, data);
     }
-  }, [addMessage]);
+    onNewMessage?.(data);
+  }, [addMessage, onNewMessage]);
 
   const handleMessageRead = useCallback((data: any) => {
   }, []);
