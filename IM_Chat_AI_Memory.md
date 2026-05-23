@@ -869,7 +869,7 @@ CREATE TABLE user_settings (
 ```sql
 CREATE TABLE conversation (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  type ENUM('single', 'group', 'world') DEFAULT 'single',
+  type ENUM('single', 'group', 'world', 'notification') DEFAULT 'single',
   name VARCHAR(100) COMMENT '群聊名称',
   avatar VARCHAR(500),
   created_by INT,
@@ -886,6 +886,7 @@ CREATE TABLE system_notification (
   content TEXT NOT NULL,
   type ENUM('info','warning','success','announcement') DEFAULT 'info',
   icon VARCHAR(500) DEFAULT NULL,
+  image_url VARCHAR(500) DEFAULT NULL,
   is_active TINYINT DEFAULT 1,
   created_by INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

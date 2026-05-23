@@ -7,7 +7,6 @@ import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
-import { systemNotificationApi } from '../../api/systemNotification';
 import { conversationApi } from '../../api/conversation';
 import { useIsMobile } from './ui/use-mobile';
 
@@ -21,8 +20,7 @@ export function ChatsSidebar() {
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [expandedNotification, setExpandedNotification] = useState<number | null>(null);
+  const [notificationConv, setNotificationConv] = useState<any>(null);
   const [worldChannel, setWorldChannel] = useState<any>(null);
 
   const { conversations, fetchConversations, isLoading } = useChatStore();
@@ -34,20 +32,19 @@ export function ChatsSidebar() {
     return () => clearInterval(interval);
   }, [fetchConversations]);
 
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const res = await systemNotificationApi.getList();
-        console.log('[ChatsSidebar] Notifications API response:', res);
-        if (res.code === 200) {
-          setNotifications(res.data || []);
-        }
-      } catch (error) {
-        console.error('[ChatsSidebar] Failed to load notifications:', error);
+  const loadNotificationConv = useCallback(async () => {
+    try {
+      const res = await conversationApi.getNotificationChannel();
+      console.log('[ChatsSidebar] NotificationConv API response:', res);
+      if (res.code === 200 && res.data) {
+        setNotificationConv(res.data);
       }
-    };
-    loadNotifications();
+    } catch (error) {
+      console.error('[ChatsSidebar] Failed to load notification conv:', error);
+    }
   }, []);
+
+  useEffect(() => { loadNotificationConv(); }, [loadNotificationConv]);
 
   const loadWorldChannel = useCallback(async () => {
     try {
@@ -313,64 +310,34 @@ export function ChatsSidebar() {
             </div>
           </motion.div>
 
-          {notifications.length > 0 && (
-            <div className="px-2 sm:px-2 mb-3 space-y-2">
-              {notifications.slice(0, 3).map((notif) => {
-                const isExpanded = expandedNotification === notif.id;
-                const typeGradient = notif.type === 'warning' ? 'from-orange-500 to-red-500' :
-                  notif.type === 'success' ? 'from-green-500 to-emerald-500' :
-                  notif.type === 'announcement' ? 'from-purple-500 to-pink-500' :
-                  'from-blue-500 to-cyan-500';
-                return (
-                  <motion.div
-                    key={notif.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={() => setExpandedNotification(isExpanded ? null : notif.id)}
-                    className={`relative overflow-hidden rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                      isExpanded ? 'shadow-lg' : ''
-                    }`}
-                  >
-                    <div className={`bg-gradient-to-r ${typeGradient} p-[1.5px]`}>
-                      <div className="bg-white dark:bg-[#13161A] rounded-[10px] sm:rounded-[13px] p-2.5 sm:p-3">
-                        <div className="flex items-start gap-2">
-                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${typeGradient} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                            <Megaphone size={isMobile ? 14 : 16} className="text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <h3 className={`font-semibold truncate ${isMobile ? 'text-[13px]' : 'text-sm'} text-black dark:text-white`}>{notif.title}</h3>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                                notif.type === 'info' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                                notif.type === 'warning' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
-                                notif.type === 'success' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                                'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
-                              }`}>
-                                {notif.type === 'info' ? '信息' : notif.type === 'warning' ? '警告' : notif.type === 'success' ? '成功' : '公告'}
-                              </span>
-                            </div>
-                            <p className={`${isMobile ? 'text-[11px]' : 'text-xs'} text-black/60 dark:text-white/60 ${isExpanded ? '' : 'line-clamp-2'} whitespace-pre-wrap`}>
-                              {notif.content}
-                            </p>
-                            {!isExpanded && (
-                              <p className={`mt-1 text-[10px] text-black/30 dark:text-white/30`}>
-                                {new Date(notif.created_at).toLocaleDateString('zh-CN')}
-                              </p>
-                            )}
-                            {isExpanded && (
-                              <p className={`mt-2 text-[10px] text-black/40 dark:text-white/40`}>
-                                {new Date(notif.created_at).toLocaleString('zh-CN')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => notificationConv ? navigate(`/chat/${notificationConv.id}`) : loadNotificationConv()}
+            className={clsx(
+              "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 mx-1 sm:mx-2 rounded-xl sm:rounded-[14px] cursor-pointer transition-all duration-200 relative mb-1",
+              notificationConv && id === String(notificationConv.id)
+                ? "bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white shadow-[0_4px_16px_rgba(255,107,53,0.25)]"
+                : "hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white"
+            )}
+          >
+            <div className="w-10 h-10 sm:w-[46px] sm:h-[46px] rounded-full bg-gradient-to-br from-[#FF6B35] to-[#F7931E] flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Megaphone size={isMobile ? 18 : 22} className="text-white" />
             </div>
-          )}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline mb-0.5">
+                <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", notificationConv && id === String(notificationConv.id) ? "text-white" : "text-black dark:text-white")}>
+                  📢 系统通知
+                </h2>
+                <span className={clsx("text-[11px] sm:text-[12px]", notificationConv && id === String(notificationConv.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
+                  官方
+                </span>
+              </div>
+              <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", notificationConv && id === String(notificationConv.id) ? "text-white/80" : "text-black/50 dark:text:white/50")}>
+                查看管理员发布的全局通知
+              </p>
+            </div>
+          </motion.div>
 
           {conversations.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center h-32 text-black/40 dark:text-white/40 text-sm">

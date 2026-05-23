@@ -48,4 +48,7 @@ export const conversationApi = {
 
   getWorldChannel: () =>
     apiClient.get<any>('/conversation/world'),
+
+  getNotificationChannel: () =>
+    apiClient.get<any>('/conversation/notification'),
 };

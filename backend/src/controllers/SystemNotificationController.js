@@ -4,7 +4,7 @@ export const SystemNotificationController = {
   async getAllNotifications(req, res, next) {
     try {
       const results = await query(
-        'SELECT id, title, content, type, icon, is_active, created_by, created_at, updated_at FROM system_notification WHERE is_active = 1 ORDER BY created_at DESC'
+        'SELECT id, title, content, type, icon, image_url, is_active, created_by, created_at, updated_at FROM system_notification WHERE is_active = 1 ORDER BY created_at DESC'
       );
       res.json({ code: 200, data: results, msg: '成功' });
     } catch (err) {
@@ -16,7 +16,7 @@ export const SystemNotificationController = {
   async getAllAdminNotifications(req, res, next) {
     try {
       const results = await query(
-        'SELECT id, title, content, type, icon, is_active, created_by, created_at, updated_at FROM system_notification ORDER BY created_at DESC'
+        'SELECT id, title, content, type, icon, image_url, is_active, created_by, created_at, updated_at FROM system_notification ORDER BY created_at DESC'
       );
       res.json({ code: 200, data: results, msg: '成功' });
     } catch (err) {
@@ -27,15 +27,15 @@ export const SystemNotificationController = {
 
   async createNotification(req, res, next) {
     try {
-      const { title, content, type, icon } = req.body;
+      const { title, content, type, icon, image_url } = req.body;
       if (!title || !content) {
         return res.json({ code: 400, data: null, msg: '标题和内容不能为空' });
       }
       const validTypes = ['info', 'warning', 'success', 'announcement'];
       const notificationType = validTypes.includes(type) ? type : 'info';
       const result = await query(
-        'INSERT INTO system_notification (title, content, type, icon, created_by) VALUES (?, ?, ?, ?, ?)',
-        [title, content, notificationType, icon || null, req.user?.id || null]
+        'INSERT INTO system_notification (title, content, type, icon, image_url, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+        [title, content, notificationType, icon || null, image_url || null, req.user?.id || null]
       );
       res.json({ code: 200, data: { insertId: result.insertId }, msg: '创建成功' });
     } catch (err) {
@@ -47,7 +47,7 @@ export const SystemNotificationController = {
   async updateNotification(req, res, next) {
     try {
       const { id } = req.params;
-      const { title, content, type, icon, is_active } = req.body;
+      const { title, content, type, icon, image_url, is_active } = req.body;
       const existing = await query('SELECT id FROM system_notification WHERE id = ?', [parseInt(id)]);
       if (existing.length === 0) {
         return res.json({ code: 404, data: null, msg: '通知不存在' });
@@ -60,6 +60,7 @@ export const SystemNotificationController = {
       if (content !== undefined) { fields.push('content = ?'); values.push(content); }
       if (notificationType !== undefined) { fields.push('type = ?'); values.push(notificationType); }
       if (icon !== undefined) { fields.push('icon = ?'); values.push(icon); }
+      if (image_url !== undefined) { fields.push('image_url = ?'); values.push(image_url); }
       if (is_active !== undefined) { fields.push('is_active = ?'); values.push(is_active ? 1 : 0); }
       if (fields.length === 0) {
         return res.json({ code: 400, data: null, msg: '没有要更新的字段' });

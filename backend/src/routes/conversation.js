@@ -18,6 +18,15 @@ router.get('/world', async (req, res) => {
     res.status(500).json({ code: 500, data: null, msg: err.message });
   }
 });
+router.get('/notification', async (req, res) => {
+  try {
+    const NotificationConversationService = (await import('../services/NotificationConversationService.js')).default;
+    const data = await NotificationConversationService.getFullNotificationConversation(req.userId);
+    res.json({ code: 200, data, msg: 'ok' });
+  } catch (err) {
+    res.status(500).json({ code: 500, data: null, msg: err.message });
+  }
+});
 router.get('/list', ConversationController.getList);
 router.get('/debug/all', async (req, res) => {
   try {
