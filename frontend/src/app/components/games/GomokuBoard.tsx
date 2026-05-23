@@ -466,11 +466,16 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
     animate={{ scale: 1, opacity: 1 }}
     transition={{ type: 'spring', stiffness: 350, damping: 18 }}
     className={clsx(
-      'absolute m-auto w-[78%] h-[78%] rounded-full z-10',
+      'absolute rounded-full z-10',
       isWin && 'animate-pulse'
     )}
-    style={
-      player === BLACK
+    style={{
+      width: '80%',
+      height: '80%',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      ...(player === BLACK
         ? {
             background: 'radial-gradient(circle at 35% 30%, #888, #444 45%, #1a1a1a 80%, #000)',
             boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.5), 2px 3px 6px rgba(0,0,0,0.5)',
@@ -482,7 +487,7 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
             boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 2px 3px 6px rgba(0,0,0,0.35)',
             ...(isWin ? { boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 0 0 16px 4px rgba(34,197,94,0.7), 2px 3px 6px rgba(0,0,0,0.35)' } : {})
           }
-    }
+    }}
   >
     {isLast && (
       <div className={clsx(
@@ -790,130 +795,145 @@ export function GomokuBoard({
               backgroundSize: '180px 180px'
             }} />
 
-          <div className="relative flex">
-            {/* Column Labels Top */}
-            <div className="ml-5" style={{ width: 'calc(var(--cell-size) * 15)' }}>
-              <div className="flex justify-around mb-0.5">
-                {COL_LABELS.split('').map(label => (
-                  <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 w-text-center select-none" style={{ width: 'var(--cell-size)', textAlign: 'center', fontSize: '10px' }}>{label}</span>
-                ))}
+          {/* Unified board layout with proper alignment */}
+          <div
+            className="relative inline-block"
+            style={{
+              '--cell-size': 'min(30px, calc((100vw - 160px) / 16))',
+              '--label-w': '22px'
+            } as React.CSSProperties}
+          >
+            {/* Column Labels Top + Board Grid Container */}
+            <div>
+              {/* Column Labels Row */}
+              <div style={{ marginLeft: 'var(--label-w)', marginBottom: '2px' }}>
+                <div className="flex" style={{ width: 'calc(var(--cell-size) * 15)' }}>
+                  {COL_LABELS.split('').map(label => (
+                    <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none block text-center" style={{ width: 'var(--cell-size)', fontSize: '10px', lineHeight: '1' }}>{label}</span>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="relative flex">
-            {/* Row Labels Left */}
-            <div className="flex flex-col justify-around mr-0.5 pt-0" style={{ height: 'calc(var(--cell-size) * 15)' }}>
-              {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 leading-none select-none flex items-center justify-end pr-0.5" style={{ height: 'var(--cell-size)', lineHeight: 'var(--cell-size)', fontSize: '10px' }}>{i + 1}</span>
-              ))}
-            </div>
+              {/* Main Area: Row Labels + Chess Board */}
+              <div className="flex">
+                {/* Row Labels Left */}
+                <div className="flex flex-col" style={{ width: 'var(--label-w)', paddingRight: '2px', height: 'calc(var(--cell-size) * 15)' }}>
+                  {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                    <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none flex items-center justify-end" style={{ height: 'var(--cell-size)', fontSize: '10px', lineHeight: 'var(--cell-size)' }}>{i + 1}</span>
+                  ))}
+                </div>
 
-            {/* Chess Board Grid */}
-            <div
-              className="relative"
-              style={{
-                '--cell-size': 'min(28px, calc((100vw - 140px) / 16))',
-                width: 'calc(var(--cell-size) * 15)',
-                height: 'calc(var(--cell-size) * 15)'
-              } as React.CSSProperties}
-            >
-              {/* SVG Grid Lines */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-                {/* Outer double border */}
-                <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" fill="none" stroke="#5D3A1A" strokeWidth="2.5" rx="1" />
-                <rect x="5" y="5" width="calc(100% - 10px)" height="calc(100% - 10px)" fill="none" stroke="#5D3A1A" strokeWidth="1" rx="1" />
-                {/* Inner grid lines */}
-                {Array.from({ length: BOARD_SIZE }).map((_, i) => {
-                  const offset = `calc(var(--cell-size) * ${i} + var(--cell-size) / 2)`;
-                  return (
-                    <g key={`g-${i}`}>
-                      <line x1={offset} y1="calc(var(--cell-size) / 2)" x2={offset} y2="calc(100% - var(--cell-size) / 2)" stroke="#5D3A1A" strokeWidth="0.6" />
-                      <line x1="calc(var(--cell-size) / 2)" y1={offset} x2="calc(100% - var(--cell-size) / 2)" y2={offset} stroke="#5D3A1A" strokeWidth="0.6" />
-                    </g>
-                  );
-                })}
-              </svg>
+                {/* Chess Board Grid */}
+                <div
+                  className="relative"
+                  style={{
+                    width: 'calc(var(--cell-size) * 15)',
+                    height: 'calc(var(--cell-size) * 15)'
+                  }}
+                >
+                  {/* SVG Grid Lines - aligned to cell centers */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+                    {/* Outer double border */}
+                    <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" fill="none" stroke="#5D3A1A" strokeWidth="2.5" rx="1" />
+                    <rect x="5" y="5" width="calc(100% - 10px)" height="calc(100% - 10px)" fill="none" stroke="#5D3A1A" strokeWidth="1" rx="1" />
+                    {/* Inner grid lines - each line passes through cell center */}
+                    {Array.from({ length: BOARD_SIZE }).map((_, i) => {
+                      const pos = `calc(var(--cell-size) * ${i} + var(--cell-size) / 2)`;
+                      return (
+                        <g key={`g-${i}`}>
+                          <line x1={pos} y1="calc(var(--cell-size) / 2)" x2={pos} y2="calc(100% - var(--cell-size) / 2)" stroke="#5D3A1A" strokeWidth="0.6" />
+                          <line x1="calc(var(--cell-size) / 2)" y1={pos} x2="calc(100% - var(--cell-size) / 2)" y2={pos} stroke="#5D3A1A" strokeWidth="0.6" />
+                        </g>
+                      );
+                    })}
+                  </svg>
 
-              {/* Star Points */}
-              {STAR_POINTS.map(([sr, sc], idx) => {
-                const cellVal = displayBoard[sr]?.[sc];
-                if (cellVal !== EMPTY) return null;
-                return (
-                  <div key={`star-${idx}`}
-                    className="absolute pointer-events-none z-[2]"
-                    style={{
-                      left: `calc(var(--cell-size) * ${sc})`,
-                      top: `calc(var(--cell-size) * ${sr})`,
-                      width: 'var(--cell-size)',
-                      height: 'var(--cell-size)'
-                    }}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Board Cells */}
-              {displayBoard.map((row, rowIndex) =>
-                row.map((cell, colIndex) => {
-                  const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
-                  const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
-                  const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
-                  const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
-                    && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
-
-                  return (
-                    <button
-                      key={`${rowIndex}-${colIndex}`}
-                      onClick={() => handleClick(rowIndex, colIndex)}
-                      onMouseEnter={() => setHoverPos([rowIndex, colIndex])}
-                      onMouseLeave={() => setHoverPos(null)}
-                      disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
-                      className={clsx(
-                        'absolute cursor-pointer outline-none',
-                        'transition-colors duration-100',
-                        cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
-                          ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
-                          : ''
-                      )}
-                      style={{
-                        left: `calc(var(--cell-size) * ${colIndex})`,
-                        top: `calc(var(--cell-size) * ${rowIndex})`,
-                        width: 'var(--cell-size)',
-                        height: 'var(--cell-size)',
-                        zIndex: isWinCell ? 12 : 5
-                      }}
-                    >
-                      {star && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
+                  {/* Star Points */}
+                  {STAR_POINTS.map(([sr, sc], idx) => {
+                    const cellVal = displayBoard[sr]?.[sc];
+                    if (cellVal !== EMPTY) return null;
+                    return (
+                      <div key={`star-${idx}`}
+                        className="absolute pointer-events-none z-[2]"
+                        style={{
+                          left: `calc(var(--cell-size) * ${sc})`,
+                          top: `calc(var(--cell-size) * ${sr})`,
+                          width: 'var(--cell-size)',
+                          height: 'var(--cell-size)'
+                        }}
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
                         </div>
-                      )}
+                      </div>
+                    );
+                  })}
 
-                      {/* Ghost piece on hover */}
-                      {isHover && (
-                        <motion.div
-                          initial={{ scale: 0.7, opacity: 0 }}
-                          animate={{ scale: 0.85, opacity: 0.45 }}
-                          exit={{ scale: 0.7, opacity: 0 }}
-                          className="absolute m-auto w-[78%] h-[78%] rounded-full z-[3] pointer-events-none"
+                  {/* Board Cells - each cell is a clickable area centered on grid intersection */}
+                  {displayBoard.map((row, rowIndex) =>
+                    row.map((cell, colIndex) => {
+                      const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
+                      const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
+                      const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
+                      const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
+                        && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
+
+                      return (
+                        <button
+                          key={`${rowIndex}-${colIndex}`}
+                          onClick={() => handleClick(rowIndex, colIndex)}
+                          onMouseEnter={() => setHoverPos([rowIndex, colIndex])}
+                          onMouseLeave={() => setHoverPos(null)}
+                          disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
+                          className={clsx(
+                            'absolute cursor-pointer outline-none',
+                            'transition-colors duration-100',
+                            cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
+                              ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
+                              : ''
+                          )}
                           style={{
-                            background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
-                            opacity: 0.35
+                            left: `calc(var(--cell-size) * ${colIndex})`,
+                            top: `calc(var(--cell-size) * ${rowIndex})`,
+                            width: 'var(--cell-size)',
+                            height: 'var(--cell-size)',
+                            zIndex: isWinCell ? 12 : 5
                           }}
-                        />
-                      )}
+                        >
+                          {star && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
+                              <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
+                            </div>
+                          )}
 
-                      {cell !== EMPTY && (
-                        <Stone player={cell} isWin={isWinCell} isLast={isLast} />
-                      )}
-                    </button>
-                  );
-                })
-              )}
+                          {/* Ghost piece on hover - precisely centered on intersection */}
+                          {isHover && (
+                            <motion.div
+                              initial={{ scale: 0.7, opacity: 0 }}
+                              animate={{ scale: 0.85, opacity: 0.45 }}
+                              exit={{ scale: 0.7, opacity: 0 }}
+                              className="absolute rounded-full z-[3] pointer-events-none"
+                              style={{
+                                width: '80%',
+                                height: '80%',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
+                                opacity: 0.35
+                              }}
+                            />
+                          )}
+
+                          {cell !== EMPTY && (
+                            <Stone player={cell} isWin={isWinCell} isLast={isLast} />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
