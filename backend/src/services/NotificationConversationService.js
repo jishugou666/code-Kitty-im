@@ -1,4 +1,4 @@
-const { query } = require('../utils/db.js');
+import { query } from '../utils/db.js';
 
 const NotificationConversationService = {
   async getOrCreateNotificationConversation() {
@@ -34,4 +34,4 @@ const NotificationConversationService = {
   }
 };
 
-module.exports = NotificationConversationService;
+export default NotificationConversationService;

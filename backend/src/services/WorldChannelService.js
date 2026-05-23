@@ -1,4 +1,4 @@
-const { query } = require('../utils/db.js');
+import { query } from '../utils/db.js';
 
 const WorldChannelService = {
   async getOrCreateWorldChannel() {
@@ -62,4 +62,4 @@ const WorldChannelService = {
   }
 };
 
-module.exports = WorldChannelService;
+export default WorldChannelService;
