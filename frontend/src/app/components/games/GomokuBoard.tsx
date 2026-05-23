@@ -513,8 +513,8 @@ export function GomokuBoard({
   const statusText = gameStatus !== 'playing' ? '' : isAIThinking ? '\u26AA AI \u601d\u8003\u4e2d... (\u767d\u65b9)' : '\u26AB \u4f60\u7684\u56de\u5408 (\u9ed1\u65b9)';
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
-    lost: emoji: '', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
-    draw: { emoji: '', text: '\u52bf\u5747\u529b\u654c', score: '+5', color: 'text-yellow-600' }
+    lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
+    draw: { emoji: '🤝', text: '\u52bf\u5747\u529b\u654c', score: '+5', color: 'text-yellow-600' }
   };
   const storedStats = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('gomoku_stats') || '{"wins":0,"losses":0,"draws":0,"games":0}'); }
