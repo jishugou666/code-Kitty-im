@@ -54,6 +54,7 @@ export function Chat() {
   const isMobile = useIsMobile();
 
   const conversation = conversations.find(c => c.id === conversationId);
+  const otherUser = conversation?.members?.find((m: any) => m.id !== user?.id);
 
   useWebSocket(conversationId || undefined, (newMessage) => {
     if (newMessage.type === 'recalled' || newMessage.type === 'message-recalled') {
