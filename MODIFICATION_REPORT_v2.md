@@ -293,6 +293,26 @@ UPDATE conversation SET name = '系统通知' WHERE type = 'notification';
 
 ---
 
+## 📅 2026-05-23 Bug 修复记录
+
+### Bug 1: /chat/ 空路径 404 路由错误
+**现象**: 访问 `/chat/`（无 id）时页面报错 "No routes matched location"
+**原因**: [routes.tsx](frontend/src/app/routes.tsx) 只定义了 `chat/:id`，空路径无匹配
+**修复**: 添加 `{ path: "chat", loader: () => redirect("/") }` 重定向到首页
+
+### Bug 2: otherUser is not defined (ReferenceError)
+**现象**: 点击进入任何会话后立即崩溃 `ReferenceError: otherUser is not defined`
+**原因**: 在 Chat.tsx 头部 JSX 中使用了 `otherUser` 变量显示在线状态，但该变量仅在 `checkTempConversation()` 函数内部定义（L120），不在组件渲染作用域内
+**修复**: 在 Chat.tsx 组件顶层添加 `const otherUser = conversation?.members?.find((m: any) => m.id !== user?.id);`（L57）
+**修改文件**: `frontend/src/app/pages/Chat.tsx`
+
+### Bug 3: 心跳 API 404 (部署后自动修复)
+**现象**: `POST /api/user/heartbeat` 返回 404 Not Found
+**原因**: 之前所有 git push 因网络失败未成功，后端代码从未部署到 Render
+**修复**: 代码已完整包含 heartbeat 路由，网络恢复后 push 即可自动解决
+
+---
+
 ## 📅 2026-05-23 更新记录（续）
 
 ### 心跳检测在线状态系统
