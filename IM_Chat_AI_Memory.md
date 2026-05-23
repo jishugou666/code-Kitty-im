@@ -577,6 +577,31 @@
   - 用户端：卡片式布局 + 渐变边框 + 可展开/收起 + 响应式适配
 - **执行结果**: ✅ 完成
 
+### 任务27: Admin.tsx构建错误修复
+- **执行时间**: 2026-05-23
+- **问题描述**:
+  - Vercel 部署报错：Admin.tsx 存在 JSX 括号不匹配导致构建失败
+  - 错误1: Line 1583 `Expected ")" but found "{"` — studio tab 位置括号错误
+  - 错误2: Line 1638 `<AnimatePresence>` 解析异常 — 在错误的 JSX 嵌套层级
+  - 错误3: `systemNotification.ts` 导入路径 `../utils/request` 不存在，模块解析失败
+- **根本原因分析**:
+  1. 添加系统通知 Tab（Task 26）时，子代理在 aiFeedback Tab（L1246）和 notifications Tab（L1422）之间遗漏了 aiFeedback 的闭合标签 `)}` 和内容 div 的 `</div>`
+  2. 这导致后续所有代码的 JSX 括号深度偏移 +2，studio tab 和 AnimatePresence 被错误地嵌套在未闭合的表达式内部
+  3. `systemNotification.ts` 创建时使用了错误的导入路径（`../utils/request`），项目实际使用的是 `./client`
+- **修复方案**:
+  1. 在 L1420（isLoading 闭合）后添加 `</div>` 关闭 aiFeedback 的 space-y-6 内容容器
+  2. 添加 `)}` 关闭 aiFeedback 的条件渲染表达式 `{activeTab === 'aiFeedback' && (`
+  3. 删除 L1581 行多余的 `)}`（之前错误修复尝试留下的）
+  4. 将 `systemNotification.ts` 的导入从 `import request from '../utils/request'` 改为 `import apiClient from './client'`
+- **涉及文件**:
+  - `frontend/src/app/pages/Admin.tsx` — 修复 JSX 括号嵌套（+3行 -4行）
+  - `frontend/src/api/systemNotification.ts` — 修正 API 客户端导入路径
+- **调试方法**:
+  - 使用 Node.js 脚本逐行追踪 `{()}` 括号深度变化
+  - 对比其他正常 tab 的开闭模式（每个 tab 以 `)}` 结尾，前面有对应数量的 `</div>`）
+  - 发现 notifications tab 起始深度为 3 而其他 tab 为 1，定位到 aiFeedback 未闭合
+- **执行结果**: ✅ 完成（构建通过，已推送到 GitHub c7edfba）
+
 ---
 
 ## 重要问题修复记录
