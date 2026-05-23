@@ -12,7 +12,7 @@ router.post('/group', ConversationController.createGroup);
 router.get('/world', async (req, res) => {
   try {
     const WorldChannelService = (await import('../services/WorldChannelService.js')).default;
-    const data = await WorldChannelService.getFullWorldChannel(req.userId);
+    const data = await WorldChannelService.getFullWorldChannel(req.user.id);
     res.json({ code: 200, data, msg: 'ok' });
   } catch (err) {
     res.status(500).json({ code: 500, data: null, msg: err.message });
@@ -21,7 +21,7 @@ router.get('/world', async (req, res) => {
 router.get('/notification', async (req, res) => {
   try {
     const NotificationConversationService = (await import('../services/NotificationConversationService.js')).default;
-    const data = await NotificationConversationService.getFullNotificationConversation(req.userId);
+    const data = await NotificationConversationService.getFullNotificationConversation(req.user.id);
     res.json({ code: 200, data, msg: 'ok' });
   } catch (err) {
     res.status(500).json({ code: 500, data: null, msg: err.message });
@@ -30,7 +30,7 @@ router.get('/notification', async (req, res) => {
 router.get('/list', ConversationController.getList);
 router.get('/debug/all', async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     console.log('[Debug] Checking all conversations for userId:', userId);
 
     const directQuery = await query(
