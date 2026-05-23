@@ -659,6 +659,38 @@
   - `system_notification` 表新增 `image_url VARCHAR(500) DEFAULT NULL` 字段
 - **执行结果**: ✅ 完成
 
+### 任务30: 系统通知UI改造 - 从卡片形式改为会话入口形式
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 将系统通知从 ChatsSidebar 中的卡片形式改为会话入口形式（与世界频道保持一致）
+  - 移除旧的 systemNotificationApi 调用，改用 conversationApi.getNotificationChannel()
+  - 删除 ~60 行的系统通知卡片渲染代码
+  - 添加新的系统通知会话入口组件（橙色渐变主题）
+- **修改文件**:
+  - `frontend/src/api/conversation.ts` — 新增 `getNotificationChannel()` 方法
+  - `frontend/src/app/components/ChatsSidebar.tsx` — 核心改造：
+    - State: `notifications` + `expandedNotification` → `notificationConv`
+    - 数据加载: `systemNotificationApi.getList()` → `conversationApi.getNotificationChannel()`
+    - UI: 删除卡片渲染区块 → 新增会话入口组件
+    - Import: 移除 `systemNotificationApi`
+- **UI特性**:
+  - 橙色渐变主题 (`from-[#FF6B35] to-[#F7931E]`)
+  - Megaphone 图标 + 📢 系统通知标题
+  - 点击行为：有数据导航至会话，无数据重新加载
+  - 支持激活状态高亮显示（当前查看时橙色高亮）
+  - 响应式设计（移动端/桌面端自适应）
+  - 与世界频道、私聊入口保持一致的交互模式
+- **API变更**:
+  | 方法 | 路径 | 说明 |
+  |-----|------|------|
+  | GET | /api/conversation/notification | 获取通知会话信息 |
+- **架构优化**:
+  ```
+  之前: systemNotificationApi.getList() → notifications[] → 卡片渲染（独立功能）
+  之后: conversationApi.getNotificationChannel() → notificationConv → 会话入口（会话化架构）
+  ```
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
