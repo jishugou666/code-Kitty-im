@@ -327,7 +327,7 @@ export function ChatsSidebar() {
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-baseline mb-0.5">
                 <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", notificationConv && id === String(notificationConv.id) ? "text-white" : "text-black dark:text-white")}>
-                  📢 系统通知
+                  系统通知
                 </h2>
                 <span className={clsx("text-[11px] sm:text-[12px]", notificationConv && id === String(notificationConv.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
                   官方

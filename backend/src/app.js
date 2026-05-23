@@ -173,7 +173,7 @@ async function startServer() {
   try {
     const [existing] = await query("SELECT id FROM conversation WHERE type = 'world' LIMIT 1");
     if (!existing) {
-      await query("INSERT INTO conversation (type, name, created_at) VALUES ('world', '🌍 世界频道', NOW())");
+      await query("INSERT INTO conversation (type, name, created_at) VALUES ('world', '世界频道', NOW())");
       console.log('[Migration] World channel created');
     }
   } catch (err) {
