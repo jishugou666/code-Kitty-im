@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, Lock } from 'lucide-react';
+import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
 import { GomokuBoard } from '../components/games/GomokuBoard';
+import { ChineseChessBoard } from '../components/games/ChineseChessBoard';
 
-type ActiveGame = null | 'tictactoe' | 'gomoku';
+type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess';
 type TabType = 'leaderboard' | 'history';
 
 export function Games() {
@@ -25,6 +26,7 @@ export function Games() {
   const [activeTab, setActiveTab] = useState<TabType>('leaderboard');
   const [tictactoeDifficulty, setTictactoeDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [gomokuDifficulty, setGomokuDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [chessDifficulty, setChessDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
 
   useEffect(() => {
     fetchProfile();
@@ -111,6 +113,43 @@ export function Games() {
         </div>
         <GomokuBoard
           aiDifficulty={gomokuDifficulty}
+          mode="ai"
+          onGameOver={handleGameOver}
+        />
+      </div>
+    );
+  }
+
+  if (activeGame === 'chess') {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10] p-4 overflow-auto">
+        <div className="w-full max-w-2xl flex items-center justify-between mb-4">
+          <button
+            onClick={() => setActiveGame(null)}
+            className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
+          >
+            ← 返回大厅
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">难度:</span>
+            {(['easy', 'medium', 'hard'] as const).map((diff) => (
+              <button
+                key={diff}
+                onClick={() => setChessDifficulty(diff)}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                  chessDifficulty === diff
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+              >
+                {diff === 'easy' ? '简单' : diff === 'medium' ? '中等' : '困难'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <ChineseChessBoard
+          aiDifficulty={chessDifficulty}
           mode="ai"
           onGameOver={handleGameOver}
         />
@@ -212,30 +251,33 @@ export function Games() {
             </div>
           </motion.button>
 
-          <motion.div
+          <motion.button
             whileHover={{ scale: 1.02, y: -4 }}
-            className="relative bg-gray-100/50 dark:bg-gray-800/30 backdrop-blur-xl rounded-[14px] p-6 shadow-lg border border-dashed border-gray-300 dark:border-gray-700 text-left cursor-not-allowed opacity-60"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveGame('chess')}
+            className="group relative bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-[14px] p-6 shadow-lg border border-black/5 dark:border-white/5 text-left transition-all hover:shadow-xl overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gray-200/20 dark:bg-gray-700/10 rounded-full -translate-y-16 translate-x-16" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-100/30 dark:bg-red-900/20 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-500" />
 
             <div className="relative z-10 space-y-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-red-400 to-red-600 rounded-[14px] flex items-center justify-center shadow-md">
+              <div className="w-14 h-14 bg-gradient-to-br from-red-400 to-red-600 rounded-[14px] flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
                 <Crown size={28} className="text-white" strokeWidth={2.5} />
               </div>
 
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
-                  中国象棋
-                  <Lock size={16} className="text-gray-400" />
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">经典象棋对弈</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">中国象棋</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">经典象棋对弈，运筹帷幄</p>
               </div>
 
-              <div className="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-xs font-medium text-yellow-700 dark:text-yellow-400">
-                即将推出
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Gamepad2 size={14} />
+                <span>AI 对战</span>
+                <span className="mx-1">·</span>
+                <Clock size={14} />
+                <span>约 10-30 分钟</span>
               </div>
             </div>
-          </motion.div>
+          </motion.button>
         </div>
 
         <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-[14px] shadow-lg border border-black/5 dark:border-white/5 overflow-hidden">
