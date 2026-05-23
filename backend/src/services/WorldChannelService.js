@@ -6,7 +6,7 @@ const WorldChannelService = {
       let [world] = await query("SELECT * FROM conversation WHERE type = 'world' LIMIT 1");
       if (!world) {
         const result = await query(
-          "INSERT INTO conversation (type, name, created_at) VALUES ('world', '🌍 世界频道', NOW())"
+          "INSERT INTO conversation (type, name, created_at) VALUES ('world', '世界频道', NOW())"
         );
         [world] = await query("SELECT * FROM conversation WHERE type = 'world' LIMIT 1");
       }
@@ -57,8 +57,21 @@ const WorldChannelService = {
   async getFullWorldChannel(userId) {
     const world = await this.getOrCreateWorldChannel();
     await this.ensureMember(world.id, userId);
-    const messages = await this.getMessages(world.id);
-    return { ...world, messages };
+    const messages = await this.getMessages(world.id, 1);
+    const lastMsg = messages[0] || null;
+    const [unreadRow] = await query(
+      `SELECT COUNT(*) as count FROM message m
+       LEFT JOIN message_read mr ON m.id = mr.message_id AND mr.user_id = ?
+       WHERE m.conversation_id = ? AND m.sender_id != ? AND mr.message_id IS NULL`,
+      [userId, world.id, userId]
+    );
+    return {
+      ...world,
+      last_message: lastMsg ? (lastMsg.type === 'image' ? '[图片]' : lastMsg.content) : null,
+      last_message_time: lastMsg?.created_at || null,
+      unread_count: unreadRow?.count || 0,
+      messages
+    };
   }
 };
 

@@ -4,7 +4,7 @@ const NotificationConversationService = {
   async getOrCreateNotificationConversation() {
     let [conv] = await query("SELECT * FROM conversation WHERE type = 'notification' LIMIT 1");
     if (!conv) {
-      await query("INSERT INTO conversation (type, name, created_at) VALUES ('notification', '📢 系统通知', NOW())");
+      await query("INSERT INTO conversation (type, name, created_at) VALUES ('notification', '系统通知', NOW())");
       [conv] = await query("SELECT * FROM conversation WHERE type = 'notification' LIMIT 1");
     }
     return conv;
@@ -30,7 +30,14 @@ const NotificationConversationService = {
       );
     }
     const notifications = await this.getNotifications();
-    return { ...conv, notifications };
+    const latestNotif = notifications[0] || null;
+    return {
+      ...conv,
+      notifications,
+      last_message: latestNotif?.title || null,
+      last_message_time: latestNotif?.created_at || null,
+      unread_count: notifications.length
+    };
   }
 };
 

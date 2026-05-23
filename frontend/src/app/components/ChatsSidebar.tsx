@@ -300,14 +300,26 @@ export function ChatsSidebar() {
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-baseline mb-0.5">
                 <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", worldChannel && id === String(worldChannel.id) ? "text-white" : "text-black dark:text-white")}>
-                  🌍 世界频道
+                  世界频道
                 </h2>
-                <span className={clsx("text-[11px] sm:text-[12px]", worldChannel && id === String(worldChannel.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
-                  全局
-                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {(worldChannel?.unread_count || 0) > 0 && (
+                    <div className={clsx(
+                      "w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
+                      worldChannel && id === String(worldChannel.id) ? "bg-white" : "bg-[#5856D6]"
+                    )}>
+                      <span className={clsx("text-[10px] sm:text-[11px] font-bold leading-none", worldChannel && id === String(worldChannel.id) ? "text-[#5856D6]" : "text-white")}>
+                        {worldChannel?.unread_count}
+                      </span>
+                    </div>
+                  )}
+                  <span className={clsx("text-[11px] sm:text-[12px]", worldChannel && id === String(worldChannel.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
+                    {formatTime(worldChannel?.last_message_time)}
+                  </span>
+                </div>
               </div>
-              <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", worldChannel && id === String(worldChannel.id) ? "text-white/80" : "text-black/50 dark:text-white/50")}>
-                所有用户都能进入的公共聊天室
+              <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", worldChannel && id === String(worldChannel.id) ? "text-white/80" : "text-black/50 dark:text:white/50")}>
+                {worldChannel?.last_message || '所有用户都能进入的公共聊天室'}
               </p>
             </div>
           </motion.div>
@@ -331,12 +343,24 @@ export function ChatsSidebar() {
                 <h2 className={clsx("text-[14px] sm:text-[15px] font-semibold truncate pr-2", notificationConv && id === String(notificationConv.id) ? "text-white" : "text-black dark:text-white")}>
                   系统通知
                 </h2>
-                <span className={clsx("text-[11px] sm:text-[12px]", notificationConv && id === String(notificationConv.id) ? "text-white/70" : "text-black/40 dark:text-white/40")}>
-                  官方
-                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {(notificationConv?.unread_count || 0) > 0 && (
+                    <div className={clsx(
+                      "w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] flex-shrink-0 rounded-full flex items-center justify-center",
+                      notificationConv && id === String(notificationConv.id) ? "bg-white" : "bg-[#FF6B35]"
+                    )}>
+                      <span className={clsx("text-[10px] sm:text-[11px] font-bold leading-none", notificationConv && id === String(notificationConv.id) ? "text-[#FF6B35]" : "text-white")}>
+                        {notificationConv?.unread_count}
+                      </span>
+                    </div>
+                  )}
+                  <span className={clsx("text-[11px] sm:text-[12px]", notificationConv && id === String(notificationConv.id) ? "text-white/70" : "text-black/40 dark:text:white/40")}>
+                    官方
+                  </span>
+                </div>
               </div>
               <p className={clsx("text-[12px] sm:text-[13px] truncate tracking-tight", notificationConv && id === String(notificationConv.id) ? "text-white/80" : "text-black/50 dark:text:white/50")}>
-                查看管理员发布的全局通知
+                {notificationConv?.last_message || '查看管理员发布的全局通知'}
               </p>
             </div>
           </motion.div>
