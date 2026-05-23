@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Trophy } from 'lucide-react';
+import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft } from 'lucide-react';
 
 interface TicTacToeBoardProps {
   matchId?: number;
@@ -13,12 +13,25 @@ interface TicTacToeBoardProps {
 type Player = 'X' | 'O' | null;
 type Board = (string | null)[];
 type GameStatus = 'playing' | 'won' | 'lost' | 'draw';
+interface HistoryEntry { board: Board; isXNext: boolean; lastMove: number | null }
 
 const WIN_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
   [0, 4, 8], [2, 4, 6]
 ];
+
+const THINKING_TIME: Record<string, number> = { easy: 800, medium: 600, hard: 400 };
+const AI_THINKING_TEXT: Record<string, string> = {
+  easy: 'AI正在随意思考...',
+  medium: 'AI正在分析局势...',
+  hard: 'AI正在深度计算...'
+};
+const DIFFICULTY_DESC: Record<string, string> = {
+  easy: '简单模式：AI有30%概率随机落子，搜索深度为1，适合新手练习',
+  medium: '中等模式：AI使用完整Minimax算法，适合有一定基础的玩家',
+  hard: '困难模式：AI使用Alpha-Beta剪枝优化，几乎不可战胜'
+};
 
 function checkWinner(board: Board): { winner: 'X' | 'O' | null; line: number[] | null } {
   for (const line of WIN_LINES) {
@@ -42,11 +55,13 @@ function minimax(
   depth: number,
   isMaximizing: boolean,
   alpha: number,
-  beta: number
+  beta: number,
+  maxDepth: number = 9
 ): number {
   const result = checkWinner(board);
   if (result.winner === 'X') return 10 - depth;
   if (result.winner === 'O') return depth - 10;
+  if (depth >= maxDepth) return 0;
 
   const empty = getEmptyIndices(board);
   if (empty.length === 0) return 0;
@@ -55,7 +70,7 @@ function minimax(
     let maxEval = -Infinity;
     for (const idx of empty) {
       board[idx] = 'X';
-      const eval_ = minimax(board, depth + 1, false, alpha, beta);
+      const eval_ = minimax(board, depth + 1, false, alpha, beta, maxDepth);
       board[idx] = null;
       maxEval = Math.max(maxEval, eval_);
       alpha = Math.max(alpha, eval_);
@@ -66,7 +81,7 @@ function minimax(
     let minEval = Infinity;
     for (const idx of empty) {
       board[idx] = 'O';
-      const eval_ = minimax(board, depth + 1, true, alpha, beta);
+      const eval_ = minimax(board, depth + 1, true, alpha, beta, maxDepth);
       board[idx] = null;
       minEval = Math.min(minEval, eval_);
       beta = Math.min(beta, eval_);
@@ -90,22 +105,7 @@ function getAIMove(
     let bestMove = empty[0];
     for (const idx of empty) {
       board[idx] = 'O';
-      const score = minimax(board, 0, false, -Infinity, Infinity);
-      board[idx] = null;
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = idx;
-      }
-    }
-    return bestMove;
-  }
-
-  if (difficulty === 'medium') {
-    let bestScore = -Infinity;
-    let bestMove = empty[0];
-    for (const idx of empty) {
-      board[idx] = 'O';
-      const score = minimax(board, 0, false, -Infinity, Infinity);
+      const score = minimax(board, 0, false, -Infinity, Infinity, 1);
       board[idx] = null;
       if (score > bestScore) {
         bestScore = score;
@@ -129,6 +129,26 @@ function getAIMove(
   return bestMove;
 }
 
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function getStatsFromStorage(): { wins: number; losses: number; draws: number } {
+  try {
+    const raw = localStorage.getItem('tictactoe_stats');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { wins: 0, losses: 0, draws: 0 };
+}
+
+function saveStatsToStorage(stats: { wins: number; losses: number; draws: number }) {
+  try {
+    localStorage.setItem('tictactoe_stats', JSON.stringify(stats));
+  } catch {}
+}
+
 export function TicTacToeBoard({
   matchId: _matchId,
   onGameOver,
@@ -142,6 +162,41 @@ export function TicTacToeBoard({
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
   const [lastMoveIndex, setLastMoveIndex] = useState<number | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [showDifficultyTip, setShowDifficultyTip] = useState(false);
+  const [showReplay, setShowReplay] = useState(false);
+  const [flashCell, setFlashCell] = useState<number | null>(null);
+  const [boardShake, setBoardShake] = useState(false);
+  const [boardGlow, setBoardGlow] = useState(false);
+  const [stats, setStats] = useState(() => getStatsFromStorage());
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      if (gameStatus === 'playing') setElapsedTime(t => t + 1);
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [gameStatus]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showReplay || gameStatus !== 'playing') {
+        if (e.key === 'Escape' && gameStatus !== 'playing') return;
+        if (e.key === 'r' || e.key === 'R') { resetBoard(); return; }
+        if (e.key === 'Escape') { surrender(); return; }
+        return;
+      }
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9) handleClick(num - 1);
+      else if (e.key === 'r' || e.key === 'R') resetBoard();
+      else if (e.key === 'u' || e.key === 'U') handleUndo();
+      else if (e.key === 'Escape') surrender();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   const handleClick = useCallback((index: number) => {
     if (
@@ -149,9 +204,9 @@ export function TicTacToeBoard({
       gameStatus !== 'playing' ||
       !isXNext ||
       isAIThinking
-    ) {
-      return;
-    }
+    ) return;
+
+    setHistory(h => [...h, { board: [...board], isXNext, lastMove: lastMoveIndex }].slice(-20));
 
     const newBoard = [...board];
     newBoard[index] = 'X';
@@ -159,28 +214,40 @@ export function TicTacToeBoard({
     setIsXNext(false);
     setLastMoveIndex(index);
     setMoveCount(c => c + 1);
+    setFlashCell(index);
+    setTimeout(() => setFlashCell(null), 300);
 
     const result = checkWinner(newBoard);
     if (result.winner === 'X') {
       setWinningLine(result.line);
       setGameStatus('won');
+      setBoardGlow(true);
+      setTimeout(() => setBoardGlow(false), 1500);
+      const newStats = { ...stats, wins: stats.wins + 1 };
+      setStats(newStats);
+      saveStatsToStorage(newStats);
       onGameOver?.('win');
       return;
     }
 
     if (getEmptyIndices(newBoard).length === 0) {
       setGameStatus('draw');
+      const newStats = { ...stats, draws: stats.draws + 1 };
+      setStats(newStats);
+      saveStatsToStorage(newStats);
       onGameOver?.('draw');
       return;
     }
 
     setIsAIThinking(true);
-  }, [board, gameStatus, isXNext, isAIThinking, onGameOver]);
+  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver]);
 
   const aiMove = useCallback(() => {
     setTimeout(() => {
       const currentBoard = [...board];
       const aiIdx = getAIMove(currentBoard, aiDifficulty);
+
+      setHistory(h => [...h, { board: currentBoard, isXNext: false, lastMove: lastMoveIndex }].slice(-20));
 
       const newBoard = [...currentBoard];
       newBoard[aiIdx] = 'O';
@@ -188,22 +255,46 @@ export function TicTacToeBoard({
       setIsXNext(true);
       setLastMoveIndex(aiIdx);
       setMoveCount(c => c + 1);
+      setFlashCell(aiIdx);
+      setTimeout(() => setFlashCell(null), 300);
       setIsAIThinking(false);
 
       const result = checkWinner(newBoard);
       if (result.winner === 'O') {
         setWinningLine(result.line);
         setGameStatus('lost');
+        setBoardShake(true);
+        setTimeout(() => setBoardShake(false), 500);
+        const newStats = { ...stats, losses: stats.losses + 1 };
+        setStats(newStats);
+        saveStatsToStorage(newStats);
         onGameOver?.('loss');
         return;
       }
 
       if (getEmptyIndices(newBoard).length === 0) {
         setGameStatus('draw');
+        const newStats = { ...stats, draws: stats.draws + 1 };
+        setStats(newStats);
+        saveStatsToStorage(newStats);
         onGameOver?.('draw');
       }
-    }, 500);
-  }, [board, aiDifficulty, onGameOver]);
+    }, THINKING_TIME[aiDifficulty]);
+  }, [board, aiDifficulty, lastMoveIndex, stats, onGameOver]);
+
+  useEffect(() => {
+    if (isAIThinking && gameStatus === 'playing') aiMove();
+  }, [isAIThinking, gameStatus, aiMove]);
+
+  const handleUndo = useCallback(() => {
+    if (history.length < 2 || gameStatus !== 'playing' || isAIThinking) return;
+    const prev = history[history.length - 2];
+    setBoard(prev.board);
+    setIsXNext(prev.isXNext);
+    setLastMoveIndex(prev.lastMove);
+    setMoveCount(c => Math.max(0, c - 2));
+    setHistory(h => h.slice(0, -2));
+  }, [history, gameStatus, isAIThinking]);
 
   const resetBoard = () => {
     setBoard(Array(9).fill(null));
@@ -213,150 +304,340 @@ export function TicTacToeBoard({
     setIsAIThinking(false);
     setMoveCount(0);
     setLastMoveIndex(null);
+    setHistory([]);
+    setElapsedTime(0);
+    setShowReplay(false);
+    setFlashCell(null);
+    setBoardShake(false);
+    setBoardGlow(false);
   };
 
   const surrender = () => {
-    if (gameStatus === 'playing') {
-      setGameStatus('lost');
-      onGameOver?.('loss');
-    }
+    if (gameStatus !== 'playing') return;
+    if (!window.confirm('确定要认输吗？这将判为失败。')) return;
+    setGameStatus('lost');
+    setBoardShake(true);
+    setTimeout(() => setBoardShake(false), 500);
+    const newStats = { ...stats, losses: stats.losses + 1 };
+    setStats(newStats);
+    saveStatsToStorage(newStats);
+    onGameOver?.('loss');
   };
 
-  useEffect(() => {
-    if (isAIThinking && gameStatus === 'playing') {
-      aiMove();
+  const shareResult = async () => {
+    const total = stats.wins + stats.losses + stats.draws;
+    const winRate = total > 0 ? ((stats.wins / total) * 100).toFixed(1) : '0.0';
+    const diffLabel = aiDifficulty === 'easy' ? '简单' : aiDifficulty === 'medium' ? '中等' : '困难';
+    const text = `🎮 井字棋对局报告\n` +
+      `难度: ${diffLabel}\n` +
+      `结果: ${gameStatus === 'won' ? '✅ 胜利' : gameStatus === 'lost' ? '❌ 失败' : '🤝 平局'}\n` +
+      `步数: ${moveCount} | 用时: ${formatTime(elapsedTime)}\n` +
+      `历史战绩: ${stats.wins}胜/${stats.losses}负/${stats.draws}平 (胜率${winRate}%)\n` +
+      `— IM Chat App 井字棋`;
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('成绩已复制到剪贴板！');
+    } catch {
+      alert('复制失败，请手动截屏分享');
     }
-  }, [isAIThinking, gameStatus, aiMove]);
+  };
 
   const statusText = gameStatus !== 'playing'
     ? ''
     : isAIThinking
-    ? 'AI 思考中...'
+    ? AI_THINKING_TEXT[aiDifficulty]
     : '你的回合';
 
   const resultConfig = {
-    won: { emoji: '🎉', text: '胜利!', score: '+25' },
-    lost: { emoji: '😔', text: '失败', score: '-15' },
-    draw: { emoji: '🤝', text: '平局', score: '' }
+    won: { emoji: '🎉', text: '胜利!', score: '+10', color: 'text-green-500' },
+    lost: { emoji: '😔', text: '失败', score: '-5', color: 'text-red-500' },
+    draw: { emoji: '🤝', text: '平局', score: '+3', color: 'text-yellow-500' }
   };
+  const rc = resultConfig[gameStatus];
+
+  const totalGames = stats.wins + stats.losses + stats.draws;
+  const winRate = totalGames > 0 ? ((stats.wins / totalGames) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="max-w-sm mx-auto p-4 flex flex-col items-center gap-4">
-      <div className="w-full flex items-center justify-between">
-        <span className={clsx(
-          "text-sm font-medium px-3 py-1 rounded-full",
-          gameStatus === 'playing' && !isAIThinking
-            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-        )}>
-          {statusText}
-          {isAIThinking && (
-            <>
-            <motion.span
-              className="inline-block w-1.5 h-1.5 ml-1 bg-blue-500 rounded-full"
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
-            />
-            <motion.span
-              className="inline-block w-1.5 h-1.5 ml-0.5 bg-blue-500 rounded-full"
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }}
-            />
-            <motion.span
-              className="inline-block w-1.5 h-1.5 ml-0.5 bg-blue-500 rounded-full"
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: 0.6 }}
-            />
-            </>
-          )}
-        </span>
-
-        <Trophy size={18} className="text-gray-400" />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {board.map((cell, index) => {
-          const isWinCell = winningLine?.includes(index) ?? false;
-          const isLast = lastMoveIndex === index;
-
-          return (
-            <motion.button
-              key={index}
-              onClick={() => handleClick(index)}
-              disabled={cell !== null || gameStatus !== 'playing'}
-              initial={cell ? { scale: 0, opacity: 0 } : undefined}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className={clsx(
-                'aspect-square rounded-xl flex items-center justify-center',
-                'font-bold text-3xl cursor-pointer',
-                'transition-colors',
-                cell === null && gameStatus === 'playing' && !isAIThinking
-                  ? 'hover:bg-black/5 dark:hover:bg-white/5'
-                  : 'cursor-default',
-                isWinCell && 'bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse',
-                isLast && !isWinCell && 'ring-2 ring-blue-400'
+    <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4">
+      <div className="w-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl p-[1px] shadow-lg">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between">
+            <span className={clsx(
+              "text-xs sm:text-sm font-medium px-3 py-1.5 rounded-full transition-all",
+              gameStatus === 'playing' && !isAIThinking
+                ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+            )}>
+              {statusText}
+              {isAIThinking && (
+                <>
+                  <motion.span className="inline-block w-1.5 h-1.5 ml-1 bg-white rounded-full"
+                    animate={{ opacity: [1, 0.3, 1], scale: [1, 0.8, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity }} />
+                  <motion.span className="inline-block w-1.5 h-1.5 ml-0.5 bg-white rounded-full"
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.3 }} />
+                  <motion.span className="inline-block w-1.5 h-1.5 ml-0.5 bg-white rounded-full"
+                    animate={{ opacity: [1, 0.3, 1], scale: [1, 0.8, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.6 }} />
+                </>
               )}
-            >
-              {cell === 'X' && <span className="text-[#007AFF]">X</span>}
-              {cell === 'O' && <span className="text-[#FF3B30]">O</span>}
-            </motion.button>
-          );
-        })}
-      </div>
+            </span>
 
-      <div className="flex gap-3 w-full">
-        <button
-          onClick={surrender}
-          disabled={gameStatus !== 'playing'}
-          className={clsx(
-            'flex-1 py-2 px-4 rounded-lg font-medium border-2 transition-all',
-            gameStatus === 'playing'
-              ? 'border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-              : 'border-gray-300 text-gray-400 cursor-not-allowed dark:border-gray-700'
-          )}
-        >
-          认输
-        </button>
-        <button
-          onClick={resetBoard}
-          className="flex-1 py-2 px-4 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all"
-        >
-          再来一局
-        </button>
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
+                <button
+                  onClick={() => setShowDifficultyTip(v => !v)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label={`难度说明：${DIFFICULTY_DESC[aiDifficulty]}`}
+                >
+                  <HelpCircle size={16} className="text-gray-400" />
+                </button>
+                <AnimatePresence>
+                  {showDifficultyTip && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                      className="absolute right-0 top-full mt-2 w-56 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
+                    >
+                      <p>{DIFFICULTY_DESC[aiDifficulty]}</p>
+                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+                        <span className="text-gray-400">思考时间</span>
+                        <span className="font-medium">{THINKING_TIME[aiDifficulty]}ms</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <Trophy size={16} className="text-gray-400" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            {board.map((cell, index) => {
+              const isWinCell = winningLine?.includes(index) ?? false;
+              const isLast = lastMoveIndex === index && !isWinCell;
+              const isFlashing = flashCell === index;
+
+              return (
+                <motion.button
+                  key={index}
+                  ref={index === 0 ? boardRef : undefined}
+                  onClick={() => handleClick(index)}
+                  disabled={cell !== null || gameStatus !== 'playing'}
+                  initial={cell ? { scale: 0, opacity: 0 } : undefined}
+                  animate={{
+                    scale: 1,
+                    opacity: 1,
+                    x: boardShake ? [0, -6, 6, -4, 4, -2, 2, 0] : 0
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 300,
+                    damping: 20,
+                    x: { duration: 0.4 }
+                  }}
+                  whileHover={cell === null && gameStatus === 'playing' && !isAIThinking ? { scale: 1.05 } : {}}
+                  whileTap={cell === null && gameStatus === 'playing' && !isAIThinking ? { scale: 0.95 } : {}}
+                  className={clsx(
+                    'aspect-square rounded-xl sm:rounded-2xl flex items-center justify-center',
+                    'font-bold text-2xl sm:text-3xl cursor-pointer select-none',
+                    'transition-all duration-200 backdrop-blur-md',
+                    'min-h-[44px] sm:min-h-[60px]',
+                    cell === null && gameStatus === 'playing' && !isAIThinking
+                      ? 'hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 border border-gray-200/50 dark:border-white/10'
+                      : 'cursor-default border border-transparent',
+                    isWinCell && 'bg-gradient-to-br from-green-400 to-emerald-500 shadow-lg shadow-green-500/30 animate-pulse',
+                    isLast && !isWinCell && 'ring-2 ring-blue-400 ring-offset-1 ring-offset-white dark:ring-offset-gray-900',
+                    isFlashing && 'animate-flash',
+                    boardGlow && gameStatus === 'won' && 'shadow-lg shadow-green-400/40'
+                  )}
+                  aria-label={`格子${index + 1}${cell ? `：${cell}` : '：空'}${isWinCell ? '，胜利连线' : ''}${isLast ? '，最后落子' : ''}`}
+                  tabIndex={gameStatus === 'playing' && !isAIThinking ? 0 : -1}
+                  role="gridcell"
+                >
+                  {cell === 'X' && (
+                    <motion.span
+                      initial={{ scale: 0, rotate: -20 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      className="text-[#007AFF] font-black text-3xl sm:text-4xl drop-shadow-[0_2px_8px_rgba(0,122,255,0.4)]"
+                      style={{ textShadow: '0 0 12px rgba(0,122,255,0.35)' }}
+                    >
+                      X
+                    </motion.span>
+                  )}
+                  {cell === 'O' && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center text-white text-sm sm:text-base shadow-md shadow-red-500/30"
+                      style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), 0 2px 8px rgba(239,68,68,0.3)' }}
+                    >
+                      O
+                    </motion.span>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
+            <div className="flex items-center gap-1.5">
+              <Target size={13} />
+              <span>{moveCount}步</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock size={13} />
+              <span className="tabular-nums font-mono">{formatTime(elapsedTime)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Trophy size={13} />
+              <span>胜率{winRate}%</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              onClick={handleUndo}
+              disabled={history.length < 2 || gameStatus !== 'playing' || isAIThinking}
+              className={clsx(
+                'flex-1 min-h-[44px] sm:min-h-[48px] py-2 px-3 rounded-xl font-medium text-sm',
+                'border-2 transition-all duration-200 flex items-center justify-center gap-1.5',
+                history.length >= 2 && gameStatus === 'playing' && !isAIThinking
+                  ? 'border-amber-400 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-300 cursor-not-allowed dark:border-gray-700'
+              )}
+              aria-label="撤销上一步（快捷键U）"
+              title="撤销 (U)"
+            >
+              <RotateCcw size={15} />
+              撤销({Math.floor(history.length / 2)})
+            </button>
+            <button
+              onClick={surrender}
+              disabled={gameStatus !== 'playing'}
+              className={clsx(
+                'flex-1 min-h-[44px] sm:min-h-[48px] py-2 px-3 rounded-xl font-medium text-sm border-2 transition-all duration-200',
+                gameStatus === 'playing'
+                  ? 'border-red-400 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-md'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-300 cursor-not-allowed'
+              )}
+              aria-label="认输（快捷键ESC）"
+              title="认输 (Esc)"
+            >
+              认输
+            </button>
+            <button
+              onClick={resetBoard}
+              className="flex-1 min-h-[44px] sm:min-h-[48px] py-2 px-3 rounded-xl font-medium text-sm bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25 hover:shadow-xl"
+              aria-label="重新开始（快捷键R）"
+              title="重开 (R)"
+            >
+              再来一局
+            </button>
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
         {gameStatus !== 'playing' && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-            onClick={resetBoard}
+            onClick={(e) => { if (e.target === e.currentTarget) resetBoard(); }}
           >
             <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -30, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl text-center space-y-3 min-w-[240px]"
+              initial={{ y: 40, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -20, opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white dark:bg-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-4 min-w-[280px] sm:min-w-[320px] max-w-[90vw]"
             >
-              <p className="text-4xl">{resultConfig[gameStatus].emoji}</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                {resultConfig[gameStatus].text}
+              <motion.p
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.1, stiffness: 300 }}
+                className="text-6xl"
+              >
+                {rc.emoji}
+              </motion.p>
+              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                {rc.text}
               </p>
-              {resultConfig[gameStatus].score && (
-                <p className={clsx(
-                  'text-lg font-semibold',
-                  gameStatus === 'won' ? 'text-green-600' : 'text-red-600'
-                )}>
-                  {resultConfig[gameStatus].score}
-                </p>
-              )}
+              <p className={clsx('text-lg font-semibold', rc.color)}>
+                {rc.score}
+              </p>
+
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 space-y-1.5 text-sm">
+                <div className="flex justify-between text-gray-500">
+                  <span>⏱ 用时</span><span className="font-mono font-medium text-gray-700 dark:text-gray-300">{formatTime(elapsedTime)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>♟ 步数</span><span className="font-medium text-gray-700 dark:text-gray-300">{moveCount}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>🏆 历史胜率</span><span className="font-medium text-gray-700 dark:text-gray-300">{winRate}% ({stats.wins}/{totalGames})</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowReplay(v => !v)}
+                  className="flex-1 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <History size={15} />
+                  {showReplay ? '收起复盘' : '查看复盘'}
+                </button>
+                <button
+                  onClick={shareResult}
+                  className="min-h-[44px] w-11 flex items-center justify-center rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                  aria-label="分享成绩"
+                >
+                  <Share2 size={16} />
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {showReplay && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-xl p-3 space-y-1 text-left">
+                      <p className="text-xs font-semibold text-gray-400 mb-2">对局步骤</p>
+                      {[...Array(moveCount)].map((_, i) => {
+                        const entry = history[i];
+                        const player = i % 2 === 0 ? 'X' : 'O';
+                        const pos = entry?.lastMove ?? (i % 2 === 0
+                          ? (history[i]?.board.findIndex((c, j) => c === 'X' && (i === 0 || history[i - 1]?.board[j] !== 'X')) ?? i + 1)
+                          : (i > 0 ? history[i]?.board.findIndex((c, j) => c === 'O' && history[i - 1]?.board[j] !== 'O') ?? i + 1 : i + 1));
+                        return (
+                          <div key={i} className="text-xs flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                            <span className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                              {i + 1}
+                            </span>
+                            <span className={player === 'X' ? 'text-blue-500 font-semibold' : 'text-red-400'}>
+                              {player}
+                            </span>
+                            <span>→ 第{(pos % 3) + 1}行第{Math.floor(pos / 3) + 1}列</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <button
                 onClick={resetBoard}
-                className="mt-4 w-full py-2.5 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-all"
+                className="w-full min-h-[48px] py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25"
               >
                 再来一局
               </button>
@@ -364,6 +645,14 @@ export function TicTacToeBoard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style>{`
+        @keyframes flash {
+          0%, 100% { background-color: transparent; }
+          50% { background-color: rgba(59,130,246,0.15); }
+        }
+        .animate-flash { animation: flash 0.3s ease-in-out; }
+      `}</style>
     </div>
   );
 }

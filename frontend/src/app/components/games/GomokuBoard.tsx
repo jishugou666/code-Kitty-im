@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 
@@ -13,6 +13,7 @@ const BOARD_SIZE = 15;
 const EMPTY = 0;
 const BLACK = 1;
 const WHITE = 2;
+const MAX_UNDO = 20;
 
 type Board = number[][];
 type GameStatus = 'playing' | 'won' | 'lost' | 'draw';
@@ -22,7 +23,17 @@ interface MoveRecord {
   row: number;
   col: number;
   player: number;
+  timestamp: number;
 }
+
+interface GameStats {
+  totalMoves: number;
+  blackCount: number;
+  whiteCount: number;
+  duration: number;
+}
+
+const COL_LABELS = 'ABCDEFGHIJKLMNO';
 
 const STAR_POINTS: [number, number][] = [
   [3, 3], [3, 7], [3, 11],
@@ -31,27 +42,43 @@ const STAR_POINTS: [number, number][] = [
 ];
 
 const DIRECTIONS: [number, number][] = [
-  [1, 0],
-  [0, 1],
-  [1, 1],
-  [1, -1]
+  [1, 0], [0, 1], [1, 1], [1, -1]
 ];
 
+const DIFFICULTY_CONFIG = {
+  easy: {
+    label: '新手模式',
+    desc: '适合初学者',
+    thinkTime: 1200,
+    color: 'text-green-500',
+    bgColor: 'bg-green-500',
+    barColor: 'bg-green-500'
+  },
+  medium: {
+    label: '普通模式',
+    desc: '有一定挑战',
+    thinkTime: 900,
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-500',
+    barColor: 'bg-yellow-500'
+  },
+  hard: {
+    label: '专家模式',
+    desc: '极具挑战',
+    thinkTime: 600,
+    color: 'text-red-500',
+    bgColor: 'bg-red-500',
+    barColor: 'bg-red-500'
+  }
+};
+
 function createEmptyBoard(): Board {
-  return Array.from({ length: BOARD_SIZE }, () =>
-    Array(BOARD_SIZE).fill(EMPTY)
-  );
+  return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
 }
 
-function checkFive(
-  row: number,
-  col: number,
-  player: number,
-  board: Board
-): Position[] {
+function checkFive(row: number, col: number, player: number, board: Board): Position[] {
   for (const [dx, dy] of DIRECTIONS) {
     const line: Position[] = [[row, col]];
-
     for (let i = 1; i < 5; i++) {
       const nr = row + dx * i;
       const nc = col + dy * i;
@@ -59,7 +86,6 @@ function checkFive(
         line.push([nr, nc]);
       } else break;
     }
-
     for (let i = 1; i < 5; i++) {
       const nr = row - dx * i;
       const nc = col - dy * i;
@@ -67,59 +93,37 @@ function checkFive(
         line.push([nr, nc]);
       } else break;
     }
-
     if (line.length >= 5) return line;
   }
   return [];
 }
 
-function countLine(
-  board: Board,
-  row: number,
-  col: number,
-  dx: number,
-  dy: number,
-  player: number
-): { count: number; openEnds: number } {
+function countLine(board: Board, row: number, col: number, dx: number, dy: number, player: number): { count: number; openEnds: number } {
   let count = 1;
   let openEnds = 0;
-
   for (let i = 1; i < 5; i++) {
     const nr = row + dx * i;
     const nc = col + dy * i;
     if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
     if (board[nr][nc] === player) count++;
-    else if (board[nr][nc] === EMPTY) {
-      openEnds++;
-      break;
-    } else break;
+    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
+    else break;
   }
-
   for (let i = 1; i < 5; i++) {
     const nr = row - dx * i;
     const nc = col - dy * i;
     if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
     if (board[nr][nc] === player) count++;
-    else if (board[nr][nc] === EMPTY) {
-      openEnds++;
-      break;
-    } else break;
+    else if (board[nr][nc] === EMPTY) { openEnds++; break; }
+    else break;
   }
-
   return { count, openEnds };
 }
 
-function scorePosition(
-  board: Board,
-  row: number,
-  col: number,
-  player: number
-): number {
+function scorePosition(board: Board, row: number, col: number, player: number): number {
   let totalScore = 0;
-
   for (const [dx, dy] of DIRECTIONS) {
     const { count, openEnds } = countLine(board, row, col, dx, dy, player);
-
     if (count >= 5) totalScore += 100000;
     else if (count === 4 && openEnds === 2) totalScore += 15000;
     else if (count === 4 && openEnds === 1) totalScore += 5000;
@@ -129,65 +133,206 @@ function scorePosition(
     else if (count === 2 && openEnds === 1) totalScore += 10;
     else if (count === 1 && openEnds === 2) totalScore += 10;
   }
-
   return totalScore;
 }
 
-function getAIPosition(
-  board: Board,
-  difficulty: string
-): Position {
+function getCandidates(board: Board): Position[] {
   const candidates: Position[] = [];
-
+  const hasPiece = board.some(r => r.some(c => c !== EMPTY));
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (board[r][c] !== EMPTY) continue;
-
-      const hasNeighbor = DIRECTIONS.some(([dx, dy]) => {
-        const nr = r + dx;
-        const nc = c + dy;
+      const nearPiece = DIRECTIONS.some(([dx, dy]) => {
+        const nr = r + dx, nc = c + dy;
         return nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] !== EMPTY;
       });
-
-      if (hasNeighbor || (r === 7 && c === 7)) {
-        candidates.push([r, c]);
-      }
+      if (nearPiece || !hasPiece) candidates.push([r, c]);
     }
   }
+  return candidates.length > 0 ? candidates : [[7, 7]];
+}
 
-  if (candidates.length === 0) return [7, 7];
-
-  if (difficulty === 'easy') {
-    if (Math.random() < 0.4) {
-      return candidates[Math.floor(Math.random() * candidates.length)];
+function evaluateBoard(board: Board): { attack: number; defense: number } {
+  let attack = 0, defense = 0;
+  for (let r = 0; r < BOARD_SIZE; r++)
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      if (board[r][c] === WHITE) attack += scorePosition(board, r, c, WHITE);
+      else if (board[r][c] === BLACK) defense += scorePosition(board, r, c, BLACK);
     }
-    let bestScore = -Infinity;
-    let bestMove = candidates[0];
-    for (const [r, c] of candidates) {
-      const myScore = scorePosition(board, r, c, WHITE);
-      const defScore = scorePosition(board, r, c, BLACK);
-      const combined = Math.max(myScore, defScore * 0.8);
-      if (combined > bestScore) {
-        bestScore = combined;
-        bestMove = [r, c];
-      }
-    }
-    return bestMove;
-  }
+  return { attack, defense };
+}
 
+function aiEasy(board: Board): Position {
+  const candidates = getCandidates(board);
+  if (Math.random() < 0.5) return candidates[Math.floor(Math.random() * candidates.length)];
   let bestScore = -Infinity;
   let bestMove = candidates[0];
   for (const [r, c] of candidates) {
-    const myScore = scorePosition(board, r, c, WHITE);
-    const oppScore = scorePosition(board, r, c, BLACK);
-    const combined = myScore - oppScore * 1.1;
-    if (combined > bestScore) {
-      bestScore = combined;
-      bestMove = [r, c];
+    let maxThreat = 0;
+    for (const [dx, dy] of DIRECTIONS) {
+      const bLine = countLine(board, r, c, dx, dy, BLACK);
+      if (bLine.count >= 4) maxThreat = Math.max(maxThreat, 100000);
+      else if (bLine.count === 3 && bLine.openEnds >= 1) maxThreat = Math.max(maxThreat, 5000);
     }
+    const wLine = scorePosition(board, r, c, WHITE);
+    const combined = Math.max(wLine, maxThreat * 0.9);
+    if (combined > bestScore) { bestScore = combined; bestMove = [r, c]; }
   }
   return bestMove;
 }
+
+function aiMedium(board: Board): Position {
+  const candidates = getCandidates(board);
+  let bestScore = -Infinity;
+  let bestMove = candidates[0];
+  for (const [r, c] of candidates) {
+    let score = scorePosition(board, r, c, WHITE) - scorePosition(board, r, c, BLACK) * 1.1;
+    board[r][c] = WHITE;
+    let minDefense = Infinity;
+    const oppCandidates = getCandidates(board).slice(0, 15);
+    for (const [or, oc] of oppCandidates) {
+      const defScore = scorePosition(board, or, oc, BLACK) - scorePosition(board, or, oc, WHITE) * 1.1;
+      minDefense = Math.min(minDefense, defScore);
+    }
+    board[r][c] = EMPTY;
+    score -= minDefense * 0.5;
+    if (score > bestScore) { bestScore = score; bestMove = [r, c]; }
+  }
+  return bestMove;
+}
+
+function alphaBeta(board: Board, depth: number, alpha: number, beta: number, isMaximizing: boolean, moveCount: number): number {
+  if (depth <= 0 || moveCount > 200) {
+    let score = 0;
+    for (let r = 0; r < BOARD_SIZE; r++)
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c] === WHITE) score += scorePosition(board, r, c, WHITE) * 1.05;
+        else if (board[r][c] === BLACK) score -= scorePosition(board, r, c, BLACK) * 1.1;
+      }
+    return score;
+  }
+  const candidates = getCandidates(board).slice(0, 12);
+  const scored = candidates.map(([r, c]) => ({
+    pos: [r, c] as Position,
+    s: scorePosition(board, r, c, isMaximizing ? WHITE : BLACK) + scorePosition(board, r, c, isMaximizing ? BLACK : WHITE)
+  })).sort((a, b) => b.s - a.s).slice(0, 8);
+
+  if (isMaximizing) {
+    let maxEval = -Infinity;
+    for (const { pos: [r, c] } of scored) {
+      board[r][c] = WHITE;
+      const eval_ = alphaBeta(board, depth - 1, alpha, beta, false, moveCount + 1);
+      board[r][c] = EMPTY;
+      maxEval = Math.max(maxEval, eval_);
+      alpha = Math.max(alpha, eval_);
+      if (beta <= alpha) break;
+    }
+    return maxEval;
+  } else {
+    let minEval = Infinity;
+    for (const { pos: [r, c] } of scored) {
+      board[r][c] = BLACK;
+      const eval_ = alphaBeta(board, depth - 1, alpha, beta, true, moveCount + 1);
+      board[r][c] = EMPTY;
+      minEval = Math.min(minEval, eval_);
+      beta = Math.min(beta, eval_);
+      if (beta <= alpha) break;
+    }
+    return minEval;
+  }
+}
+
+function aiHard(board: Board, moveNum: number): Position {
+  if (moveNum === 0) return [7, 7];
+  const candidates = getCandidates(board);
+  let mustBlock: Position | null = null;
+  let mustAttack: Position | null = null;
+
+  for (const [r, c] of candidates) {
+    for (const [dx, dy] of DIRECTIONS) {
+      const wLine = countLine(board, r, c, dx, dy, WHITE);
+      if (wLine.count === 4 && wLine.openEnds >= 1) { mustAttack = [r, c]; break; }
+      const bLine = countLine(board, r, c, dx, dy, BLACK);
+      if (bLine.count === 4 && bLine.openEnds >= 1) { mustBlock = [r, c]; break; }
+    }
+    if (mustAttack) break;
+  }
+
+  if (mustAttack) return mustAttack;
+  if (mustBlock) return mustBlock;
+
+  let bestScore = -Infinity;
+  let bestMove = candidates[0];
+
+  const scored = candidates.map(([r, c]) => ({
+    pos: [r, c] as Position,
+    s: scorePosition(board, r, c, WHITE) * 1.15 + scorePosition(board, r, c, BLACK) * 1.1
+  })).sort((a, b) => b.s - a.s).slice(0, 10);
+
+  for (const { pos: [r, c] } of scored) {
+    board[r][c] = WHITE;
+    const score = alphaBeta(board, 2, -Infinity, Infinity, false, moveNum);
+    board[r][c] = EMPTY;
+    const centerBonus = (6 - Math.abs(r - 7)) + (6 - Math.abs(c - 7));
+    const finalScore = score + centerBonus * 30;
+    if (finalScore > bestScore) { bestScore = finalScore; bestMove = [r, c]; }
+  }
+  return bestMove;
+}
+
+function getAIPosition(board: Board, difficulty: string, moveNum: number): Position {
+  switch (difficulty) {
+    case 'easy': return aiEasy(board);
+    case 'medium': return aiMedium(board);
+    case 'hard': return aiHard(board, moveNum);
+    default: return aiMedium(board);
+  }
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function getCoordLabel(row: number, col: number): string {
+  return `${COL_LABELS[col]}${row + 1}`;
+}
+
+const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: boolean; isLast: boolean }) => (
+  <motion.div
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+    className={clsx(
+      'absolute m-auto w-[78%] h-[78%] rounded-full z-10',
+      isWin && 'animate-pulse'
+    )}
+    style={
+      player === BLACK
+        ? {
+            background: 'radial-gradient(circle at 35% 30%, #888, #444 45%, #1a1a1a 80%, #000)',
+            boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.5), 2px 3px 6px rgba(0,0,0,0.5)',
+            ...(isWin ? { boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.15), inset -2px -2px 4px rgba(0,0,0,0.5), 0 0 16px 4px rgba(34,197,94,0.7), 2px 3px 6px rgba(0,0,0,0.5)' } : {})
+          }
+        : {
+            background: 'radial-gradient(circle at 35% 30%, #fff, #f0f0f0 40%, #d8d8d8 80%, #bbb)',
+            border: '1px solid #ccc',
+            boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 2px 3px 6px rgba(0,0,0,0.35)',
+            ...(isWin ? { boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.9), inset -1px -1px 2px rgba(0,0,0,0.12), 0 0 16px 4px rgba(34,197,94,0.7), 2px 3px 6px rgba(0,0,0,0.35)' } : {})
+          }
+    }
+  >
+    {isLast && (
+      <div className={clsx(
+        'absolute inset-0 m-auto w-[40%] h-[40%] rounded-full border-2 pointer-events-none',
+        player === BLACK ? 'border-red-400' : 'border-blue-400'
+      )} />
+    )}
+  </motion.div>
+));
+
+Stone.displayName = 'Stone';
 
 export function GomokuBoard({
   matchId: _matchId,
@@ -202,74 +347,129 @@ export function GomokuBoard({
   const [winningCells, setWinningCells] = useState<Position[] | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [history, setHistory] = useState<MoveRecord[]>([]);
+  const [hoverPos, setHoverPos] = useState<Position | null>(null);
+  const [undoCount, setUndoCount] = useState(0);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  const [previewStep, setPreviewStep] = useState<number | null>(null);
+  const [previewBoard, setPreviewBoard] = useState<Board | null>(null);
+  const [aiThinkProgress, setAiThinkProgress] = useState(0);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const config = DIFFICULTY_CONFIG[aiDifficulty as keyof typeof DIFFICULTY_CONFIG] || DIFFICULTY_CONFIG.medium;
 
-  const isFull = board.every(row => row.every(cell => cell !== EMPTY));
-
-  const handleClick = useCallback((row: number, col: number) => {
-    if (
-      board[row][col] !== EMPTY ||
-      gameStatus !== 'playing' ||
-      currentPlayer !== BLACK ||
-      isAIThinking
-    ) {
-      return;
+  useEffect(() => {
+    if (gameStatus === 'playing' && !isAIThinking) {
+      timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-
-    const newBoard = board.map(r => [...r]);
-    newBoard[row][col] = BLACK;
-    setBoard(newBoard);
-    setCurrentPlayer(WHITE);
-    setLastMove([row, col]);
-    setHistory(h => [...h, { row, col, player: BLACK }]);
-
-    const winCells = checkFive(row, col, BLACK, newBoard);
-    if (winCells.length > 0) {
-      setWinningCells(winCells);
-      setGameStatus('won');
-      onGameOver?.('win');
-      return;
-    }
-
-    if (newBoard.every(r => r.every(c => c !== EMPTY))) {
-      setGameStatus('draw');
-      onGameOver?.('draw');
-      return;
-    }
-
-    setIsAIThinking(true);
-  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver]);
+  }, [gameStatus, isAIThinking]);
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
-
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 25 + 10;
+      if (progress > 95) progress = 90 + Math.random() * 8;
+      setAiThinkProgress(progress);
+    }, config.thinkTime / 8);
     const timer = setTimeout(() => {
+      clearInterval(interval);
+      setAiThinkProgress(100);
       const currentBoard = board.map(r => [...r]);
-      const [aiRow, aiCol] = getAIPosition(currentBoard, aiDifficulty);
-
+      const [aiRow, aiCol] = getAIPosition(currentBoard, aiDifficulty, history.filter(h => h.player === WHITE).length);
       const newBoard = board.map(r => [...r]);
       newBoard[aiRow][aiCol] = WHITE;
       setBoard(newBoard);
       setCurrentPlayer(BLACK);
       setLastMove([aiRow, aiCol]);
-      setHistory(h => [...h, { row: aiRow, col: aiCol, player: WHITE }]);
+      setHistory(h => [...h, { row: aiRow, col: aiCol, player: WHITE, timestamp: Date.now() }]);
       setIsAIThinking(false);
-
+      setAiThinkProgress(0);
       const winCells = checkFive(aiRow, aiCol, WHITE, newBoard);
       if (winCells.length > 0) {
         setWinningCells(winCells);
         setGameStatus('lost');
+        saveGameResult('lost');
         onGameOver?.('loss');
         return;
       }
-
       if (newBoard.every(r => r.every(c => c !== EMPTY))) {
         setGameStatus('draw');
+        saveGameResult('draw');
         onGameOver?.('draw');
       }
-    }, 800);
+    }, config.thinkTime);
+    return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); };
+  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver, config.thinkTime, history]);
 
-    return () => clearTimeout(timer);
-  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver]);
+  const stats: GameStats = useMemo(() => ({
+    totalMoves: history.length,
+    blackCount: history.filter(h => h.player === BLACK).length,
+    whiteCount: history.filter(h => h.player === WHITE).length,
+    duration: timerSeconds
+  }), [history, timerSeconds]);
+
+  const evaluation = useMemo(() => evaluateBoard(board), [board]);
+  const evalTotal = evaluation.attack + evaluation.defense || 1;
+  const attackPercent = Math.min(100, Math.round((evaluation.attack / evalTotal) * 100));
+  const canUndo = gameStatus === 'playing' && undoCount < MAX_UNDO && history.length >= 2 && !isAIThinking;
+
+  const handleClick = useCallback((row: number, col: number) => {
+    if (board[row][col] !== EMPTY || gameStatus !== 'playing' || currentPlayer !== BLACK || isAIThinking) return;
+    const newBoard = board.map(r => [...r]);
+    newBoard[row][col] = BLACK;
+    setBoard(newBoard);
+    setCurrentPlayer(WHITE);
+    setLastMove([row, col]);
+    setHistory(h => [...h, { row, col, player: BLACK, timestamp: Date.now() }]);
+    setPreviewStep(null);
+    setPreviewBoard(null);
+    const winCells = checkFive(row, col, BLACK, newBoard);
+    if (winCells.length > 0) {
+      setWinningCells(winCells);
+      setGameStatus('won');
+      saveGameResult('won');
+      onGameOver?.('win');
+      return;
+    }
+    if (newBoard.every(r => r.every(c => c !== EMPTY))) {
+      setGameStatus('draw');
+      saveGameResult('draw');
+      onGameOver?.('draw');
+      return;
+    }
+    setIsAIThinking(true);
+  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver]);
+
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return;
+    const newHistory = history.slice(0, -2);
+    const restoredBoard = createEmptyBoard();
+    for (const move of newHistory) {
+      restoredBoard[move.row][move.col] = move.player;
+    }
+    setBoard(restoredBoard);
+    setHistory(newHistory);
+    setCurrentPlayer(BLACK);
+    setLastMove(newHistory.length > 0 ? [newHistory[newHistory.length - 1].row, newHistory[newHistory.length - 1].col] : null);
+    setWinningCells(null);
+    setUndoCount(u => u + 1);
+  }, [canUndo, history]);
+
+  const handlePreview = useCallback((stepIndex: number) => {
+    if (stepIndex >= history.length) { setPreviewStep(null); setPreviewBoard(null); return; }
+    setPreviewStep(stepIndex);
+    const previewB = createEmptyBoard();
+    for (let i = 0; i <= stepIndex; i++) {
+      const m = history[i];
+      previewB[m.row][m.col] = m.player;
+    }
+    setPreviewBoard(previewB);
+  }, [history]);
 
   const resetBoard = () => {
     setBoard(createEmptyBoard());
@@ -279,148 +479,540 @@ export function GomokuBoard({
     setWinningCells(null);
     setIsAIThinking(false);
     setHistory([]);
+    setHoverPos(null);
+    setUndoCount(0);
+    setTimerSeconds(0);
+    setShowHistory(false);
+    setPreviewStep(null);
+    setPreviewBoard(null);
+    setShowAnalysis(false);
+    setAiThinkProgress(0);
   };
 
   const surrender = () => {
     if (gameStatus === 'playing') {
       setGameStatus('lost');
+      saveGameResult('lost');
       onGameOver?.('loss');
     }
   };
 
-  const statusText = gameStatus !== 'playing'
-    ? ''
-    : isAIThinking
-    ? '⚪ AI 思考中... (白方)'
-    : '⚫ 你的回合 (黑方)';
-
-  const resultConfig = {
-    won: { emoji: '✨', text: '五子连珠!' },
-    lost: { emoji: '', text: '再接再厉' },
-    draw: { emoji: '', text: '势均力敌' }
+  const saveGameResult = (result: 'win' | 'loss' | 'draw') => {
+    try {
+      const key = 'gomoku_stats';
+      const raw = localStorage.getItem(key);
+      const data = raw ? JSON.parse(raw) : { wins: 0, losses: 0, draws: 0, games: 0 };
+      if (result === 'won') data.wins++;
+      else if (result === 'lost') data.losses++;
+      else data.draws++;
+      data.games++;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {}
   };
 
+  const statusText = gameStatus !== 'playing' ? '' : isAIThinking ? '\u26AA AI \u601d\u8003\u4e2d... (\u767d\u65b9)' : '\u26AB \u4f60\u7684\u56de\u5408 (\u9ed1\u65b9)';
+  const resultConfig = {
+    won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
+    lost: emoji: '', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
+    draw: { emoji: '', text: '\u52bf\u5747\u529b\u654c', score: '+5', color: 'text-yellow-600' }
+  };
+  const storedStats = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('gomoku_stats') || '{"wins":0,"losses":0,"draws":0,"games":0}'); }
+    catch { return { wins: 0, losses: 0, draws: 0, games: 0 }; }
+  }, []);
+
+  const displayBoard = previewBoard || board;
   const isStarPoint = (r: number, c: number): boolean =>
     STAR_POINTS.some(([sr, sc]) => sr === r && sc === c);
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col items-center gap-3">
-      <div className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-center">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {statusText}
-        </span>
+    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start">
+      <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
+        {/* Top Info Bar */}
+        <div className="w-full max-w-[560px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm border border-gray-200/60 dark:border-gray-700/50">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={clsx(
+                "text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap",
+                gameStatus === 'playing' && !isAIThinking
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                  : "bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400"
+              )}>
+                {statusText}
+              </span>
+              {isAIThinking && (
+                <div className="flex items-center gap-0.5">
+                  {[0, 1, 2].map(i => (
+                    <motion.span key={i}
+                      className={clsx("w-1.5 h-1.5 rounded-full", config.bgColor)}
+                      animate={{ opacity: [1, 0.3, 1], scale: [1, 0.8, 1] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            {hoverPos && gameStatus === 'playing' && !isAIThinking && (
+              <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
+                {getCoordLabel(hoverPos[0], hoverPos[1])}
+              </span>
+            )}
+            <span className="font-mono text-xs font-medium text-gray-600 dark:text-gray-400 ml-auto tabular-nums">
+              {formatTime(timerSeconds)}
+            </span>
+          </div>
+          {/* AI Thinking Progress Bar */}
+          <AnimatePresence>
+            {isAIThinking && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 6, opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <motion.div
+                  className={clsx("h-full rounded-full transition-all", config.barColor)}
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${aiThinkProgress}%` }}
+                  transition={{ ease: 'linear', duration: config.thinkTime / 800 }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Board Container with Coordinates */}
+        <div className="relative overflow-hidden rounded-2xl shadow-xl" style={{
+          background: 'linear-gradient(145deg, #DEB887 0%, #D2A679 20%, #C9956A 50%, #BF8E5F 75%, #B58555 100%)',
+          padding: '14px'
+        }}>
+          {/* Wood grain noise overlay */}
+          <div className="absolute inset-0 opacity-[0.07] pointer-events-none rounded-2xl"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              backgroundSize: '180px 180px'
+            }} />
+
+          <div className="relative flex">
+            {/* Column Labels Top */}
+            <div className="ml-5" style={{ width: 'calc(var(--cell-size) * 15)' }}>
+              <div className="flex justify-around mb-0.5">
+                {COL_LABELS.split('').map(label => (
+                  <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 w-text-center select-none" style={{ width: 'var(--cell-size)', textAlign: 'center', fontSize: '10px' }}>{label}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative flex">
+            {/* Row Labels Left */}
+            <div className="flex flex-col justify-around mr-0.5 pt-0" style={{ height: 'calc(var(--cell-size) * 15)' }}>
+              {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 leading-none select-none flex items-center justify-end pr-0.5" style={{ height: 'var(--cell-size)', lineHeight: 'var(--cell-size)', fontSize: '10px' }}>{i + 1}</span>
+              ))}
+            </div>
+
+            {/* Chess Board Grid */}
+            <div
+              className="relative"
+              style={{
+                '--cell-size': 'min(28px, calc((100vw - 140px) / 16))',
+                width: 'calc(var(--cell-size) * 15)',
+                height: 'calc(var(--cell-size) * 15)'
+              } as React.CSSProperties}
+            >
+              {/* SVG Grid Lines */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+                {/* Outer double border */}
+                <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" fill="none" stroke="#5D3A1A" strokeWidth="2.5" rx="1" />
+                <rect x="5" y="5" width="calc(100% - 10px)" height="calc(100% - 10px)" fill="none" stroke="#5D3A1A" strokeWidth="1" rx="1" />
+                {/* Inner grid lines */}
+                {Array.from({ length: BOARD_SIZE }).map((_, i) => {
+                  const offset = `calc(var(--cell-size) * ${i} + var(--cell-size) / 2)`;
+                  return (
+                    <g key={`g-${i}`}>
+                      <line x1={offset} y1="calc(var(--cell-size) / 2)" x2={offset} y2="calc(100% - var(--cell-size) / 2)" stroke="#5D3A1A" strokeWidth="0.6" />
+                      <line x1="calc(var(--cell-size) / 2)" y1={offset} x2="calc(100% - var(--cell-size) / 2)" y2={offset} stroke="#5D3A1A" strokeWidth="0.6" />
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Star Points */}
+              {STAR_POINTS.map(([sr, sc], idx) => {
+                const cellVal = displayBoard[sr]?.[sc];
+                if (cellVal !== EMPTY) return null;
+                return (
+                  <div key={`star-${idx}`}
+                    className="absolute pointer-events-none z-[2]"
+                    style={{
+                      left: `calc(var(--cell-size) * ${sc})`,
+                      top: `calc(var(--cell-size) * ${sr})`,
+                      width: 'var(--cell-size)',
+                      height: 'var(--cell-size)'
+                    }}
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Board Cells */}
+              {displayBoard.map((row, rowIndex) =>
+                row.map((cell, colIndex) => {
+                  const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
+                  const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
+                  const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
+                  const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
+                    && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
+
+                  return (
+                    <button
+                      key={`${rowIndex}-${colIndex}`}
+                      onClick={() => handleClick(rowIndex, colIndex)}
+                      onMouseEnter={() => setHoverPos([rowIndex, colIndex])}
+                      onMouseLeave={() => setHoverPos(null)}
+                      disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
+                      className={clsx(
+                        'absolute cursor-pointer outline-none',
+                        'transition-colors duration-100',
+                        cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
+                          ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
+                          : ''
+                      )}
+                      style={{
+                        left: `calc(var(--cell-size) * ${colIndex})`,
+                        top: `calc(var(--cell-size) * ${rowIndex})`,
+                        width: 'var(--cell-size)',
+                        height: 'var(--cell-size)',
+                        zIndex: isWinCell ? 12 : 5
+                      }}
+                    >
+                      {star && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[2]">
+                          <div className="w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40" />
+                        </div>
+                      )}
+
+                      {/* Ghost piece on hover */}
+                      {isHover && (
+                        <motion.div
+                          initial={{ scale: 0.7, opacity: 0 }}
+                          animate={{ scale: 0.85, opacity: 0.45 }}
+                          exit={{ scale: 0.7, opacity: 0 }}
+                          className="absolute m-auto w-[78%] h-[78%] rounded-full z-[3] pointer-events-none"
+                          style={{
+                            background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
+                            opacity: 0.35
+                          }}
+                        />
+                      )}
+
+                      {cell !== EMPTY && (
+                        <Stone player={cell} isWin={isWinCell} isLast={isLast} />
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Control Buttons */}
+        <div className="flex gap-2.5 w-full max-w-[560px] px-1">
+          <button
+            onClick={surrender}
+            disabled={gameStatus !== 'playing'}
+            className={clsx(
+              'flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm border-2 transition-all',
+              gameStatus === 'playing'
+                ? 'border-red-400 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:border-red-500 dark:text-red-400'
+                : 'border-gray-200 text-gray-300 cursor-not-allowed dark:border-gray-700'
+            )}
+          >
+            认输
+          </button>
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className={clsx(
+              'flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm border-2 transition-all',
+              canUndo
+                ? 'border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 dark:border-amber-500 dark:text-amber-400'
+                : 'border-gray-200 text-gray-300 cursor-not-allowed dark:border-gray-700'
+            )}
+          >
+            悔棋 ({MAX_UNDO - undoCount})
+          </button>
+          <button
+            onClick={() => setShowHistory(v => !v)}
+            className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm border-2 border-indigo-400 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 dark:border-indigo-500 dark:text-indigo-400 transition-all"
+          >
+            {showHistory ? '收起历史' : '历史记录'}
+          </button>
+          <button
+            onClick={resetBoard}
+            className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-md hover:shadow-lg transition-all"
+          >
+            新局
+          </button>
+        </div>
+
+        {/* Difficulty Info */}
+        <div className={clsx("text-xs px-3 py-1.5 rounded-lg font-medium", config.color, "bg-opacity-10", `bg-${config.bgColor.replace('bg-', '')}/10`, "dark:bg-opacity-20")}>
+          {config.label} - {config.desc}
+        </div>
+
+        {/* History Panel */}
+        <AnimatePresence>
+          {showHistory && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="w-full max-w-[560px] overflow-hidden"
+            >
+              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-3 shadow-sm mt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">落子历史</span>
+                  <span className="text-[10px] text-gray-400">{history.length} 步</span>
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-0.5 pr-1 scrollbar-thin">
+                  {history.map((move, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handlePreview(idx)}
+                      className={clsx(
+                        "w-full flex items-center gap-2 px-2 py-1 rounded-md text-xs transition-colors",
+                        previewStep === idx
+                          ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"
+                          : "hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-400"
+                      )}
+                    >
+                      <span className="font-mono font-bold w-5 text-center text-gray-400">{idx + 1}</span>
+                      <span className={clsx(
+                        "w-4 h-4 rounded-full flex-shrink-0",
+                        move.player === BLACK
+                          ? "bg-gradient-to-br from-gray-600 to-black"
+                          : "bg-gradient-to-br from-white to-gray-300 border border-gray-300"
+                      )} />
+                      <span className="font-mono font-semibold">{getCoordLabel(move.row, move.col)}</span>
+                      <span className="text-[10px] text-gray-400 ml-auto tabular-nums">
+                        {new Date(move.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                    </button>
+                  ))}
+                  {history.length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-4">暂无落子记录</p>
+                  )}
+                </div>
+                {previewStep !== null && (
+                  <button
+                    onClick={() => { setPreviewStep(null); setPreviewBoard(null); }}
+                    className="mt-2 w-full text-xs text-indigo-500 hover:text-indigo-700 py-1"
+                  >
+                    ← 返回当前局面
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="overflow-auto rounded-xl p-2 bg-amber-100 dark:bg-amber-900/20 shadow-inner">
-        <div
-          className="grid gap-px"
-          style={{
-            gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`
-          }}
-        >
-          {board.map((row, rowIndex) =>
-            row.map((cell, colIndex) => {
-              const isWinCell =
-                winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
-              const isLastMove =
-                lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex;
-              const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
+      {/* Sidebar Stats */}
+      <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">游戏统计</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">总步数</span>
+              <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">{stats.totalMoves}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-gray-600 to-black" />
+                <span className="text-xs text-gray-500">黑方</span>
+              </div>
+              <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">{stats.blackCount}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-white to-gray-300 border border-gray-300" />
+                <span className="text-xs text-gray-500">白方</span>
+              </div>
+              <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">{stats.whiteCount}</span>
+            </div>
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">用时</span>
+                <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">{formatTime(stats.duration)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              return (
-                <motion.button
-                  key={`${rowIndex}-${colIndex}`}
-                  onClick={() => handleClick(rowIndex, colIndex)}
-                  disabled={cell !== EMPTY || gameStatus !== 'playing'}
-                  initial={cell ? { scale: 0, opacity: 0 } : undefined}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className={clsx(
-                    'aspect-square rounded-sm relative cursor-pointer',
-                    'transition-colors',
-                    cell === EMPTY && gameStatus === 'playing' &&
-                      !isAIThinking && currentPlayer === BLACK
-                      ? 'bg-amber-200/50 dark:bg-amber-800/30 hover:bg-amber-300/70'
-                      : 'bg-amber-200/50 dark:bg-amber-800/30',
-                    isLastMove && !isWinCell && 'ring-2 ring-red-400 ring-inset z-10',
-                    isWinCell && 'ring-2 ring-green-400 ring-inset animate-pulse'
-                  )}
-                >
-                  {star && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-1.5 h-1.5 rounded-full bg-amber-800/50" />
-                    </div>
-                  )}
+        {/* Evaluation Bar */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">局势评估</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-blue-600 dark:text-blue-400 font-medium">进攻力 (AI)</span>
+              <span className="text-orange-600 dark:text-orange-400 font-medium">防守力 (你)</span>
+            </div>
+            <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
+              <motion.div
+                className="bg-gradient-to-r from-blue-500 to-blue-400 h-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${attackPercent}%` }}
+                transition={{ duration: 0.5 }}
+              />
+              <div className="flex-1 bg-gradient-to-r from-orange-400 to-orange-500 h-full" />
+            </div>
+            <div className="flex justify-between text-[10px] text-gray-400 font-mono">
+              <span>{evaluation.attack.toLocaleString()}</span>
+              <span>{evaluation.defense.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
 
-                  {cell === BLACK && (
-                    <div
-                      className="absolute m-auto w-4/5 h-4/5 rounded-full shadow-md"
-                      style={{
-                        background: 'radial-gradient(circle at 35% 35%, #d4d4d4, #6b7280 40%, #1f2937)'
-                      }}
-                    />
-                  )}
-
-                  {cell === WHITE && (
-                    <div
-                      className="absolute m-auto w-4/5 h-4/5 rounded-full shadow-md border border-gray-300"
-                      style={{
-                        background: 'radial-gradient(circle at 35% 35%, #ffffff, #f3f4f6 40%, #d1d5db)'
-                      }}
-                    />
-                  )}
-                </motion.button>
-              );
-            })
+        {/* Historical Record from localStorage */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">历史战绩</h3>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg py-2">
+              <p className="text-lg font-bold text-green-600 dark:text-green-400">{storedStats.wins}</p>
+              <p className="text-[10px] text-green-600/70 dark:text-green-400/70">胜</p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg py-2">
+              <p className="text-lg font-bold text-red-600 dark:text-red-400">{storedStats.losses}</p>
+              <p className="text-[10px] text-red-600/70 dark:text-red-400/70">负</p>
+            </div>
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg py-2">
+              <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{storedStats.draws}</p>
+              <p className="text-[10px] text-yellow-600/70 dark:text-yellow-400/70">平</p>
+            </div>
+          </div>
+          {storedStats.games > 0 && (
+            <p className="text-[10px] text-gray-400 text-center mt-2">
+              共 {storedStats.games} 局 · 胜率 {Math.round(storedStats.wins / storedStats.games * 100)}%
+            </p>
           )}
         </div>
       </div>
 
-      <div className="flex gap-3 w-full max-w-md px-4">
-        <button
-          onClick={surrender}
-          disabled={gameStatus !== 'playing'}
-          className={clsx(
-            'flex-1 py-2 px-4 rounded-lg font-medium border-2 transition-all',
-            gameStatus === 'playing'
-              ? 'border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-              : 'border-gray-300 text-gray-400 cursor-not-allowed dark:border-gray-700'
-          )}
-        >
-          认输
-        </button>
-        <button
-          onClick={resetBoard}
-          className="flex-1 py-2 px-4 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all"
-        >
-          再来一局
-        </button>
-      </div>
-
+      {/* Result Modal */}
       <AnimatePresence>
         {gameStatus !== 'playing' && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onClick={resetBoard}
           >
             <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -30, opacity: 0 }}
+              initial={{ scale: 0.85, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.85, y: 30, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl text-center space-y-3 min-w-[260px]"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl text-center space-y-4 min-w-[280px] max-w-[360px] w-full"
             >
-              <p className="text-3xl">{resultConfig[gameStatus].emoji}</p>
-              <p className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                {resultConfig[gameStatus].text}
-              </p>
-              <button
-                onClick={resetBoard}
-                className="mt-4 w-full py-2.5 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-all"
+              <motion.p
+                initial={{ scale: 0, rotate: -15 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', delay: 0.1, stiffness: 250 }}
+                className="text-5xl"
               >
-                再来一局
+                {resultConfig[gameStatus].emoji}
+              </motion.p>
+              <div>
+                <p className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                  {resultConfig[gameStatus].text}
+                </p>
+                <p className={clsx("text-base font-bold mt-1", resultConfig[gameStatus].color)}>
+                  积分 {resultConfig[gameStatus].score}
+                </p>
+              </div>
+
+              {/* Stats Summary */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 space-y-1.5 text-left">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">总步数</span>
+                  <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{stats.totalMoves}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">用时</span>
+                  <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">{formatTime(stats.duration)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">平均思考</span>
+                  <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
+                    {stats.totalMoves > 0 ? Math.round(config.thinkTime / 1000) + 's' : '-'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-1">
+                {gameStatus !== 'draw' && (
+                  <button
+                    onClick={() => setShowAnalysis(true)}
+                    className="w-full py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                  >
+                    分析本局
+                  </button>
+                )}
+                <button
+                  onClick={resetBoard}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 shadow-md transition-all"
+                >
+                  再来一局
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Analysis Modal */}
+      <AnimatePresence>
+        {showAnalysis && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowAnalysis(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-5 sm:p-6 shadow-2xl max-w-[380px] w-full max-h-[80vh] overflow-y-auto"
+            >
+              <h3 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-3">本局分析</h3>
+              <div className="space-y-2.5 text-sm">
+                {history.slice(-5).map((m, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-gray-50 dark:bg-gray-700/40 rounded-lg px-3 py-2">
+                    <span className="font-mono font-bold text-gray-400 w-5">{history.length - 5 + i + 1}</span>
+                    <div className={clsx("w-3 h-3 rounded-full shrink-0",
+                      m.player === BLACK ? "bg-gradient-to-br from-gray-600 to-black" : "bg-gradient-to-br from-white to-gray-300 border border-gray-300"
+                    )} />
+                    <span className="font-mono font-medium">{getCoordLabel(m.row, m.col)}</span>
+                    <span className="text-gray-400 ml-auto text-[10px]">
+                      {new Date(m.timestamp).toLocaleTimeString('zh-CN', { minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+                {history.length === 0 && <p className="text-gray-400 text-center py-4 text-xs">暂无数据</p>}
+              </div>
+              <button
+                onClick={() => setShowAnalysis(false)}
+                className="mt-4 w-full py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+              >
+                关闭
               </button>
             </motion.div>
           </motion.div>

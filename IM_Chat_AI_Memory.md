@@ -1203,6 +1203,104 @@
   - 单元测试应覆盖SQL查询的正确性
 - **执行结果**: ✅ 已修复
 
+### 任务40: TicTacToeBoard.tsx 完美重写（15项增强功能）
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 完美重写井字棋组件，从基础版升级为功能丰富的现代游戏组件
+  - 实现15项增强功能，涵盖游戏逻辑、UI设计、用户体验、无障碍支持
+- **新增/修改文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 完整重写（369行→659行，+290行）
+- **核心变更**:
+  - **悔棋功能（Undo）**: 新增 HistoryEntry 接口 + history 状态栈，handleUndo() 回退玩家和AI各一步，最多撤销10步（保留20条历史），撤销时重新计算 gameStatus
+  - **游戏统计面板**: 新增 elapsedTime 计时器（setInterval 每秒更新 + MM:SS 格式化）、moveCount 步数显示、stats 胜率统计（localStorage 持久化读写 tictactoe_stats）、showDifficultyTip 难度说明弹窗（HelpCircle 图标触发 + AnimatePresence 动画）
+  - **精美UI升级**: 渐变边框卡片（bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 + p-[1px] 描边技巧）、3D立体按钮（hover:scale-[1.02] active:scale-[0.98] + shadow-lg）、X样式升级（font-black + drop-shadow + textShadow 发光效果）、O样式升级（rounded-full + bg-gradient-to-br from-red-400 to-rose-500 + inset box-shadow 内发光）、棋盘毛玻璃效果（backdrop-blur-md）、胶囊状态栏（rounded-full + bg-gradient-to-r from-blue-500 to-indigo-500）
+  - **AI思考动画优化**: 脉冲点增加 scale 动画（opacity + scale 双重脉冲）、AI_THINKING_TEXT 根据难度差异化提示文字、THINKING_TIME 配置化（easy:800ms / medium:600ms / hard:400ms）
+  - **结果弹窗增强**: emoji 升级 text-6xl（带 spring 缩放入场）、详细统计卡片（用时/步数/历史胜率）、查看复盘按钮（showReplay 切换 + AnimatePresence 高度动画 + 历史步骤列表）、分享成绩按钮（Share2 图标 + navigator.clipboard.writeText 复制对局报告到剪贴板）
+  - **移动端优化**: 触摸区域 min-h-[44px] sm:min-h-[48px]、棋盘 max-w-[90vw] sm:max-w-sm 自适应宽度、按钮 min-h-[44px] sm:min-h-[48px]、认输确认弹窗（window.confirm 防误触）
+  - **视觉反馈动画**: 落子闪烁 flashCell 状态 + animate-flash CSS keyframes 动画（蓝色半透明闪烁300ms）、胜利发光 boardGlow 状态 + shadow-green-400/40 全盘光晕（持续1500ms）、失败抖动 boardShake 状态 + motion x 关键帧 [0,-6,6,-4,4,-2,2,0]（持续500ms）
+  - **键盘快捷键**: useEffect 监听 window.keydown、数字键1-9直接落子（parseInt(e.key) → handleClick(num-1)）、R键重开一局、U键撤销、ESC认输（带 window.confirm 确认）
+  - **无障碍支持**: aria-label 详细描述（格子编号+内容+状态）、tabIndex 动态控制（游戏中可Tab切换格子）、role="gridcell" 语义角色
+- **Props接口不变**:
+  ```typescript
+  interface TicTacToeBoardProps {
+    matchId?: number;
+    onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
+    aiDifficulty?: 'easy' | 'medium' | 'hard';
+    mode?: 'ai';
+  }
+  ```
+- **技术实现要点**:
+  - 使用 useRef 管理 setInterval 定时器引用（timerRef）和棋盘DOM引用（boardRef）
+  - history 栈使用 slice(-20) 限制最大长度防止内存泄漏
+  - minimax 函数增加 maxDepth 参数（默认9），easy模式限制深度为1
+  - localStorage 操作全部包裹 try-catch 防止隐私模式异常
+  - CSS动画通过 <style> 标签内联注入 @keyframes flash
+  - 积分规则调整：胜利+10、失败-5、平局+3（原版：+25/-15/0）
+- **与原版的差异对比**:
+  | 功能 | 原版 | 重写后 |
+  |------|------|--------|
+  | 代码行数 | 369行 | 659行 |
+  | AI思考时间 | 固定500ms | easy:800ms / medium:600ms / hard:400ms |
+  | 悔棋 | 无 | 有（最多10步） |
+  | 统计面板 | 仅步数 | 步数+计时器+胜率(localStorage持久化) |
+  | UI风格 | 平面白色背景 | 渐变边框卡片+毛玻璃+3D按钮 |
+  | X/O样式 | 纯文本颜色 | X发光+O径向渐变圆形 |
+  | 结果弹窗 | 小emoji+简单文字 | 大emoji(6xl)+详细统计+复盘+分享 |
+  | 移动端优化 | 无 | 44px触摸区+自适应宽度+防误触 |
+  | 视觉反馈 | 仅胜利高亮 | 落子闪烁+胜利发光+失败抖动 |
+  | 键盘快捷键 | 无 | 1-9/R/U/ESC全套 |
+  | 无障碍 | 无 | ARIA标签+Tab导航+role语义 |
+- **执行结果**: ✅ 完成
+
+### 任务41: GomokuBoard.tsx 完美重写（17项增强功能）
+- **执行时间**: 2026-05-23
+- **任务内容**:
+  - 完美重写五子棋组件，从基础版（431行）升级为功能丰富的现代游戏组件（1024行）
+  - 解决AI难度区分不明显、缺少坐标系统、无悔棋功能、UI不够精美等核心问题
+- **修改文件**:
+  - `frontend/src/app/components/games/GomokuBoard.tsx` - 全面重写
+- **AI算法重大改进**:
+  | 难度 | 原版逻辑 | 重写后逻辑 |
+  |------|---------|-----------|
+  | Easy | 40%随机+简单评分 | **50%随机**+只看直接威胁(活3以上)+思考1200ms |
+  | Medium | 完整评分搜索(与Hard相同) | **深度2层搜索**(当前+对手回应)+评分*1.1策略+900ms |
+  | Hard | 同Medium(无差异化) | **Alpha-Beta剪枝**+威胁优先级(活4>冲4>活3>眠3)+开局天元必走+防守优先+中心加权+600ms |
+- **新增功能清单（17项全部实现）**:
+  1. ✅ 完整15×15五子棋逻辑 + 四方向五连珠检测
+  2. ✅ 玩家(黑) vs AI(白)对战模式
+  3. ✅ 启发式评分函数AI（进攻分-防守分*1.1策略）
+  4. ✅ **三种难度真正差异化**（Easy/Medium/Hard算法完全不同）
+  5. ✅ 获胜棋子绿色脉冲高亮 + 最后落子红/蓝圈标记
+  6. ✅ 9个星位点标记（天元+8星位）
+  7. ✅ **坐标显示系统**：横向A-O + 纵向1-15 + 悬停实时坐标(font-mono)
+  8. ✅ **悔棋功能**：完整历史记录数组 + 同时撤销玩家+AI + 最多20步
+  9. ✅ **落子历史面板**：可折叠列表 + 序号/坐标/黑白方/时间戳 + 点击预览跳转
+  10. ✅ **游戏统计仪表板**：总步数 + 黑白计数 + MM:SS计时器 + 局势评估条
+  11. ✅ **localStorage战绩持久化**：胜负平统计 + 胜率计算
+  12. ✅ **木纹质感棋盘**：amber渐变背景 + SVG噪声纹理模拟 + 双线边框设计
+  13. ✅ **精美渐变棋子**：黑子径向渐变(灰→黑)+高光+投影 / 白子径向渐变+边框+投影
+  14. ✅ **落子动画**：spring弹性scale(0→1) + 悬停ghost piece半透明预览
+  15. ✅ **AI思考可视化**：进度条 + 三点脉冲动画 + 难度颜色区分(绿/黄/红)
+  16. ✅ **增强结果弹窗**：详细统计(步数/用时/平均思考) + 积分变化(+25/-12/+5) + 分析本局按钮
+  17. ✅ **移动端响应式布局**：CSS变量自适应棋盘 + lg:flex-row桌面端双栏布局 + 侧边栏统计
+- **技术改进要点**:
+  - `React.memo` 包裹 Stone 子组件避免不必要的重渲染
+  - `useMemo` 缓存 stats/evaluation/storedStats 计算结果
+  - `useRef` 管理 timer 避免闭包陷阱
+  - SVG 绘制网格线（深棕色0.6px线条 + 双线外框2.5px+1px）
+  - CSS变量 `--cell-size` 实现棋盘自适应缩放
+  - `previewBoard` 状态实现历史步骤回放不破坏当前棋局
+  - Props接口保持完全不变（matchId/onGameOver/aiDifficulty/mode）
+- **代码规模对比**:
+  | 项目 | 原版 | 重写后 |
+  |------|------|--------|
+  | 代码行数 | 431行 | 1024行 |
+  | AI函数数量 | 1个(getAIPosition) | 4个(aiEasy/aiMedium/aiHard/alphaBeta) |
+  | 状态变量 | 6个 | 15个 |
+  | UI区域 | 单栏(棋盘+按钮) | 双栏(棋盘区+侧边栏统计) |
+  | 功能模块 | 基础游戏 | 游戏+坐标+悔棋+历史+统计+计时+分析 |
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
