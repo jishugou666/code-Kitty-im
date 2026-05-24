@@ -500,46 +500,14 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
 
 Stone.displayName = 'Stone';
 
-/* CSS Grid board styles - injected once */
+/* CSS for board layout with SVG background - perfect alignment */
 if (typeof document !== 'undefined') {
   const oldStyle = document.getElementById('gomoku-grid-styles');
   if (oldStyle) oldStyle.remove();
   const style = document.createElement('style');
   style.id = 'gomoku-grid-styles';
   style.textContent = `
-    .gomoku-board-grid { isolation: isolate; }
-    .gomoku-cell {
-      width: 100% !important;
-      aspect-ratio: 1 / 1 !important;
-      position: relative;
-      padding: 0;
-      border: none;
-      background: transparent;
-    }
-    .gomoku-cell::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 0.6px;
-      transform: translateY(-50%);
-      background: #5D3A1A;
-      pointer-events: none;
-      z-index: 1;
-    }
-    .gomoku-cell::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 0.6px;
-      transform: translateX(-50%);
-      background: #5D3A1A;
-      pointer-events: none;
-      z-index: 1;
-    }
+    .gomoku-board-container { isolation: isolate; }
     .gomoku-cell-label {
       display: block;
       text-align: center;
@@ -633,7 +601,7 @@ export function GomokuBoard({
       if (winCells.length > 0) {
         setWinningCells(winCells);
         setGameStatus('lost');
-        saveGameResult('lost');
+        saveGameResult('loss');
         onGameOver?.('loss');
         return;
       }
@@ -675,7 +643,7 @@ export function GomokuBoard({
     if (winCells.length > 0) {
       setWinningCells(winCells);
       setGameStatus('won');
-      saveGameResult('won');
+      saveGameResult('win');
       onGameOver?.('win');
       return;
     }
@@ -751,7 +719,7 @@ export function GomokuBoard({
         try { await gameApi.surrender(matchId); } catch (e) {}
       }
       setGameStatus('lost');
-      saveGameResult('lost');
+      saveGameResult('loss');
       onGameOver?.('loss');
     }
   };
@@ -761,8 +729,8 @@ export function GomokuBoard({
       const key = 'gomoku_stats';
       const raw = localStorage.getItem(key);
       const data = raw ? JSON.parse(raw) : { wins: 0, losses: 0, draws: 0, games: 0 };
-      if (result === 'won') data.wins++;
-      else if (result === 'lost') data.losses++;
+      if (result === 'win') data.wins++;
+      else if (result === 'loss') data.losses++;
       else data.draws++;
       data.games++;
       localStorage.setItem(key, JSON.stringify(data));
@@ -848,37 +816,86 @@ export function GomokuBoard({
             }} />
 
           {/* Column Labels */}
-          <div className="flex mb-1 ml-6">
+          <div className="flex mb-1" style={{ marginLeft: 'calc(var(--gcs) / 2)' }}>
             {COL_LABELS.split('').map(label => (
-              <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none text-center gomoku-cell-label">{label}</span>
+              <span key={label} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none text-center"
+                style={{ width: 'var(--gcs)' }}>{label}</span>
             ))}
           </div>
 
           {/* Main board area: row labels + grid */}
           <div className="flex">
             {/* Row Labels */}
-            <div className="flex flex-col mr-1 pr-1">
+            <div className="flex flex-col" style={{ paddingRight: '4px' }}>
               {Array.from({ length: BOARD_SIZE }).map((_, i) => (
-                <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none flex items-center justify-end gomoku-cell-label">{i + 1}</span>
+                <span key={i} className="font-mono text-[10px] font-bold text-amber-900/50 dark:text-amber-200/50 select-none"
+                  style={{
+                    height: 'var(--gcs)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: '4px'
+                  }}>{i + 1}</span>
               ))}
             </div>
 
-            {/* Chess Board - CSS Grid for pixel-perfect alignment */}
+            {/* Perfect Alignment Board - SVG Background + Absolute Clickable Cells */}
             <div
-              className="gomoku-board-grid"
+              className="gomoku-board-container relative"
               style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${BOARD_SIZE}, var(--gcs))`,
-                gridTemplateRows: `repeat(${BOARD_SIZE}, var(--gcs))`,
                 '--gcs': 'min(28px, calc((100vw - 220px) / 15))',
+                width: 'calc(var(--gcs) * 14 + 1px)',
+                height: 'calc(var(--gcs) * 14 + 1px)',
                 position: 'relative'
               } as React.CSSProperties}
             >
+              {/* SVG Background - perfect lines and stars */}
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 211 211"
+                preserveAspectRatio="xMidYMid meet"
+                className="absolute top-0 left-0 pointer-events-none"
+                style={{ zIndex: 1 }}
+              >
+                {/* Grid lines */}
+                {Array.from({ length: 15 }).map((_, i) => (
+                  <React.Fragment key={`g-${i}`}>
+                    <line
+                      x1={i * 15 + 0.5} y1={0.5}
+                      x2={i * 15 + 0.5} y2={210.5}
+                      stroke="#5D3A1A"
+                      strokeWidth={0.7}
+                    />
+                    <line
+                      x1={0.5} y1={i * 15 + 0.5}
+                      x2={210.5} y2={i * 15 + 0.5}
+                      stroke="#5D3A1A"
+                      strokeWidth={0.7}
+                    />
+                  </React.Fragment>
+                ))}
+                {/* Star points */}
+                {STAR_POINTS.map(([r, c]) => (
+                  <circle
+                    key={`s-${r}-${c}`}
+                    cx={c * 15 + 0.5}
+                    cy={r * 15 + 0.5}
+                    r={3.2}
+                    fill="#5D3A1A"
+                    opacity={0.65}
+                  />
+                ))}
+                {/* Outer border - two lines */}
+                <rect x={-2} y={-2} width={215} height={215} fill="none" stroke="#5D3A1A" strokeWidth={2.5} />
+                <rect x={4} y={4} width={203} height={203} fill="none" stroke="#5D3A1A" strokeWidth={1} />
+              </svg>
+
+              {/* Clickable cells absolute positions */}
               {displayBoard.map((row, rowIndex) =>
                 row.map((cell, colIndex) => {
                   const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
                   const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
-                  const star = isStarPoint(rowIndex, colIndex) && cell === EMPTY;
                   const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
                     && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
 
@@ -890,33 +907,36 @@ export function GomokuBoard({
                       onMouseLeave={() => setHoverPos(null)}
                       disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
                       className={clsx(
-                        'gomoku-cell cursor-pointer outline-none relative',
+                        'absolute cursor-pointer outline-none',
                         cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
-                          ? 'hover:bg-amber-400/20 active:bg-amber-400/30'
+                          ? 'hover:bg-amber-400/15 active:bg-amber-400/25'
                           : ''
                       )}
-                      style={{ zIndex: isWinCell ? 12 : 5 }}
+                      style={{
+                        width: 'var(--gcs)',
+                        height: 'var(--gcs)',
+                        left: `calc(var(--gcs) * ${colIndex} - var(--gcs)/2)`,
+                        top: `calc(var(--gcs) * ${rowIndex} - var(--gcs)/2)`,
+                        zIndex: isWinCell ? 15 : 5,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
                     >
-                      {/* Star point dot at center */}
-                      {star && (
-                        <div className="absolute w-[7px] h-[7px] rounded-full bg-amber-900/60 dark:bg-amber-200/40 pointer-events-none z-[2]"
-                          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-                      )}
-
                       {/* Ghost piece on hover */}
                       {isHover && (
                         <motion.div
                           initial={{ scale: 0.7, opacity: 0 }}
                           animate={{ scale: 0.8, opacity: 0.45 }}
                           exit={{ scale: 0.7, opacity: 0 }}
-                          className="absolute rounded-full z-[3] pointer-events-none"
+                          className="absolute rounded-full z-[6]"
                           style={{
                             width: '75%',
                             height: '75%',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
                             background: 'radial-gradient(circle at 35% 30%, #888, #333 70%, #111)',
+                            boxShadow: '1px 3px 6px rgba(0,0,0,0.35)',
+                            border: '1px solid rgba(0,0,0,0.1)',
                             opacity: 0.35
                           }}
                         />
@@ -930,20 +950,6 @@ export function GomokuBoard({
                   );
                 })
               )}
-
-              {/* Outer border */}
-              <div className="absolute pointer-events-none" style={{
-                inset: 'calc(var(--gcs) / 2 - 1.5px)',
-                border: '2.5px solid #5D3A1A',
-                borderRadius: '2px',
-                zIndex: 6
-              }} />
-              <div className="absolute pointer-events-none" style={{
-                inset: 'calc(var(--gcs) / 2 + 3px)',
-                border: '1px solid #5D3A1A',
-                borderRadius: '2px',
-                zIndex: 6
-              }} />
             </div>
           </div>
         </div>

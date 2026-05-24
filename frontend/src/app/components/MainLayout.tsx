@@ -50,10 +50,13 @@ export function MainLayout() {
   if (isMobile) {
     const showChatsList = location.pathname === "/";
     const showContactsList = location.pathname === "/contacts";
+    const showNav = !isChat;
 
     return (
       <div className="flex flex-col w-full h-screen bg-[#F4F5F9] dark:bg-[#0A0C10] overflow-hidden">
-        <div className="flex-1 flex flex-col relative z-30 overflow-hidden">
+        <div className="flex-1 flex flex-col relative z-30 overflow-y-auto overflow-x-hidden"
+          style={{ paddingBottom: showNav ? 'calc(80px + env(safe-area-inset-bottom, 0px))' : 'env(safe-area-inset-bottom, 0px)' }}
+        >
           {showChatsList ? (
             <ChatsSidebar />
           ) : showContactsList ? (
@@ -66,14 +69,14 @@ export function MainLayout() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
-                className="h-full flex flex-col overflow-hidden"
+                className="min-h-full flex flex-col"
               >
                 <Outlet />
               </motion.div>
             </AnimatePresence>
           )}
         </div>
-        {!isChat && <MobileNav />}
+        {showNav && <MobileNav />}
       </div>
     );
   }

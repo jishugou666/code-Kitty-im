@@ -1,4 +1,4 @@
-import { MessageCircle, Users, Globe, Settings, Shield, Sparkles } from "lucide-react";
+import { MessageCircle, Users, Globe, Settings, Shield, Sparkles, Gamepad2 } from "lucide-react";
 import { clsx } from "clsx";
 import { motion } from "motion/react";
 import { useLocation, useNavigate } from "react-router";
@@ -14,6 +14,7 @@ export function MobileNav() {
   const navItems = [
     { path: "/", icon: MessageCircle, label: t('chat.message'), isMatch: (p: string) => p === "/" || p.startsWith("/chat") || p.startsWith("/group") },
     { path: "/contacts", icon: Users, label: t('chat.contacts'), isMatch: (p: string) => p.startsWith("/contacts") },
+    { path: "/games", icon: Gamepad2, label: '游戏', isMatch: (p: string) => p.startsWith("/games") },
     { path: "/moments", icon: Globe, label: t('moments.title'), isMatch: (p: string) => p.startsWith("/moments") },
     { path: "/settings", icon: Settings, label: t('chat.settings'), isMatch: (p: string) => p.startsWith("/profile") || p.startsWith("/settings") },
   ];

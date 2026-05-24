@@ -60,54 +60,7 @@ if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.id = 'chess-grid-styles';
   style.textContent = `
-    .chess-board-grid { isolation: isolate; }
-    .chess-cell {
-      width: 100% !important;
-      aspect-ratio: 1 / 1 !important;
-      position: relative;
-      padding: 0;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-    }
-    .chess-cell::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 0.7px;
-      transform: translateY(-50%);
-      background: #3D1F00;
-      pointer-events: none;
-      z-index: 1;
-    }
-    .chess-cell::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 0.7px;
-      transform: translateX(-50%);
-      background: #3D1F00;
-      pointer-events: none;
-      z-index: 1;
-    }
-    .chess-cell-river-h {
-      border-top: 0.7px solid transparent;
-      border-bottom: 0.7px solid transparent;
-    }
-    .chess-outer-border {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      border: 2.5px solid #3D1F00;
-      pointer-events: none;
-      z-index: 6;
-    }
+    .chess-board-container { isolation: isolate; }
   `;
   document.head.appendChild(style);
 }
@@ -213,7 +166,7 @@ export function ChineseChessBoard({
 
         if (captured?.type === 'king') {
           setGameStatus('won');
-          saveGameResult('won');
+          saveGameResult('win');
           onGameOver?.('win');
           return;
         }
@@ -283,7 +236,7 @@ export function ChineseChessBoard({
 
       if (captured?.type === 'king') {
         setGameStatus('lost');
-        saveGameResult('lost');
+        saveGameResult('loss');
         onGameOver?.('loss');
         return;
       }
@@ -331,7 +284,7 @@ export function ChineseChessBoard({
     if (gameStatus !== 'playing') return;
     if (matchId) { try { await gameApi.surrender(matchId); } catch {} }
     setGameStatus('lost');
-    saveGameResult('lost');
+    saveGameResult('loss');
     onGameOver?.('loss');
   };
 
@@ -340,8 +293,8 @@ export function ChineseChessBoard({
       const key = 'chess_stats';
       const raw = localStorage.getItem(key);
       const data = raw ? JSON.parse(raw) : { wins: 0, losses: 0, draws: 0, games: 0 };
-      if (result === 'won') data.wins++;
-      else if (result === 'lost') data.losses++;
+      if (result === 'win') data.wins++;
+      else if (result === 'loss') data.losses++;
       else data.draws++;
       data.games++;
       localStorage.setItem(key, JSON.stringify(data));
@@ -408,13 +361,68 @@ export function ChineseChessBoard({
             backgroundSize: '180px 180px'
           }} />
 
-          <div className="chess-board-grid chess-outer-border" style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${COLS}, var(--ccs))`,
-            gridTemplateRows: `repeat(${ROWS}, var(--ccs))`,
+          <div className="chess-board-container relative" style={{
             '--ccs': cellSizeVar,
+            width: `calc(var(--ccs) * ${COLS - 1} + 1px)`,
+            height: `calc(var(--ccs) * ${ROWS - 1} + 1px)`,
             position: 'relative'
           } as React.CSSProperties}>
+            {/* SVG Background for perfect alignment */}
+            <svg
+              width="100%"
+              height="100%"
+              viewBox={`0 0 ${(COLS - 1) * 30 + 1} ${(ROWS - 1) * 30 + 1}`}
+              preserveAspectRatio="xMidYMid meet"
+              className="absolute top-0 left-0 pointer-events-none"
+              style={{ zIndex: 1 }}
+            >
+              {/* Grid lines */}
+              {Array.from({ length: ROWS }).map((_, i) => (
+                <line
+                  key={`hl-${i}`}
+                  x1="0.5"
+                  y1={i * 30 + 0.5}
+                  x2={(COLS - 1) * 30 + 0.5}
+                  y2={i * 30 + 0.5}
+                  stroke="#3D1F00"
+                  strokeWidth="0.7"
+                />
+              ))}
+              {Array.from({ length: COLS }).map((_, i) => (
+                <g key={`vl-${i}`}>
+                  <line
+                    x1={i * 30 + 0.5}
+                    y1="0.5"
+                    x2={i * 30 + 0.5}
+                    y2={4 * 30 + 0.5}
+                    stroke="#3D1F00"
+                    strokeWidth="0.7"
+                  />
+                  <line
+                    x1={i * 30 + 0.5}
+                    y1={5 * 30 + 0.5}
+                    x2={i * 30 + 0.5}
+                    y2={(ROWS - 1) * 30 + 0.5}
+                    stroke="#3D1F00"
+                    strokeWidth="0.7"
+                  />
+                </g>
+              ))}
+              {/* Palace diagonals (9 corners) */}
+              <line x1={3 * 30 + 0.5} y1={0 * 30 + 0.5} x2={5 * 30 + 0.5} y2={2 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              <line x1={5 * 30 + 0.5} y1={0 * 30 + 0.5} x2={3 * 30 + 0.5} y2={2 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              <line x1={3 * 30 + 0.5} y1={7 * 30 + 0.5} x2={5 * 30 + 0.5} y2={9 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              <line x1={5 * 30 + 0.5} y1={7 * 30 + 0.5} x2={3 * 30 + 0.5} y2={9 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              {/* Flying general paths (the two outside lines for crossing river) */}
+              <line x1="0.5" y1={4 * 30 + 0.5} x2={0.5} y2={5 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              <line x1={8 * 30 + 0.5} y1={4 * 30 + 0.5} x2={8 * 30 + 0.5} y2={5 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              {/* Elephant crossing river? No, just 3x3 palace already there */}
+              {/* Outer border */}
+              <rect x="-2" y="-2" width={(COLS - 1) * 30 + 5} height={(ROWS - 1) * 30 + 5} fill="none" stroke="#3D1F00" strokeWidth="2.5" />
+              <rect x="4" y="4" width={(COLS - 1) * 30 - 7} height={(ROWS - 1) * 30 - 7} fill="none" stroke="#3D1F00" strokeWidth="1" />
+            </svg>
+
+            {/* Clickable cells as absolute positioned circles */}
             {board.map((row, rowIndex) =>
               row.map((cell, colIndex) => {
                 const piece = cell;
@@ -431,11 +439,21 @@ export function ChineseChessBoard({
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleClick(rowIndex, colIndex)}
                     className={clsx(
-                      'chess-cell outline-none relative',
+                      'absolute outline-none cursor-pointer',
                       canClick && 'hover:bg-amber-400/10',
                       isSelected && 'bg-blue-400/20'
                     )}
-                    style={{ zIndex: isSelected ? 5 : 'auto' }}
+                    style={{
+                      width: 'var(--ccs)',
+                      height: 'var(--ccs)',
+                      left: `calc(var(--ccs) * ${colIndex} - var(--ccs)/2)`,
+                      top: `calc(var(--ccs) * ${rowIndex} - var(--ccs)/2)`,
+                      zIndex: isSelected ? 15 : 5,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
                   >
                     {isLegalTarget && !piece && (
                       <div className="absolute rounded-full bg-amber-500/40 dark:bg-amber-400/50 z-[4]"
@@ -491,7 +509,13 @@ export function ChineseChessBoard({
                 style={{
                   width: 'calc(var(--ccs) * 0.88)',
                   height: 'calc(var(--ccs) * 0.88)',
-                  top: `calc(var(--ccs) * ${board.findIndex(r => r.findIndex(c => c?.type === 'king' && c?.color === checkState) !== -1)} + var(--ccs) * 0.06)`,
+                  top: `calc(var(--ccs) * ${(() => {
+                    for (let r = 0; r < ROWS; r++) {
+                      const c = board[r].findIndex(cell => cell?.type === 'king' && cell?.color === checkState);
+                      if (c !== -1) return r;
+                    }
+                    return 0;
+                  })()} - var(--ccs) * 0.44 + var(--ccs) * 0.06)`,
                   left: `calc(var(--ccs) * ${(() => {
                     for (let r = 0; r < ROWS; r++) {
                       const c = board[r].findIndex(cell => cell?.type === 'king' && cell?.color === checkState);

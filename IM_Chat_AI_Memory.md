@@ -1436,6 +1436,25 @@
   | 目标用户 | 完全新手 | 有一定基础 | 接近职业水平 |
 - **执行结果**: ✅ 完成
 
+### 任务44: 电脑不灭屏工具脚本
+- **执行时间**: 2026-05-24
+- **任务内容**:
+  - 创建 Windows 不灭屏 PowerShell 脚本
+  - 使用 Windows 官方 API `SetThreadExecutionState` (kernel32.dll)
+  - 防止屏幕自动关闭和系统进入睡眠状态
+- **新增文件**:
+  - `scripts/keep-awake.ps1` - 不灭屏脚本
+- **核心实现**:
+  - 通过 P/Invoke 调用 `SetThreadExecutionState` API
+  - 设置 `ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED` 标志组合
+  - 每30秒循环刷新一次，持续保持屏幕和系统唤醒
+  - 按 Ctrl+C 可随时停止程序
+- **技术优势**:
+  - 使用官方 Win32 API，比模拟按键更可靠、更轻量
+  - 不影响正常使用，不占用系统资源
+  - 同时防止屏幕关闭和系统休眠两种行为
+- **执行结果**: ✅ 完成（已运行验证）
+
 ---
 
 ## 重要问题修复记录
@@ -2386,5 +2405,5 @@ CREATE TABLE user_game_profile (
 
 ---
 
-**文档更新时间**: 2026-04-18
-**文档版本**: v2.0.1
+**文档更新时间**: 2026-05-24
+**文档版本**: v2.0.2
