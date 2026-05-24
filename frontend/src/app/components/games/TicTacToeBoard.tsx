@@ -312,8 +312,8 @@ export function TicTacToeBoard({
       
       if (matchId) {
         try {
-          // 玩家1获胜，winnerId = 1（我们自己是player1）
-          gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
+          // 玩家获胜
+          gameApi.finish(matchId, { won: true }).catch(() => {});
         } catch {}
       }
       
@@ -330,7 +330,8 @@ export function TicTacToeBoard({
       
       if (matchId) {
         try {
-          gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          // 平局
+          gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
       
@@ -374,11 +375,11 @@ export function TicTacToeBoard({
         setScoreChange('-5');
         
         if (matchId) {
-          try {
-            // AI赢，所以玩家1输，winnerId = null
-            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
-          } catch {}
-        }
+        try {
+          // AI赢，玩家输
+          gameApi.finish(matchId, { won: false }).catch(() => {});
+        } catch {}
+      }
         
         onGameOver?.('loss');
         return;
@@ -392,10 +393,11 @@ export function TicTacToeBoard({
         setScoreChange('+0');
         
         if (matchId) {
-          try {
-            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
-          } catch {}
-        }
+        try {
+          // 平局
+          gameApi.finish(matchId, { won: false }).catch(() => {});
+        } catch {}
+      }
         
         onGameOver?.('draw');
       }

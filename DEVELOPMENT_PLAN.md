@@ -115,6 +115,17 @@
     - 后端：backend/src/controllers/GameController.js, backend/src/routes/game.js
     - 前端：frontend/src/api/game.ts, TicTacToeBoard.tsx, GomokuBoard.tsx, ChineseChessBoard.tsx
 
+- ✅ 游戏段位积分系统第二版修复
+  - **问题**：赢了还是不加分
+  - **根因分析**：前端传的 winnerId 是硬编码 1，和用户真实数据库 id 不匹配
+  - **修复步骤**：
+    1. **后端**：
+       - GameController.finish：不用前端传 winnerId，直接用 req.user.id 判断，won=true 时 winnerId=req.user.id
+       - 添加 query 导入
+    2. **前端**：
+       - api/game.ts：finish 接口参数改为 { won: boolean }
+       - 三个棋盘组件：所有调用 finish 的地方改成传 won: true/false
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

@@ -602,11 +602,11 @@ export function GomokuBoard({
         saveGameResult('loss');
         
         if (matchId) {
-          try {
-            // AI赢，玩家输
-            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
-          } catch {}
-        }
+        try {
+          // AI赢，玩家输
+          gameApi.finish(matchId, { won: false }).catch(() => {});
+        } catch {}
+      }
         
         onGameOver?.('loss');
         return;
@@ -616,10 +616,11 @@ export function GomokuBoard({
         saveGameResult('draw');
         
         if (matchId) {
-          try {
-            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
-          } catch {}
-        }
+        try {
+          // 平局
+          gameApi.finish(matchId, { won: false }).catch(() => {});
+        } catch {}
+      }
         
         onGameOver?.('draw');
       }
@@ -660,8 +661,8 @@ export function GomokuBoard({
       
       if (matchId) {
         try {
-          // 玩家获胜，winnerId = 1
-          gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
+          // 玩家获胜
+          gameApi.finish(matchId, { won: true }).catch(() => {});
         } catch {}
       }
       
@@ -674,7 +675,8 @@ export function GomokuBoard({
       
       if (matchId) {
         try {
-          gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          // 平局
+          gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
       

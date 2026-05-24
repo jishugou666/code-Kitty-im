@@ -61,7 +61,7 @@ export const gameApi = {
   surrender: (matchId: number) =>
     apiClient.post(`/game/${matchId}/surrender`),
 
-  finish: (matchId: number, data: { winnerId: number | null, status?: 'finished' | 'abandoned' }) =>
+  finish: (matchId: number, data: { won: boolean, status?: 'finished' | 'abandoned' }) =>
     apiClient.post(`/game/${matchId}/finish`, data),
 
   getProfile: () =>

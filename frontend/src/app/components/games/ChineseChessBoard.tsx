@@ -167,11 +167,11 @@ export function ChineseChessBoard({
           saveGameResult('win');
           
           if (matchId) {
-            try {
-              // 玩家获胜，winnerId =1
-              gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
-            } catch {}
-          }
+        try {
+          // 玩家获胜
+          gameApi.finish(matchId, { won: true }).catch(() => {});
+        } catch {}
+      }
           
           onGameOver?.('win');
           return;
@@ -245,11 +245,11 @@ export function ChineseChessBoard({
         saveGameResult('loss');
         
         if (matchId) {
-          try {
-            // AI赢，玩家输
-            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
-          } catch {}
-        }
+        try {
+          // AI赢，玩家输
+          gameApi.finish(matchId, { won: false }).catch(() => {});
+        } catch {}
+      }
         
         onGameOver?.('loss');
         return;
