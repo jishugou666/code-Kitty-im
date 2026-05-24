@@ -73,6 +73,23 @@ export const GameController = {
     }
   },
 
+  async finish(req, res, next) {
+    try {
+      const { matchId } = req.params;
+      const { winnerId, status = 'finished' } = req.body;
+      const match = await GameService.finishMatch(matchId, winnerId || null, status);
+      res.json(success(match, '对局已结束'));
+    } catch (err) {
+      if (err.message === 'Match not found') {
+        return res.status(404).json(error('对局不存在', 404));
+      }
+      if (err.message === 'Match is already finished') {
+        return res.status(400).json(error('对局已结束', 400));
+      }
+      next(err);
+    }
+  },
+
   async getProfile(req, res, next) {
     try {
       const profile = await RankingService.getUserProfile(req.user.id);

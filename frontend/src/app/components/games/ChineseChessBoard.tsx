@@ -165,6 +165,14 @@ export function ChineseChessBoard({
         if (captured?.type === 'king') {
           setGameStatus('won');
           saveGameResult('win');
+          
+          if (matchId) {
+            try {
+              // 玩家获胜，winnerId =1
+              gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
+            } catch {}
+          }
+          
           onGameOver?.('win');
           return;
         }
@@ -235,6 +243,14 @@ export function ChineseChessBoard({
       if (captured?.type === 'king') {
         setGameStatus('lost');
         saveGameResult('loss');
+        
+        if (matchId) {
+          try {
+            // AI赢，玩家输
+            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          } catch {}
+        }
+        
         onGameOver?.('loss');
         return;
       }

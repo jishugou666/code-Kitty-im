@@ -309,6 +309,14 @@ export function TicTacToeBoard({
       setStats(newStats);
       saveStatsToStorage(newStats);
       setScoreChange('+10');
+      
+      if (matchId) {
+        try {
+          // 玩家1获胜，winnerId = 1（我们自己是player1）
+          gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
+        } catch {}
+      }
+      
       onGameOver?.('win');
       return;
     }
@@ -319,6 +327,13 @@ export function TicTacToeBoard({
       setStats(newStats);
       saveStatsToStorage(newStats);
       setScoreChange('+0');
+      
+      if (matchId) {
+        try {
+          gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+        } catch {}
+      }
+      
       onGameOver?.('draw');
       return;
     }
@@ -357,6 +372,14 @@ export function TicTacToeBoard({
         setStats(newStats);
         saveStatsToStorage(newStats);
         setScoreChange('-5');
+        
+        if (matchId) {
+          try {
+            // AI赢，所以玩家1输，winnerId = null
+            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          } catch {}
+        }
+        
         onGameOver?.('loss');
         return;
       }
@@ -367,6 +390,13 @@ export function TicTacToeBoard({
         setStats(newStats);
         saveStatsToStorage(newStats);
         setScoreChange('+0');
+        
+        if (matchId) {
+          try {
+            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          } catch {}
+        }
+        
         onGameOver?.('draw');
       }
     }, THINKING_TIME[aiDifficulty]);

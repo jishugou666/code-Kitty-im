@@ -92,7 +92,28 @@
     - 而幽灵预览无任何定位属性，直接靠父元素 `display:flex` 居中 → 精准！
   - **修复**：移除 Stone（GomokuBoard）和 ChessPiece（ChineseChessBoard）的 `absolute/top/left/transform`
     - 改为与幽灵预览完全一致的 flex 居中方式：父元素 `flex+items-center+justify-center`，子元素只设宽高
-    - 添加 `flexShrink: 0` 防止被压缩
+    - 添加 `flexShrink:0` 防止被压缩
+
+- ✅ 游戏段位积分系统完整修复
+  - **问题**：玩游戏赢/输都不增加积分
+  - **根因分析**：
+    - 后端虽然有 GameService.finishMatch 函数和完整的 RankingService 积分计算，但没有暴露 API 接口
+    - 前端三个棋盘组件（TicTacToe/Gomoku/ChineseChess）游戏结束时，都没有调用任何结束对局的 API！只调用了 onGameOver，没有通知后端记录结果
+  - **修复步骤**：
+    1. **后端**：
+       - 在 GameController 添加 `finish` 方法：POST `/game/:matchId/finish`，接收 { winnerId, status }
+       - 在 routes/game.js 注册该路由
+    2. **前端**：
+       - 在 `api/game.ts` 添加 `gameApi.finish` 方法
+       - 三个棋盘组件都在所有游戏结束场景调用 finish API：
+         - 玩家赢（黑方/X/红方）：winnerId =1（玩家1）
+         - 玩家输（白方/O/AI）：winnerId = null
+         - 平局：winnerId = null
+       - 所有 API 调用都用 try-catch 包裹，失败不影响游戏流程
+       - Games.tsx 的 onGameOver 已经会调用 fetchProfile，所以积分榜和段位自动更新！
+  - **修改文件列表**：
+    - 后端：backend/src/controllers/GameController.js, backend/src/routes/game.js
+    - 前端：frontend/src/api/game.ts, TicTacToeBoard.tsx, GomokuBoard.tsx, ChineseChessBoard.tsx
 
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能

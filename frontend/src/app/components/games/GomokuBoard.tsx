@@ -600,12 +600,27 @@ export function GomokuBoard({
         setWinningCells(winCells);
         setGameStatus('lost');
         saveGameResult('loss');
+        
+        if (matchId) {
+          try {
+            // AI赢，玩家输
+            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          } catch {}
+        }
+        
         onGameOver?.('loss');
         return;
       }
       if (newBoard.every(r => r.every(c => c !== EMPTY))) {
         setGameStatus('draw');
         saveGameResult('draw');
+        
+        if (matchId) {
+          try {
+            gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+          } catch {}
+        }
+        
         onGameOver?.('draw');
       }
     }, config.thinkTime);
@@ -642,12 +657,27 @@ export function GomokuBoard({
       setWinningCells(winCells);
       setGameStatus('won');
       saveGameResult('win');
+      
+      if (matchId) {
+        try {
+          // 玩家获胜，winnerId = 1
+          gameApi.finish(matchId, { winnerId: 1 }).catch(() => {});
+        } catch {}
+      }
+      
       onGameOver?.('win');
       return;
     }
     if (newBoard.every(r => r.every(c => c !== EMPTY))) {
       setGameStatus('draw');
       saveGameResult('draw');
+      
+      if (matchId) {
+        try {
+          gameApi.finish(matchId, { winnerId: null }).catch(() => {});
+        } catch {}
+      }
+      
       onGameOver?.('draw');
       return;
     }
