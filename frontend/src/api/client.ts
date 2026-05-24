@@ -43,7 +43,10 @@ apiClient.interceptors.response.use(
         case 401:
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          localStorage.removeItem('auth-storage');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           break;
         case 429:
           pendingRetryConfig = error.config || null;

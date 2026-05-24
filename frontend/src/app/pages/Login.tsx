@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { AtSign, Lock, ChevronRight, User, Mail, Github, Chrome } from 'lucide-react';
@@ -10,13 +10,30 @@ import { useIsMobile } from '../components/ui/use-mobile';
 export function Login() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { login, register, isLoading, error, clearError, setError } = useAuthStore();
+  const { login, register, isLoading, error, clearError, setError, isAuthenticated, token } = useAuthStore();
   const [isLogin, setIsLogin] = useState(true);
   const [loginField, setLoginField] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const isMobile = useIsMobile();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      navigate('/', { replace: true });
+      return;
+    }
+    setIsChecking(false);
+  }, [isAuthenticated, token, navigate]);
+
+  if (isChecking) {
+    return (
+      <div className="h-screen w-screen bg-gradient-to-br from-indigo-50/50 via-white to-blue-50/50 dark:from-[#0E1116] dark:via-[#13161A] dark:to-[#0F141A] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const [emailError, setEmailError] = useState('');
   const [nicknameError, setNicknameError] = useState('');

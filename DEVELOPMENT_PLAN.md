@@ -3,11 +3,42 @@
 **制定日期**: 2026-04-18
 **版本**: v2.0.1
 **状态**: 执行中
-**最后更新**: 2026-05-23
+**最后更新**: 2026-05-24
 
 ---
 
 ## 更新日志
+
+### 2026-05-24
+- ✅ **严重BUG修复：长期登录用户无限刷新循环**
+  - **现象**：长期保持登录状态的用户进入任何页面（包括studio）后跳转到login，无限刷新无法停止，只有清除浏览器cookie才能恢复
+  - **根因分析**：
+    - JWT token 过期后，zustand persist 从 localStorage 恢复旧的认证状态（isAuthenticated: true, token: <已过期>）
+    - App.tsx → useHeartbeat() 检测到 isAuthenticated=true → 立即调用 userApi.heartbeat() 使用过期token
+    - 后端返回 401 → client.ts 拦截器触发
+    - **致命缺陷**：只删除了 `localStorage['token']` 和 `localStorage['user']`，没有删除 `localStorage['auth-storage']`（zustand persist主存储）
+    - 跳转到 /login 后，auth-storage 还在！zustand 再次恢复旧状态 → 触发同样的流程 → ♻️无限循环
+  - **修复方案（4层防护）**：
+    1. **client.ts (API拦截器)**：
+       - 401处理时增加 `localStorage.removeItem('auth-storage')`
+       - 增加路径检查：已在 /login 时不再重复跳转
+    2. **Login.tsx (登录页守卫)**：
+       - 添加 useEffect 检查 isAuthenticated + token
+       - 已登录时立即 `navigate('/', { replace: true })`
+       - 添加 isChecking 状态防止闪烁
+    3. **routes.tsx (路由loader保护)**：
+       - 新增 `authLoader()`：检查 auth-storage 中的认证状态，无效则 redirect('/login')
+       - 新增 `loginLoader()`：已登录则 redirect('/')
+       - MainLayout 路由添加 loader: authLoader
+       - Login 路由添加 loader: loginLoader
+    4. **authStore.ts (状态管理)**：
+       - 新增 `clearAuth()` 方法：彻底清除所有 localStorage + 重置状态
+       - loadUser 失败时调用 clearAuth() 而非简单的 set()
+  - **修改文件列表**：
+    - frontend/src/api/client.ts
+    - frontend/src/app/pages/Login.tsx
+    - frontend/src/app/routes.tsx
+    - frontend/src/store/authStore.ts
 
 ### 2026-05-23
 - ✅ 娱乐游戏功能全栈开发完成（Phase P0-P1）

@@ -18,10 +18,44 @@ const LazyStudio = () => (
   </Suspense>
 );
 
+function authLoader() {
+  const authData = localStorage.getItem('auth-storage');
+  if (!authData) {
+    return redirect('/login');
+  }
+  try {
+    const parsed = JSON.parse(authData);
+    const isAuthenticated = parsed?.state?.isAuthenticated;
+    const token = parsed?.state?.token;
+    if (!isAuthenticated || !token) {
+      return redirect('/login');
+    }
+  } catch {
+    return redirect('/login');
+  }
+  return null;
+}
+
+function loginLoader() {
+  const authData = localStorage.getItem('auth-storage');
+  if (authData) {
+    try {
+      const parsed = JSON.parse(authData);
+      if (parsed?.state?.isAuthenticated && parsed?.state?.token) {
+        return redirect('/');
+      }
+    } catch {
+      // 解析失败，继续显示登录页
+    }
+  }
+  return null;
+}
+
 export const router = createBrowserRouter([
   {
     path: "/login",
     Component: Login,
+    loader: loginLoader,
   },
   {
     path: "/studio",
@@ -42,6 +76,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     Component: MainLayout,
+    loader: authLoader,
     children: [
       { index: true, Component: EmptyState },
       { path: "chat/:id", Component: Chat },

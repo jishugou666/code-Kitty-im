@@ -16,6 +16,7 @@ interface AuthState {
   updateUser: (user: UserProfile) => void;
   setError: (error: string) => void;
   clearError: () => void;
+  clearAuth: () => void;
 }
 
 const localStorageWithTokenFallback = {
@@ -150,12 +151,7 @@ export const useAuthStore = create<AuthState>()(
             console.error('IP记录失败:', ipError);
           }
         } catch (error) {
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false
-          });
+          get().clearAuth();
         }
       },
 
@@ -169,6 +165,19 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      clearAuth: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          error: null,
+          isLoading: false
+        });
       },
     }),
     {
