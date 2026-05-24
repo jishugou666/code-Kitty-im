@@ -88,15 +88,13 @@ const ChessPiece = React.memo(({ piece, isSelected, isCheck, isLastMove, isAnima
       }}
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       className={clsx(
-        'absolute rounded-full flex items-center justify-center select-none z-10',
+        'rounded-full flex items-center justify-center select-none z-10',
         isLastMove && 'ring-2 ring-blue-400 ring-offset-1 ring-offset-transparent'
       )}
       style={{
         width: '82%',
         height: '82%',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
+        flexShrink: 0,
         background: isRed
           ? 'radial-gradient(circle at 35% 30%, #fff5e6, #f0d9a0 40%, #e8c870 70%, #d4a030)'
           : 'radial-gradient(circle at 35% 30%, #666, #3a3a3a 45%, #1a1a1a 80%, #0a0a0a)',

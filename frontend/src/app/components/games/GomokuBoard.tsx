@@ -466,15 +466,13 @@ const Stone = React.memo(({ player, isWin, isLast }: { player: number; isWin: bo
     animate={{ scale: 1, opacity: 1 }}
     transition={{ type: 'spring', stiffness: 350, damping: 18 }}
     className={clsx(
-      'absolute rounded-full z-10',
+      'rounded-full z-10',
       isWin && 'animate-pulse'
     )}
     style={{
       width: '80%',
       height: '80%',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
+      flexShrink: 0,
       ...(player === BLACK
         ? {
             background: 'radial-gradient(circle at 35% 30%, #888, #444 45%, #1a1a1a 80%, #000)',

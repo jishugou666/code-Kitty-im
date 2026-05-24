@@ -84,6 +84,15 @@
     - 可以正常下棋
     - 胜利/失败会调用 onGameOver → 触发 Games.tsx fetchProfile 更新积分
     - 段位系统正常工作
+- ✅ 落子后棋子偏移修复（终极方案）
+  - **现象**：预备落子（幽灵预览）位置准确，但实际落子后棋子向右下偏移
+  - **根因**：Stone/ChessPiece 组件使用 `position:absolute` + `top:50%` + `left:50%` + `transform:translate(-50%,-50%)`
+    - 父按钮已是 `position:absolute`（用于定位到网格交点）
+    - 子元素再套一层 absolute+translate → 双重绝对定位产生亚像素舍入偏差
+    - 而幽灵预览无任何定位属性，直接靠父元素 `display:flex` 居中 → 精准！
+  - **修复**：移除 Stone（GomokuBoard）和 ChessPiece（ChineseChessBoard）的 `absolute/top/left/transform`
+    - 改为与幽灵预览完全一致的 flex 居中方式：父元素 `flex+items-center+justify-center`，子元素只设宽高
+    - 添加 `flexShrink: 0` 防止被压缩
 
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
