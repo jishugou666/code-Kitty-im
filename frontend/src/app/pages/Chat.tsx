@@ -182,6 +182,7 @@ export function Chat() {
       if (res.code === 200) {
         setShowGameInviteModal(false);
         toast(`已向 ${otherUser.nickname || otherUser.username || '对方'} 发送${GAME_TYPE_NAMES[gameType]}邀请，等待对方回应...`, 'success');
+        setTimeout(() => loadMessages(), 500);
       } else {
         toast(res.msg || '邀请失败', 'error');
       }

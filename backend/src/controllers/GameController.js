@@ -3,6 +3,7 @@ import { GameService } from '../services/GameService.js';
 import { RankingService } from '../services/RankingService.js';
 import { ConversationService } from '../services/ConversationService.js';
 import { success, error, validationError } from '../utils/response.js';
+import { triggerEvent } from '../utils/pusher.js';
 
 const conversationService = ConversationService;
 
@@ -219,10 +220,23 @@ export const GameController = {
 
       try {
         const convId = await conversationService.createSingleConversation(inviterId, Number(opponentId));
-        await query(
+        const insertResult = await query(
           "INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, 'game_invite')",
           [convId, inviterId, inviteContent]
         );
+        if (insertResult?.insertId) {
+          const newMsg = {
+            id: insertResult.insertId,
+            conversation_id: convId,
+            sender_id: inviterId,
+            content: inviteContent,
+            type: 'game_invite',
+            created_at: new Date().toISOString(),
+            sender_nickname: inviterName,
+            sender_avatar: inviterAvatar
+          };
+          triggerEvent(`chat-${convId}`, 'new-message', newMsg);
+        }
       } catch (msgErr) {
         console.log('[Game] 邀请消息插入失败:', msgErr.message);
       }
