@@ -199,7 +199,7 @@ export const GameController = {
 
       const match = await GameService.createInvite(inviterId, opponentId, gameType);
 
-      const inviterProfile = await query('SELECT nickname FROM users WHERE id = ?', [inviterId]);
+      const inviterProfile = await query('SELECT nickname FROM user WHERE id = ?', [inviterId]);
       const inviterName = inviterProfile.length > 0 ? inviterProfile[0].nickname : '对方';
 
       try {

@@ -686,6 +686,30 @@
   - **修改文件**：`backend/src/app.js`
   - **影响范围**：PVP 邀请下棋功能完全恢复
 
+- ✅ **BUG修复：邀请下棋 Table 'im_chat.users' doesn't exist（表名写错复数）**
+  - **现象**：邀请对方下棋后端报错 `Table 'im_chat.users' doesn't exist`
+  - **根因分析**：
+    ```
+    全项目用户表名：user（单数）
+    
+    GameController.js 第202行：
+    SELECT nickname FROM users WHERE id = ?   ← 写成了 users（复数）！
+    
+    正确写法应为：
+    SELECT nickname FROM user WHERE id = ?
+    ```
+  - **修复方案**：
+    ```javascript
+    // 修复前
+    const inviterProfile = await query('SELECT nickname FROM users WHERE id = ?', [inviterId]);
+    
+    // 修复后
+    const inviterProfile = await query('SELECT nickname FROM user WHERE id = ?', [inviterId]);
+    ```
+  - **全项目扫描结果**：修复后 `FROM users` 匹配数为0，无其他同类错误
+  - **修改文件**：`backend/src/controllers/GameController.js`
+  - **影响范围**：PVP 邀请功能恢复，邀请者昵称正确显示在接收方弹窗中
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
