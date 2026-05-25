@@ -469,6 +469,61 @@
   - **效果**：每步棋在开始时随机确定一个固定思考时间→倒计时→落子，不再死循环
   - **构建验证**：✓ exit code 0, built in 9.58s
 
+- ✅ **API错误修复：getRandomOpponent 404 + createMatch 残留对局**
+  - **问题1：getRandomOpponent 返回 404**
+    - 现象：控制台 `Resource not found` + `[Matchmaking] 获取真实对手失败`
+    - 原因：生产环境可能未部署最新后端代码（路由存在但未生效）
+    - 修复（前端 dynamicDifficulty.ts）：
+      ```typescript
+      // 修复前：所有错误都输出警告
+      catch (err) {
+        console.warn('[Matchmaking] 获取真实对手失败，使用缓存:', err.message);
+      }
+      
+      // 修复后：404静默处理（后端未更新时常见）
+      catch (err) {
+        const status = err?.response?.status;
+        if (status !== 404) {  // 只对非404报错
+          console.warn('[Matchmaking] 获取真实对手失败:', status || err.message);
+        }
+      }
+      return [];  // 直接降级为随机对手
+      ```
+    - 效果：404时静默降级，不再污染控制台
+
+  - **问题2：createMatch 返回 "您已有进行中的对局"** ⚠️ 核心问题
+    - 现象：进入游戏 → `API Error: 您已有进行中的对局` → 离线模式运行 → 积分不统计
+    - **根因**：
+      ```
+      用户上次玩游戏 → 刷新页面/关闭浏览器
+      → finish API 未调用 → 数据库残留 status='playing' 的记录
+      → 下次创建对局 → 检测到 active match → 抛出异常拒绝！
+      ```
+    - **修复（后端 GameService.js）**：
+      ```javascript
+      // 修复前：直接拒绝
+      if (activeMatches.length > 0) {
+        throw new Error('You have an active match already');  // ❌
+      }
+      
+      // 修复后：自动清理残留 + 创建新对局
+      if (activeMatches.length > 0) {
+        await query(
+          "UPDATE game_match SET status = 'abandoned', finished_at = NOW() 
+           WHERE player1_id = ? AND status = 'playing'",
+          [playerId]
+        );  // ✅ 自动标记旧对局为 abandoned
+      }
+      // 继续执行 INSERT 创建新对局...
+      ```
+    - **效果**：
+      - 用户刷新/关闭后再进来 → 旧对局自动标记 abandoned → 新对局正常创建
+      - 不再出现"您已有进行中的对局"错误
+      - 积分系统正常工作
+    - **修改文件**：
+      - 后端：`backend/src/services/GameService.js`
+      - 前端：`frontend/src/app/components/games/dynamicDifficulty.ts`
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
