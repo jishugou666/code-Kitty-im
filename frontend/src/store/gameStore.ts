@@ -5,6 +5,8 @@ interface GameState {
   profile: UserProfile | null;
   leaderboard: LeaderboardEntry[];
   currentMatch: GameMatch | null;
+  history: GameMatch[];
+  isHistoryLoading: boolean;
   isLoading: boolean;
   error: string | null;
 
@@ -13,6 +15,7 @@ interface GameState {
   createMatch: (gameType: string, mode?: string, difficulty?: string) => Promise<GameMatch>;
   makeMove: (matchId: number, position: number[], symbol: string) => Promise<void>;
   surrender: (matchId: number) => Promise<void>;
+  fetchHistory: (limit?: number) => Promise<void>;
   clearError: () => void;
 }
 
@@ -20,6 +23,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   profile: null,
   leaderboard: [],
   currentMatch: null,
+  history: [],
+  isHistoryLoading: false,
   isLoading: false,
   error: null,
 
@@ -112,6 +117,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         isLoading: false
       });
       throw error;
+    }
+  },
+
+  fetchHistory: async (limit = 20) => {
+    set({ isHistoryLoading: true, error: null });
+    try {
+      const response = await gameApi.getHistory({ limit });
+      set({
+        history: response.data || [],
+        isHistoryLoading: false
+      });
+    } catch (error: any) {
+      set({
+        error: error.message || 'Failed to fetch match history',
+        isHistoryLoading: false
+      });
     }
   },
 

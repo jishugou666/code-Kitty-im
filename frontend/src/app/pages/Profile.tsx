@@ -62,10 +62,12 @@ export function Profile() {
   const handleSaveProfile = async () => {
     try {
       const response = await userApi.updateProfile(editForm);
-      if (response.data) {
+      if (response.code === 200 && response.data) {
         updateUser(response.data);
         setIsEditing(false);
         toast(t('settings.profileUpdated'), 'success');
+      } else {
+        toast(response.msg || t('common.error'), 'error');
       }
     } catch (error) {
       console.error('Failed to update profile:', error);

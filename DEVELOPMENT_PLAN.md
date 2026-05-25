@@ -605,6 +605,26 @@
     - 排行榜前三名金银铜边框+皇冠
   - **构建验证**：✓ exit code 0, 2827 modules, built in 10.29s
 
+- ✅ **Bug修复：排行榜胜率NaN + 我的对局历史记录页面完成**
+  - **问题1：排行榜胜率显示 NaN**
+    - 根因：后端 `RankingService.getLeaderboard()` 返回数据中缺少 `win_rate` 字段
+    - 前端 `entry.win_rate * 100` → `undefined * 100 = NaN`
+    - 修复：在 getLeaderboard 的 map 中添加 `win_rate: row.total_games > 0 ? row.wins / row.total_games : 0`
+    - 文件：`backend/src/services/RankingService.js` 第177行
+  - **问题2："我的对局"tab 显示占位符**
+    - 原状态：`<p>历史记录功能开发中...</p>` 占位符，无实际数据
+    - 修改文件：
+      - `frontend/src/store/gameStore.ts` — 新增 history state + fetchHistory 方法
+      - `frontend/src/app/pages/Games.tsx` — 完整重写 history tab UI
+    - **历史记录列表功能**：
+      - 每条记录显示：游戏类型图标+名称、结果标签(胜/负/平/逃跑)、表现等级、对战模式/难度、用时、积分变化、表现分、相对时间
+      - 胜利绿色边框、失败红色、平局黄色、逃跑灰色虚线
+      - S/A/B/C/D 等级颜色分级显示
+      - 空状态友好引导（还没有对局记录 → 引导开始第一局）
+      - 加载骨架屏动画
+      - 列表 stagger 入场动画
+    - **构建验证**：✓ exit code 0, 2827 modules, built in 12.04s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

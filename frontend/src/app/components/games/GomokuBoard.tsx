@@ -1286,7 +1286,7 @@ export function GomokuBoard({
 
       {/* Result Modal */}
       <AnimatePresence>
-        {gameStatus !== 'playing' && (
+        {gameStatus !== 'playing' && !showResultModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

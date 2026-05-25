@@ -7,7 +7,7 @@ export const SettingsController = {
       res.json(result);
     } catch (err) {
       console.error('getSettings error:', err);
-      res.json({ code: 200, data: null, msg: '获取失败' });
+      res.json({ code: 500, data: null, msg: '获取失败' });
     }
   },
 
@@ -17,7 +17,7 @@ export const SettingsController = {
       res.json(result);
     } catch (err) {
       console.error('updateSettings error:', err);
-      res.json({ code: 200, data: null, msg: '更新失败' });
+      res.json({ code: 500, data: null, msg: '更新失败' });
     }
   },
 
@@ -27,7 +27,7 @@ export const SettingsController = {
       res.json(result);
     } catch (err) {
       console.error('updateProfile error:', err);
-      res.json({ code: 200, data: null, msg: '更新失败' });
+      res.json({ code: 500, data: null, msg: '更新失败' });
     }
   },
 
@@ -41,7 +41,7 @@ export const SettingsController = {
       res.json(result);
     } catch (err) {
       console.error('changePassword error:', err);
-      res.json({ code: 200, data: null, msg: '修改失败' });
+      res.json({ code: 500, data: null, msg: '修改失败' });
     }
   }
 };

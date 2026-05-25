@@ -786,7 +786,7 @@ export function ChineseChessBoard({
       </div>
 
       <AnimatePresence>
-        {gameStatus !== 'playing' && (
+        {gameStatus !== 'playing' && !showResultModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

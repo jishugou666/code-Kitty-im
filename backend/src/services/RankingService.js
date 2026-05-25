@@ -175,6 +175,7 @@ export const RankingService = {
       return results.map((row, index) => ({
         rank: index + 1,
         ...row,
+        win_rate: row.total_games > 0 ? row.wins / row.total_games : 0,
         tierInfo: this.getTierFromRating(row.rating)
       }));
     } catch (e) {

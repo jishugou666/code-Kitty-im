@@ -1666,6 +1666,39 @@
   - 保持 `setShowResultModal(true)` 在调用之后
 - **执行结果**: ✅ 完成
 
+### 任务51: 修复三个游戏组件新旧结算弹窗重叠冲突
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 修复井字棋、五子棋、中国象棋三个游戏中旧结算弹窗和新 GameResultModal 同时显示的问题
+  - 在每个组件的旧弹窗渲染条件中添加 `&& !showResultModal` 互斥逻辑
+- **问题原因**:
+  - 旧弹窗使用 `absolute inset-0` 会溢出父容器到消息列表区域
+  - 新弹窗（GameResultModal）和旧弹窗同时渲染，没有互斥逻辑
+- **修改文件和位置**:
+  1. `frontend/src/app/components/games/TicTacToeBoard.tsx` — 第801行
+     - 修改前: `{gameStatus !== 'playing' && (`
+     - 修改后: `{gameStatus !== 'playing' && !showResultModal && (`
+  2. `frontend/src/app/components/games/GomokuBoard.tsx` — 第1289行
+     - 修改前: `{gameStatus !== 'playing' && (`
+     - 修改后: `{gameStatus !== 'playing' && !showResultModal && (`
+  3. `frontend/src/app/components/games/ChineseChessBoard.tsx` — 第789行
+     - 修改前: `{gameStatus !== 'playing' && (`
+     - 修改后: `{gameStatus !== 'playing' && !showResultModal && (`
+- **技术实现要点**:
+  - showResultModal state 已在三个文件中声明（TicTacToeBoard:223行, GomokuBoard:521行, ChineseChessBoard:117行）
+  - 仅修改条件判断表达式，不改变任何业务逻辑
+  - 使用 AnimatePresence 实现平滑过渡动画
+  - 当 showResultModal=true 时，旧弹窗自动隐藏，实现完美互斥
+- **影响范围**:
+  - ✅ 游戏核心逻辑完全不变
+  - ✅ 新的 GameResultModal 功能完全保留
+  - ✅ 解决了UI显示冲突问题
+- **验证建议**:
+  - 启动三个游戏，结束后确认只显示新弹窗（白色背景）
+  - 确认游戏重置功能正常工作
+- **相关文档**: `MODIFICATION_RECORD_20260525.md`
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录

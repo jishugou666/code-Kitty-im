@@ -15,10 +15,13 @@ export function Games() {
   const {
     profile,
     leaderboard,
+    history,
     isLoading,
+    isHistoryLoading,
     error,
     fetchProfile,
     fetchLeaderboard,
+    fetchHistory,
     clearError
   } = useGameStore();
 
@@ -28,7 +31,8 @@ export function Games() {
   useEffect(() => {
     fetchProfile();
     fetchLeaderboard();
-  }, [fetchProfile, fetchLeaderboard]);
+    fetchHistory();
+  }, [fetchProfile, fetchLeaderboard, fetchHistory]);
 
   useEffect(() => {
     if (error) {
@@ -45,6 +49,28 @@ export function Games() {
 
   const handleBackToLobby = () => {
     setActiveGame(null);
+  };
+
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return '--';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return '刚刚';
+    if (mins < 60) return `${mins}分钟前`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}小时前`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}天前`;
+    return date.toLocaleDateString('zh-CN');
   };
 
   if (activeGame === 'tictactoe') {
@@ -357,12 +383,6 @@ export function Games() {
                 <Clock size={14} />
                 <span>约 2 分钟</span>
               </div>
-
-              <div className="flex items-center gap-1.5 text-xs mt-2 px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-                <span>难度 ×0.4</span>
-                <span className="text-gray-300">·</span>
-                <span>+8~15分/胜</span>
-              </div>
             </div>
           </motion.button>
 
@@ -391,12 +411,6 @@ export function Games() {
                 <Clock size={14} />
                 <span>约 5-15 分钟</span>
               </div>
-
-              <div className="flex items-center gap-1.5 text-xs mt-2 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
-                <span>难度 ×0.85</span>
-                <span className="text-gray-300">·</span>
-                <span>+20~35分/胜</span>
-              </div>
             </div>
           </motion.button>
 
@@ -424,12 +438,6 @@ export function Games() {
                 <span className="mx-1">·</span>
                 <Clock size={14} />
                 <span>约 10-30 分钟</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 text-xs mt-2 px-2 py-1 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-                <span>难度 ×1.2</span>
-                <span className="text-gray-300">·</span>
-                <span>+30~50分/胜</span>
               </div>
             </div>
           </motion.button>
@@ -567,11 +575,116 @@ export function Games() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-2"
                 >
-                  <div className="text-center py-12 text-gray-400">
-                    <Clock size={48} className="mx-auto mb-3 opacity-30" />
-                    <p>历史记录功能开发中...</p>
-                    <p className="text-sm mt-1">敬请期待</p>
-                  </div>
+                  {isHistoryLoading ? (
+                    <div className="space-y-3">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/30 border border-gray-100 dark:border-white/5 animate-pulse">
+                          <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-40" />
+                          </div>
+                          <div className="w-16 h-6 bg-gray-200 dark:bg-gray-700 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : history.length === 0 ? (
+                    <div className="text-center py-16 space-y-3">
+                      <div className="w-20 h-20 mx-auto rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <Gamepad2 size={36} className="text-gray-300" />
+                      </div>
+                      <p className="text-gray-500 font-medium">还没有对局记录</p>
+                      <p className="text-sm text-gray-400">选择一个游戏模式开始你的第一场对局吧！</p>
+                    </div>
+                  ) : (
+                    history.map((match, index) => {
+                      const gameTypeConfig = {
+                        tictactoe: { icon: CircleDot, name: '井字棋', color: 'from-blue-400 to-blue-600' },
+                        gomoku: { icon: Circle, name: '五子棋', color: 'from-gray-700 to-gray-900' },
+                        chess: { icon: Crown, name: '中国象棋', color: 'from-red-400 to-red-600' }
+                      };
+                      const config = gameTypeConfig[match.game_type];
+                      const GameIcon = config.icon;
+
+                      let resultText = '失败';
+                      let resultColor = 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
+                      let borderColor = 'border-transparent';
+
+                      if (match.status === 'abandoned') {
+                        resultText = '逃跑';
+                        resultColor = 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+                        borderColor = 'border-dashed border-gray-300 dark:border-gray-600';
+                      } else if (match.isWin) {
+                        resultText = '胜利';
+                        resultColor = 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400';
+                        borderColor = 'border-green-300 dark:border-green-700';
+                      } else if (match.isDraw) {
+                        resultText = '平局';
+                        resultColor = 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400';
+                        borderColor = 'border-yellow-300 dark:border-yellow-700';
+                      }
+
+                      const gradeColors: Record<string, string> = {
+                        S: '#ef4444',
+                        A: '#f97316',
+                        B: '#eab308',
+                        C: '#22c55e',
+                        D: '#3b82f6'
+                      };
+
+                      return (
+                        <motion.div
+                          key={match.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={`flex items-center gap-4 p-4 rounded-xl bg-white/50 dark:bg-gray-800/30 border ${borderColor} hover:bg-white/80 dark:hover:bg-gray-800/50 transition-all`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${config.color} flex items-center justify-center text-white text-xl shadow-md`}>
+                            {match.game_type === 'gomoku' ? (
+                              <GameIcon size={24} fill="white" strokeWidth={2} />
+                            ) : (
+                              <GameIcon size={24} strokeWidth={2.5} />
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-gray-900 dark:text-white">{config.name}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${resultColor}`}>
+                                {resultText}
+                              </span>
+                              {match.performance_grade && (
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-xs font-bold"
+                                  style={{ color: gradeColors[match.performance_grade] || '#9ca3af' }}
+                                >
+                                  {match.performance_grade}级
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              <span>{match.mode === 'ai' ? '人机对战' : '玩家对战'}</span>
+                              {match.ai_difficulty && match.mode === 'ai' && (
+                                <span>难度 {match.ai_difficulty}</span>
+                              )}
+                              <span>{formatDuration(match.duration_seconds)}</span>
+                              <span>{formatTimeAgo(match.created_at)}</span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <p className={`font-bold tabular-nums ${match.score_change > 0 ? 'text-green-500' : match.score_change < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                              {match.score_change > 0 ? '+' : ''}{match.score_change ?? '--'}
+                            </p>
+                            {match.performance_score != null && (
+                              <p className="text-xs text-gray-400">{match.performance_score}分</p>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

@@ -60,7 +60,7 @@ export const SettingsService = {
       return this.getSettings(userId);
     } catch (err) {
       console.error('updateSettings error:', err);
-      return { code: 200, data: null, msg: '更新失败' };
+      return { code: 500, data: null, msg: '更新失败' };
     }
   },
 
@@ -105,7 +105,7 @@ export const SettingsService = {
       return { code: 200, data: user[0], msg: '更新成功' };
     } catch (err) {
       console.error('updateProfile error:', err);
-      return { code: 200, data: null, msg: '更新失败' };
+      return { code: 500, data: null, msg: '更新失败' };
     }
   },
 
