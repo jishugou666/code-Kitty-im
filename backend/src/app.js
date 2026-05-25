@@ -139,8 +139,8 @@ async function startServer() {
 
   const { query } = await import('./utils/db.js');
   try {
-    await query("ALTER TABLE message MODIFY COLUMN type ENUM('text', 'image', 'file', 'system', 'recalled') DEFAULT 'text'");
-    console.log('[Migration] message.type ENUM updated: added recalled');
+    await query("ALTER TABLE message MODIFY COLUMN type ENUM('text', 'image', 'file', 'system', 'recalled', 'game_invite') DEFAULT 'text'");
+    console.log('[Migration] message.type ENUM updated: added recalled + game_invite');
   } catch (err) {
     console.log('[Migration] message.type already has recalled or migration failed:', err.message?.substring(0, 80));
   }
