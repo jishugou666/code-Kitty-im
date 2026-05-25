@@ -45,9 +45,12 @@ async function fetchRealOpponents(): Promise<Opponent[]> {
       }];
     }
   } catch (err) {
-    console.warn('[Matchmaking] 获取真实对手失败，使用缓存:', err.message);
+    const status = err?.response?.status;
+    if (status !== 404) {
+      console.warn('[Matchmaking] 获取真实对手失败:', status || err.message);
+    }
   }
-  return cachedOpponents.length > 0 ? cachedOpponents : [];
+  return [];
 }
 
 export async function generateOpponent(playerRating: number = 1000): Promise<Opponent> {

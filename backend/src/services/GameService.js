@@ -23,7 +23,10 @@ export const GameService = {
         [playerId]
       );
       if (activeMatches.length > 0) {
-        throw new Error('You have an active match already');
+        await query(
+          "UPDATE game_match SET status = 'abandoned', finished_at = NOW() WHERE player1_id = ? AND status = 'playing'",
+          [playerId]
+        );
       }
 
       const result = await query(
