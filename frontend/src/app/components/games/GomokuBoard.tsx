@@ -11,7 +11,7 @@ import { GameResultModal } from './GameResultModal';
 interface GomokuBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  mode?: 'ai';
+  mode?: 'ai' | 'pvp';
 }
 
 const BOARD_SIZE = 15;
@@ -577,27 +577,34 @@ export function GomokuBoard({
   }, [matchId]);
 
   useEffect(() => {
-    generateOpponent().then(setOpponent);
-  }, []);
+    if (mode === 'ai') {
+      generateOpponent().then(setOpponent);
+    }
+  }, [mode]);
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
-  useEffect(() => {
-    const initMatch = async () => {
-      try {
-        const res = await gameApi.createMatch({
-          gameType: 'gomoku',
-          mode: 'ai',
-        });
-        if (res.code === 200 && res.data) {
-          setMatchId(res.data.id);
-        }
-      } catch (e) {
-        console.log('[Gomoku] 创建对局失败，离线模式');
+  const initMatch = useCallback(async () => {
+    try {
+      if (mode === 'pvp' && _matchId) {
+        setMatchId(_matchId);
+        return;
       }
-    };
+      const res = await gameApi.createMatch({
+        gameType: 'gomoku',
+        mode: 'ai',
+      });
+      if (res.code === 200 && res.data) {
+        setMatchId(res.data.id);
+      }
+    } catch (e) {
+      console.log('[Gomoku] 创建对局失败，离线模式');
+    }
+  }, [mode, _matchId]);
+
+  useEffect(() => {
     initMatch();
-  }, []);
+  }, [initMatch]);
 
   useEffect(() => {
     if (gameStatus === 'playing' && !isAIThinking) {
@@ -610,7 +617,7 @@ export function GomokuBoard({
   }, [gameStatus, isAIThinking]);
 
   useEffect(() => {
-    if (!isAIThinking || gameStatus !== 'playing') return;
+    if (!isAIThinking || gameStatus !== 'playing' || mode === 'pvp') return;
     const tt = thinkTimeRef.current;
     const phases = getThinkingPhases(tt);
     let progress = 0;
@@ -673,7 +680,7 @@ export function GomokuBoard({
       }
     }, tt);
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId, mode]);
 
   const stats: GameStats = useMemo(() => ({
     totalMoves: history.length,
@@ -688,45 +695,62 @@ export function GomokuBoard({
   const canUndo = gameStatus === 'playing' && undoCount < MAX_UNDO && history.length >= 2 && !isAIThinking;
 
   const handleClick = useCallback((row: number, col: number) => {
-    if (board[row][col] !== EMPTY || gameStatus !== 'playing' || currentPlayer !== BLACK || isAIThinking) return;
+    if (board[row][col] !== EMPTY || gameStatus !== 'playing' || isAIThinking) return;
+    const isMyTurn = mode === 'pvp' ? true : currentPlayer === BLACK;
+    if (!isMyTurn) return;
+    const currentSymbol = currentPlayer;
+
     const newBoard = board.map(r => [...r]);
-    newBoard[row][col] = BLACK;
+    newBoard[row][col] = currentSymbol;
     setBoard(newBoard);
-    setCurrentPlayer(WHITE);
+    setCurrentPlayer(currentSymbol === BLACK ? WHITE : BLACK);
     setLastMove([row, col]);
-    setHistory(h => [...h, { row, col, player: BLACK, timestamp: Date.now() }]);
+    setHistory(h => [...h, { row, col, player: currentSymbol, timestamp: Date.now() }]);
     setPreviewStep(null);
     setPreviewBoard(null);
     if (matchId) {
-      gameApi.move(matchId, { position: [row, col], symbol: 'B' }).catch(() => {});
+      gameApi.move(matchId, { position: [row, col], symbol: currentSymbol === BLACK ? 'B' : 'W' }).catch(() => {});
     }
-    const winCells = checkFive(row, col, BLACK, newBoard);
+    const winCells = checkFive(row, col, currentSymbol, newBoard);
     if (winCells.length > 0) {
       setWinningCells(winCells);
-      setGameStatus('won');
-      saveGameResult('win');
-      recordDifficultyResult(true);
-      
-      processMatchFinish(true, 78, 'B', '连珠新星');
-      setShowResultModal(true);
-      
-      onGameOver?.('win');
+      if (currentSymbol === BLACK) {
+        setGameStatus('won');
+        saveGameResult('win');
+        recordDifficultyResult(true);
+
+        processMatchFinish(true, 78, 'B', '连珠新星');
+        setShowResultModal(true);
+
+        onGameOver?.('win');
+      } else {
+        setGameStatus('lost');
+        saveGameResult('loss');
+        recordDifficultyResult(false);
+
+        processMatchFinish(false, 32, 'D', '再接再厉');
+        setShowResultModal(true);
+
+        onGameOver?.('loss');
+      }
       return;
     }
     if (newBoard.every(r => r.every(c => c !== EMPTY))) {
       setGameStatus('draw');
       saveGameResult('draw');
       recordDifficultyResult(false);
-      
+
       processMatchFinish(false, 50, 'C', '势均力敌');
       setShowResultModal(true);
-      
+
       onGameOver?.('draw');
       return;
     }
-    setIsAIThinking(true);
-    thinkTimeRef.current = getDynamicDifficulty('gomoku' as GameType, history.length).thinkTime;
-  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId]);
+    if (mode === 'ai') {
+      setIsAIThinking(true);
+      thinkTimeRef.current = getDynamicDifficulty('gomoku' as GameType, history.length).thinkTime;
+    }
+  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId, mode]);
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
@@ -827,7 +851,9 @@ export function GomokuBoard({
 
   const statusText = gameStatus !== 'playing' ? '' : isAIThinking
     ? `\u26AA ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (白方)`
-    : '\u26AB 你的回合 (黑方)';
+    : mode === 'pvp'
+      ? `${currentPlayer === BLACK ? '\u26AB' : '\u26AA'} ${currentPlayer === BLACK ? '黑方' : '白方'}的回合`
+      : '\u26AB 你的回合 (黑方)';
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
     lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
@@ -1007,7 +1033,8 @@ export function GomokuBoard({
                   const isWinCell = winningCells?.some(([wr, wc]) => wr === rowIndex && wc === colIndex) ?? false;
                   const isLast = lastMove?.[0] === rowIndex && lastMove?.[1] === colIndex && !previewBoard;
                   const isHover = hoverPos?.[0] === rowIndex && hoverPos?.[1] === colIndex
-                    && cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK;
+                    && cell === EMPTY && gameStatus === 'playing' && !isAIThinking
+                    && (mode === 'pvp' || currentPlayer === BLACK);
 
                   return (
                     <button
@@ -1018,7 +1045,7 @@ export function GomokuBoard({
                       disabled={cell !== EMPTY || gameStatus !== 'playing' || isAIThinking}
                       className={clsx(
                         'absolute cursor-pointer outline-none',
-                        cell === EMPTY && gameStatus === 'playing' && !isAIThinking && currentPlayer === BLACK
+                        cell === EMPTY && gameStatus === 'playing' && !isAIThinking && (mode === 'pvp' || currentPlayer === BLACK)
                           ? 'hover:bg-amber-400/15 active:bg-amber-400/25'
                           : ''
                       )}

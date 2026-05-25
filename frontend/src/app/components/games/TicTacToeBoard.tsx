@@ -11,7 +11,7 @@ import { GameResultModal } from './GameResultModal';
 interface TicTacToeBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  mode?: 'ai';
+  mode?: 'ai' | 'pvp';
 }
 
 type Player = 'X' | 'O' | null;
@@ -126,14 +126,14 @@ function getAIMove(
   if (openMove !== null) return openMove;
 
   if (difficulty === 'easy') {
-    if (Math.random() < 0.3) {
+    if (Math.random() < 0.12) {
       return empty[Math.floor(Math.random() * empty.length)];
     }
     let bestScore = -Infinity;
     let bestMoves: number[] = [];
     for (const idx of empty) {
       board[idx] = 'O';
-      const score = minimax(board, 1, false, -Infinity, Infinity);
+      const score = minimax(board, 2, false, -Infinity, Infinity);
       board[idx] = null;
       if (score > bestScore) {
         bestScore = score;
@@ -142,7 +142,7 @@ function getAIMove(
         bestMoves.push(idx);
       }
     }
-    if (bestMoves.length > 1 && Math.random() < 0.4) {
+    if (bestMoves.length > 1 && Math.random() < 0.18) {
       return bestMoves[Math.floor(Math.random() * bestMoves.length)];
     }
     return bestMoves[0];
@@ -157,7 +157,10 @@ function getAIMove(
       scoredMoves.push({ move: idx, score });
     }
     scoredMoves.sort((a, b) => b.score - a.score);
-    const topN = scoredMoves.slice(0, Math.min(3, scoredMoves.length));
+    const topN = scoredMoves.slice(0, Math.min(2, scoredMoves.length));
+    if (topN.length > 1 && Math.random() < 0.08 && scoredMoves.length > 2) {
+      return scoredMoves[2].move;
+    }
     return topN[Math.floor(Math.random() * topN.length)].move;
   }
 
@@ -233,8 +236,8 @@ export function TicTacToeBoard({
         score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
         bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
-        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
+        rawRatingChange: won ? defaultScore : -defaultScore,
         difficultyCoeff: 0.4, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -250,8 +253,8 @@ export function TicTacToeBoard({
           gradeColor: '#22C55E',
           bgGradient: 'from-green-500 to-emerald-500',
           title: finishRes.data.performance_title || defaultTitle,
-          ratingChange: finishRes.data.score_change || (won ? 10 : -5),
-          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 10 : -5)) / 1),
+          ratingChange: finishRes.data.score_change || (won ? defaultScore : -defaultScore),
+          rawRatingChange: Math.round((finishRes.data.score_change || (won ? defaultScore : -defaultScore)) / 1),
           difficultyCoeff: 0.4,
           strengthCoeff: 1.0,
           highlights: finishRes.data.highlights || [],
@@ -262,8 +265,8 @@ export function TicTacToeBoard({
         setPerformanceResult({
           score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
           gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-          title: defaultTitle, ratingChange: won ? 10 : -5,
-          rawRatingChange: won ? 10 : -5,
+          title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
+          rawRatingChange: won ? defaultScore : -defaultScore,
           difficultyCoeff: 0.4, strengthCoeff: 1.0,
           highlights: [], performanceBonuses: [], breakdown: {}
         });
@@ -272,8 +275,8 @@ export function TicTacToeBoard({
       setPerformanceResult({
         score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? 10 : -5,
-        rawRatingChange: won ? 10 : -5,
+        title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
+        rawRatingChange: won ? defaultScore : -defaultScore,
         difficultyCoeff: 0.4, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -288,8 +291,10 @@ export function TicTacToeBoard({
   }, [gameStatus]);
 
   useEffect(() => {
-    generateOpponent().then(setOpponent);
-  }, []);
+    if (mode === 'ai') {
+      generateOpponent().then(setOpponent);
+    }
+  }, [mode]);
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
@@ -297,6 +302,10 @@ export function TicTacToeBoard({
     if (initializingRef.current) return;
     initializingRef.current = true;
     try {
+      if (mode === 'pvp' && _matchId) {
+        setMatchId(_matchId);
+        return;
+      }
       const res = await gameApi.createMatch({
         gameType: 'tictactoe',
         mode: 'ai'
@@ -309,13 +318,13 @@ export function TicTacToeBoard({
     } finally {
       initializingRef.current = false;
     }
-  }, []);
+  }, [mode, _matchId]);
 
   useEffect(() => {
     if (gameStatus === 'playing' && !matchId && !isAIThinking) {
       initMatch();
     }
-  }, [gameStatus, matchId, isAIThinking, initMatch]);
+  }, [gameStatus, matchId, isAIThinking, initMatch, mode, _matchId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -339,23 +348,26 @@ export function TicTacToeBoard({
     if (
       board[index] !== null ||
       gameStatus !== 'playing' ||
-      !isXNext ||
       isAIThinking
     ) return;
+
+    const currentSymbol = isXNext ? 'X' : 'O';
+    const isMyTurn = mode === 'pvp' ? true : isXNext;
+    if (!isMyTurn) return;
 
     setHistory(h => [...h, { board: [...board], isXNext, lastMove: lastMoveIndex }].slice(-20));
 
     const newBoard = [...board];
-    newBoard[index] = 'X';
+    newBoard[index] = currentSymbol;
     setBoard(newBoard);
-    setIsXNext(false);
+    setIsXNext(!isXNext);
     setLastMoveIndex(index);
     setMoveCount(c => c + 1);
     setFlashCell(index);
     setTimeout(() => setFlashCell(null), 300);
 
     if (matchId) {
-      gameApi.move(matchId, { position: [Math.floor(index / 3), index % 3], symbol: 'X' }).catch(() => {});
+      gameApi.move(matchId, { position: [Math.floor(index / 3), index % 3], symbol: currentSymbol }).catch(() => {});
     }
 
     const result = checkWinner(newBoard);
@@ -367,12 +379,29 @@ export function TicTacToeBoard({
       const newStats = { ...stats, wins: stats.wins + 1 };
       setStats(newStats);
       saveStatsToStorage(newStats);
-      setScoreChange('+10');
-      
-      processMatchFinish(true, 75, 'B', '表现出色');
+      setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
+
+      processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
       setShowResultModal(true);
       onGameOver?.('win');
       recordDifficultyResult(true);
+      return;
+    }
+
+    if (result.winner === 'O') {
+      setWinningLine(result.line);
+      setGameStatus('lost');
+      setBoardShake(true);
+      setTimeout(() => setBoardShake(false), 500);
+      const newStats = { ...stats, losses: stats.losses + 1 };
+      setStats(newStats);
+      saveStatsToStorage(newStats);
+      setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
+
+      processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
+      setShowResultModal(true);
+      onGameOver?.('loss');
+      recordDifficultyResult(false);
       return;
     }
 
@@ -381,21 +410,23 @@ export function TicTacToeBoard({
       const newStats = { ...stats, draws: stats.draws + 1 };
       setStats(newStats);
       saveStatsToStorage(newStats);
-      setScoreChange('+0');
-      
-      processMatchFinish(false, 50, 'C', '势均力敌');
+      setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
+
+      processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
       setShowResultModal(true);
       onGameOver?.('draw');
       recordDifficultyResult(false);
       return;
     }
 
-    setIsAIThinking(true);
-    thinkTimeRef.current = getDynamicDifficulty('tictactoe' as GameType, moveCount).thinkTime;
-  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId]);
+    if (mode === 'ai') {
+      setIsAIThinking(true);
+      thinkTimeRef.current = getDynamicDifficulty('tictactoe' as GameType, moveCount).thinkTime;
+    }
+  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId, mode]);
 
   useEffect(() => {
-    if (!isAIThinking || gameStatus !== 'playing') return;
+    if (!isAIThinking || gameStatus !== 'playing' || mode === 'pvp') return;
     const tt = thinkTimeRef.current;
     const phases = getThinkingPhases(tt);
     let progress = 0;
@@ -446,9 +477,9 @@ export function TicTacToeBoard({
         const newStats = { ...stats, losses: stats.losses + 1 };
         setStats(newStats);
         saveStatsToStorage(newStats);
-        setScoreChange('-5');
+        setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
 
-        processMatchFinish(false, 30, 'D', '继续加油');
+        processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
         setShowResultModal(true);
 
         onGameOver?.('loss');
@@ -461,9 +492,9 @@ export function TicTacToeBoard({
         const newStats = { ...stats, draws: stats.draws + 1 };
         setStats(newStats);
         saveStatsToStorage(newStats);
-        setScoreChange('+0');
+        setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
 
-        processMatchFinish(false, 50, 'C', '势均力敌');
+        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
         setShowResultModal(true);
 
         onGameOver?.('draw');
@@ -471,7 +502,7 @@ export function TicTacToeBoard({
       }
     }, tt);
     return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, lastMoveIndex, stats, onGameOver, matchId]);
+  }, [isAIThinking, gameStatus, board, lastMoveIndex, stats, onGameOver, matchId, mode]);
 
   const handleUndo = useCallback(() => {
     if (history.length < 2 || gameStatus !== 'playing' || isAIThinking) return;
@@ -513,16 +544,16 @@ export function TicTacToeBoard({
     const newStats = { ...stats, losses: stats.losses + 1 };
     setStats(newStats);
     saveStatsToStorage(newStats);
-    setScoreChange('-5');
+    setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
     setPerformanceResult({
-      score: 30,
+      score: 6 + Math.floor(Math.random() * 3),
       grade: 'D',
       gradeLabel: '认输',
       gradeColor: '#9CA3AF',
       bgGradient: 'from-gray-400 to-gray-300',
       title: '认输',
-      ratingChange: -5,
-      rawRatingChange: -5,
+      ratingChange: -(6 + Math.floor(Math.random() * 3)),
+      rawRatingChange: -(6 + Math.floor(Math.random() * 3)),
       difficultyCoeff: 0.4,
       strengthCoeff: 1.0,
       highlights: [],
@@ -556,12 +587,14 @@ export function TicTacToeBoard({
     ? ''
     : isAIThinking
     ? `${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'}`
-    : '你的回合';
+    : mode === 'pvp'
+      ? `${isXNext ? 'X' : 'O'} 的回合`
+      : '你的回合';
 
   const resultConfig = {
     won: { emoji: '🎉', text: '胜利!', score: scoreChange || '+10', color: 'text-green-500' },
-    lost: { emoji: '😔', text: '失败', score: scoreChange || '-5', color: 'text-red-500' },
-    draw: { emoji: '🤝', text: '平局', score: scoreChange || '+0', color: 'text-yellow-500' }
+    lost: { emoji: '😔', text: '失败', score: scoreChange || '-4', color: 'text-red-500' },
+    draw: { emoji: '🤝', text: '平局', score: scoreChange || '+2', color: 'text-yellow-500' }
   };
   const rc = resultConfig[gameStatus];
 

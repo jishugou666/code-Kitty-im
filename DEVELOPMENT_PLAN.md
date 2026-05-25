@@ -265,6 +265,22 @@
        - 三个棋盘组件：所有调用 finish 的地方改成传 won: true/false
 
 ### 2026-05-25
+- ✅ **三个棋盘组件 PVP（玩家对战）模式支持改造**
+  - **核心问题**：每个棋盘组件接收 `matchId` prop 但从未使用，总是调用 `createMatch({mode:'ai'})`
+  - **改造范围**：TicTacToeBoard.tsx、GomokuBoard.tsx、ChineseChessBoard.tsx
+  - **改动模式**（3文件统一）：
+    1. Props 接口: `mode?: 'ai'` → `mode?: 'ai' | 'pvp'`
+    2. initMatch: 增加 PVP 分支，直接使用传入的 `_matchId`
+    3. generateOpponent: 仅 AI 模式调用
+    4. handleClick: 支持双方轮流落子 + 对手胜利判定 + 动态symbol + 条件AI触发
+    5. AI思考 useEffect: `mode === 'pvp'` 时跳过
+    6. statusText: PVP 显示当前玩家回合
+    7. 棋盘交互 canClick/hover 条件适配PVP
+  - **保持不变**：processMatchFinish、GameResultModal、useGameHeartbeat、surrender、resetBoard、所有动画和UI
+  - **各游戏特殊处理**：
+    - 井字棋：X/O 双方，O胜→lost
+    - 五子棋：B/W 双方，W胜→lost，initMatch从内联重构为useCallback
+    - 象棋：R/B 双方，黑吃将→lost，选子逻辑适配当前回合颜色
 - ✅ **Vite生产构建错误彻底修复（6处）**
   - **错误1 — ESBuild严格模式**：
     - 文件：`chessEngine.ts` 第516行

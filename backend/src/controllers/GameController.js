@@ -303,5 +303,32 @@ export const GameController = {
       console.error('Respond invite error:', error);
       res.json({ code: 500, data: null, msg: error.message });
     }
+  },
+
+  async getMatchById(req, res) {
+    try {
+      const { matchId } = req.params;
+      const userId = req.user.id;
+
+      const matches = await query(
+        `SELECT m.*, 
+         u1.nickname AS player1_name, u1.avatar AS player1_avatar,
+         u2.nickname AS player2_name, u2.avatar AS player2_avatar
+         FROM game_match m
+         LEFT JOIN user u1 ON m.player1_id = u1.id
+         LEFT JOIN user u2 ON m.player2_id = u2.id
+         WHERE m.id = ? AND (m.player1_id = ? OR m.player2_id = ?)`,
+        [matchId, userId, userId]
+      );
+
+      if (matches.length === 0) {
+        return res.json({ code: 404, data: null, msg: '对局不存在或无权访问' });
+      }
+
+      res.json({ code: 200, data: matches[0], msg: 'ok' });
+    } catch (error) {
+      console.error('Get match error:', error);
+      res.json({ code: 500, data: null, msg: error.message });
+    }
   }
 };

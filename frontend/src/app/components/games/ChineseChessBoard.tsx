@@ -17,7 +17,7 @@ import { ROWS, COLS } from './chessEngine';
 interface ChineseChessBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  mode?: 'ai';
+  mode?: 'ai' | 'pvp';
 }
 
 type GameStatus = 'playing' | 'won' | 'lost' | 'draw';
@@ -171,23 +171,29 @@ export function ChineseChessBoard({
   }, [matchId]);
 
   useEffect(() => {
-    generateOpponent().then(setOpponent);
-  }, []);
+    if (mode === 'ai') {
+      generateOpponent().then(setOpponent);
+    }
+  }, [mode]);
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
   const handleClick = useCallback((row: number, col: number) => {
-    if (gameStatus !== 'playing' || currentTurn !== 'red' || isAIThinking) return;
+    if (gameStatus !== 'playing' || isAIThinking) return;
 
     const clickedPiece = board[row][col];
+    const canInteract = mode === 'pvp' ? true : currentTurn === 'red';
+    if (!canInteract && !selectedPos) return;
 
     if (selectedPos) {
       const isLegal = legalMoves.some(m => m.row === row && m.col === col);
       if (isLegal) {
         const captured = board[row][col];
+        const movingPiece = board[selectedPos.row][selectedPos.col];
         const { newBoard } = makeMove(board, selectedPos, { row, col });
+        const nextTurn = movingPiece?.color === 'red' ? 'black' : 'red';
 
         setBoard(newBoard);
-        setCurrentTurn('black');
+        setCurrentTurn(nextTurn);
         setLastMoveFrom(selectedPos);
         setLastMoveTo({ row, col });
         setHistory(h => [...h, {
@@ -200,38 +206,52 @@ export function ChineseChessBoard({
         setLegalMoves([]);
 
         if (matchId) {
-          gameApi.move(matchId, { position: [row, col], symbol: 'R' }).catch(() => {});
+          gameApi.move(matchId, { position: [row, col], symbol: movingPiece?.color === 'red' ? 'R' : 'B' }).catch(() => {});
         }
 
         if (captured?.type === 'king') {
-          setGameStatus('won');
-          saveGameResult('win');
-          recordDifficultyResult(true);
-          
-          processMatchFinish(true, 80, 'B', '棋坛新秀');
-          setShowResultModal(true);
-          
-          onGameOver?.('win');
+          if (movingPiece?.color === 'red') {
+            setGameStatus('won');
+            saveGameResult('win');
+            recordDifficultyResult(true);
+
+            processMatchFinish(true, 80, 'B', '棋坛新秀');
+            setShowResultModal(true);
+
+            onGameOver?.('win');
+          } else {
+            setGameStatus('lost');
+            saveGameResult('loss');
+            recordDifficultyResult(false);
+
+            processMatchFinish(false, 35, 'D', '继续努力');
+            setShowResultModal(true);
+
+            onGameOver?.('loss');
+          }
           return;
         }
 
-        if (isInCheck(newBoard, 'black')) setCheckState('black');
+        const opponentKingColor = nextTurn;
+        if (isInCheck(newBoard, opponentKingColor)) setCheckState(opponentKingColor);
         else setCheckState(null);
 
-        setIsAIThinking(true);
-        thinkTimeRef.current = getDynamicDifficulty('chinese_chess' as GameType, history.length).thinkTime;
+        if (mode === 'ai') {
+          setIsAIThinking(true);
+          thinkTimeRef.current = getDynamicDifficulty('chinese_chess' as GameType, history.length).thinkTime;
+        }
         return;
       }
     }
 
-    if (clickedPiece && clickedPiece.color === 'red') {
+    if (clickedPiece && ((mode === 'pvp' && (clickedPiece.color === currentTurn)) || (mode === 'ai' && clickedPiece.color === 'red'))) {
       setSelectedPos({ row, col });
       setLegalMoves(getLegalMoves(board, { row, col }));
     } else {
       setSelectedPos(null);
       setLegalMoves([]);
     }
-  }, [board, gameStatus, currentTurn, isAIThinking, selectedPos, legalMoves, matchId, onGameOver]);
+  }, [board, gameStatus, currentTurn, isAIThinking, selectedPos, legalMoves, matchId, onGameOver, mode]);
 
   useEffect(() => {
     if (gameStatus === 'playing') {
@@ -244,7 +264,7 @@ export function ChineseChessBoard({
   }, [gameStatus]);
 
   useEffect(() => {
-    if (!isAIThinking || gameStatus !== 'playing') return;
+    if (!isAIThinking || gameStatus !== 'playing' || mode === 'pvp') return;
 
     const tt = thinkTimeRef.current;
     const phases = getThinkingPhases(tt);
@@ -311,20 +331,25 @@ export function ChineseChessBoard({
     }, tt);
 
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId, mode]);
+
+  const initMatch = useCallback(async () => {
+    try {
+      if (mode === 'pvp' && _matchId) {
+        setMatchId(_matchId);
+        return;
+      }
+      const res = await gameApi.createMatch({
+        gameType: 'chess',
+        mode: 'ai'
+      });
+      if (res.code === 200 && res.data) setMatchId(res.data.id);
+    } catch { console.log('[Chess] 创建对局失败，离线模式'); }
+  }, [mode, _matchId]);
 
   useEffect(() => {
-    const initMatch = async () => {
-      try {
-        const res = await gameApi.createMatch({
-          gameType: 'chess',
-          mode: 'ai'
-        });
-        if (res.code === 200 && res.data) setMatchId(res.data.id);
-      } catch { console.log('[Chess] 创建对局失败，离线模式'); }
-    };
     initMatch();
-  }, []);
+  }, [initMatch]);
 
   const resetBoard = () => {
     setBoard(createInitialBoard());
@@ -389,7 +414,9 @@ export function ChineseChessBoard({
 
   const statusText = gameStatus !== 'playing'
     ? ''
-    : isAIThinking ? `⚫ ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (黑方)` : '🔴 你的回合 (红方)';
+    : isAIThinking ? `⚫ ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (黑方)`
+    : mode === 'pvp' ? `${currentTurn === 'red' ? '🔴' : '⚫'} ${currentTurn === 'red' ? '红方' : '黑方'}的回合`
+    : '🔴 你的回合 (红方)';
 
   const resultConfig = {
     won: { emoji: '🏆', text: '将军! 绝杀!', score: '+30', color: 'text-green-600' },
@@ -533,7 +560,8 @@ export function ChineseChessBoard({
                 const isLegalTarget = legalMoves.some(m => m.row === rowIndex && m.col === colIndex);
                 const isCaptureTarget = isLegalTarget && piece !== null;
                 const kingInCheck = piece && checkState === piece.color && piece.type === 'king';
-                const canClick = gameStatus === 'playing' && currentTurn === 'red' && !isAIThinking;
+                const canClick = gameStatus === 'playing' && !isAIThinking
+                  && (mode === 'pvp' || currentTurn === 'red');
 
                 return (
                   <button

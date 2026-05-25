@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Star, Flame, ChevronUp, Sparkles } from 'lucide-react';
@@ -12,6 +13,10 @@ type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess';
 type TabType = 'leaderboard' | 'history';
 
 export function Games() {
+  const [searchParams] = useSearchParams();
+  const urlMatchId = searchParams.get('matchId');
+  const urlGameType = searchParams.get('gameType') as ActiveGame | null;
+
   const {
     profile,
     leaderboard,
@@ -27,6 +32,15 @@ export function Games() {
 
   const [activeGame, setActiveGame] = useState<ActiveGame>(null);
   const [activeTab, setActiveTab] = useState<TabType>('leaderboard');
+  const [pvpMatchId, setPvpMatchId] = useState<number | null>(null);
+  const [pvpLoading, setPvpLoading] = useState(false);
+
+  useEffect(() => {
+    if (urlMatchId && urlGameType && ['tictactoe', 'gomoku', 'chess'].includes(urlGameType)) {
+      setActiveGame(urlGameType);
+      setPvpMatchId(Number(urlMatchId));
+    }
+  }, [urlMatchId, urlGameType]);
 
   useEffect(() => {
     fetchProfile();
@@ -49,6 +63,8 @@ export function Games() {
 
   const handleBackToLobby = () => {
     setActiveGame(null);
+    setPvpMatchId(null);
+    window.history.replaceState({}, '', '/games');
   };
 
   const formatDuration = (seconds: number | null) => {
@@ -86,11 +102,12 @@ export function Games() {
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            在线对局
+            {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
         <TicTacToeBoard
-          mode="ai"
+          mode={pvpMatchId ? 'pvp' : 'ai'}
+          matchId={pvpMatchId || undefined}
           onGameOver={handleGameOver}
         />
       </div>
@@ -110,11 +127,12 @@ export function Games() {
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            在线对局
+            {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
         <GomokuBoard
-          mode="ai"
+          mode={pvpMatchId ? 'pvp' : 'ai'}
+          matchId={pvpMatchId || undefined}
           onGameOver={handleGameOver}
         />
       </div>
@@ -134,11 +152,12 @@ export function Games() {
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            在线对局
+            {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
         <ChineseChessBoard
-          mode="ai"
+          mode={pvpMatchId ? 'pvp' : 'ai'}
+          matchId={pvpMatchId || undefined}
           onGameOver={handleGameOver}
         />
       </div>

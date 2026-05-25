@@ -337,6 +337,184 @@ navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
 
 ---
 
+# 三个棋盘组件 PVP（玩家对战）模式支持改造记录
+
+**修改日期**: 2026-05-25
+**修改范围**: 前端三个游戏棋盘组件
+**功能类型**: 新增模式支持
+
+---
+
+## 一、改造背景
+
+### 1.1 核心问题
+每个棋盘组件接收 `matchId?: number` prop（解构为 `_matchId`），但内部有独立的 `matchId` state。`initMatch()` 总是调用 `gameApi.createMatch({ gameType, mode: 'ai' })` 创建新对局，**从未使用传入的 `_matchId`**。这导致从聊天页面"邀请下棋"创建的PVP对局无法被棋盘组件正确使用。
+
+### 1.2 改造目标
+使三个棋盘组件同时支持 AI 模式和 PVP 模式，通过 `mode` prop 区分：
+- **AI模式** (`mode='ai'`, 默认): 保持原有全部逻辑不变
+- **PVP模式** (`mode='pvp'`): 使用传入的 matchId，双方玩家轮流操作，禁用AI逻辑
+
+---
+
+## 二、修改内容（3个文件相同模式）
+
+### 2.1 Props 接口扩展
+```typescript
+// 修改前
+mode?: 'ai';
+// 修改后
+mode?: 'ai' | 'pvp';
+```
+
+### 2.2 initMatch 函数改造
+增加 PVP 分支：当 `mode === 'pvp' && _matchId` 存在时，直接使用传入的 matchId 而非创建新对局。
+
+### 2.3 generateOpponent 条件调用
+仅在 `mode === 'ai'` 时生成虚拟对手信息，PVP 模式不生成。
+
+### 2.4 handleClick 双方操作支持
+- **AI模式**: 仅允许玩家方操作（X/黑/红），落子后触发AI思考
+- **PVP模式**: 允许双方轮流操作，动态判断当前符号，不触发AI思考
+- **新增胜利判定**: PVP模式下对手（O/白/黑）胜利时正确判定为 lost
+
+### 2.5 AI 思考 useEffect 跳过
+在 useEffect 入口增加 `mode === 'pvp'` 提前返回条件。
+
+### 2.6 statusText 状态文本适配
+PVP 模式下显示当前轮到哪一方（如 "X 的回合"、"黑方的回合"）。
+
+### 2.7 棋盘交互条件适配
+按钮 disabled/hover/canClick 等条件中的 `currentPlayer === BLACK` / `currentTurn === 'red'` 限制改为 `(mode === 'pvp' || currentPlayer === BLACK)` 形式。
+
+---
+
+## 三、各文件改动详情
+
+### 3.1 TicTacToeBoard.tsx
+| 改动点 | 说明 |
+|--------|------|
+| L14 | Props: `mode\|'pvp'` |
+| L291-294 | generateOpponent 仅 AI 模式 |
+| L300-303 | initMatch 增加 PVP 分支（直接 setMatchId(_matchId)）|
+| L322 | initMatch useEffect 依赖加 `[mode, _matchId]` |
+| L338-420 | handleClick 重构：双方落子 + O方胜利判定 + 动态symbol + 条件AI触发 |
+| L424 | AI思考 useEffect 加 `mode === 'pvp'` 跳过 |
+| L500 | AI思考依赖数组加 mode |
+| L587-589 | statusText 显示 "X/O 的回合" |
+
+**特殊处理**: 井字棋中 X 为玩家、O 为对手(AI)。PVP模式下 O 方胜利触发 `setGameStatus('lost')`。
+
+### 3.2 GomokuBoard.tsx
+| 改动点 | 说明 |
+|--------|------|
+| L14 | Props: `mode\|'pvp'` |
+| L579-582 | generateOpponent 仅 AI 模式 |
+| L587-604 | initMatch 从内联useEffect重构为 useCallback + PVP分支 |
+| L618 | AI思考 useEffect 加 `mode === 'pvp'` 跳过 |
+| L681 | AI思考依赖数组加 mode |
+| L696-756 | handleClick 重构：双方落子 + 白方胜利判定 + 动态B/W symbol |
+| L854-856 | statusText 显示 "黑方/白方的回合" |
+| L1035, L1048 | 棋格 hover/canClick 条件适配PVP |
+
+**特殊处理**: 五子棋中黑(B)为先手/玩家，白(W)为后手/AI。PVP模式下白方胜利触发 `setGameStatus('lost')`。initMatch 原本内联在 useEffect 中，本次重构为独立 useCallback 以支持依赖注入。
+
+### 3.3 ChineseChessBoard.tsx
+| 改动点 | 说明 |
+|--------|------|
+| L20 | Props: `mode\|'pvp'` |
+| L173-176 | generateOpponent 仅 AI 模式 |
+| L319-335 | initMatch 从内联useEffect重构为 useCallback + PVP分支 |
+| L265 | AI思考 useEffect 加 `mode === 'pvp'` 跳过 |
+| L332 | AI思考依赖数组加 mode |
+| L178-252 | handleClick 大幅重构：双方选子/落子 + 黑方吃将胜利 + 动态R/B symbol + nextTurn计算 |
+| L417-419 | statusText 显示 "红方/黑方的回合" |
+| L563-564 | canClick 条件适配PVP |
+
+**特殊处理**: 中国象棋中红(R)为先手/玩家，黑(B)为后手/AI。PVP模式下黑方吃掉红方将时触发 `setGameStatus('lost')`。选子逻辑也需适配：PVP下只能选当前回合颜色的棋子。
+
+---
+
+## 四、保持不变的部分
+
+以下功能/逻辑在两种模式下行为一致，未做修改：
+
+| 功能 | 说明 |
+|------|------|
+| `processMatchFinish` | 结算逻辑完全不变 |
+| `GameResultModal` | 结算弹窗完全不变 |
+| `useGameHeartbeat` | 心跳检测已支持任意 matchId |
+| `surrender` | 认输逻辑不变 |
+| `resetBoard` | 重开总是创建新AI对局 |
+| `saveGameResult` | localStorage 统计不变 |
+| 所有动画效果 | framer-motion 动画不变 |
+| UI布局/样式 | 完全不变 |
+
+---
+
+## 五、数据流对比
+
+### AI 模式（默认）
+```
+用户落子(X/B/R) → 上报move API → 检查胜利 → 触发isAIThinking
+→ AI思考动画 → AI落子(O/W/B) → 上报move API → 检查胜负 → 循环
+```
+
+### PVP 模式
+```
+当前方落子(动态symbol) → 上报move API → 检查胜利(双方)
+→ 切换nextTurn → 等待另一方落子 → 循环
+（无AI介入）
+```
+
+---
+
+## 六、验证要点
+
+### 6.1 AI模式回归测试
+- [ ] 默认进入游戏仍为AI模式，行为与改造前完全一致
+- [ ] 对手卡片正常显示
+- [ ] AI思考进度条正常
+- [ ] 胜负判定正常
+- [ ] 积分结算正常
+- [ ] 心跳检测正常
+
+### 6.2 PVP模式功能测试
+- [ ] 传入 `mode='pvp'` + `matchId=123` 后不调用 createMatch
+- [ ] matchId state 正确设置为传入值
+- [ ] 双方能交替落子
+- [ ] O/白/黑方胜利时正确判负
+- [ ] 不显示对手信息卡片（或显示空白）
+- [ ] 不触发AI思考动画
+- [ ] statusText 正确显示当前方
+- [ ] move API 上报正确的 symbol
+- [ ] 心跳检测正常工作
+
+### 6.3 边界情况
+- [ ] PVP模式下重开游戏的行为
+- [ ] PVP模式下认输功能正常
+- [ ] 快速连续点击不会导致状态异常
+
+---
+
+## 七、文件修改清单
+
+| 文件 | 改动数 | 改动类型 |
+|------|--------|---------|
+| [TicTacToeBoard.tsx](frontend/src/app/components/games/TicTacToeBoard.tsx) | 8处 | Props+initMatch+handleClick+AI跳过+statusText+依赖 |
+| [GomokuBoard.tsx](frontend/src/app/components/games/GomokuBoard.tsx) | 9处 | Props+initMatch重构+handleClick+AI跳过+statusText+交互条件 |
+| [ChineseChessBoard.tsx](frontend/src/app/components/games/ChineseChessBoard.tsx) | 9处 | Props+initMatch重构+handleClick大幅重构+AI跳过+statusText+canClick |
+| [MODIFICATION_RECORD_20260525.md](MODIFICATION_RECORD_20260525.md) | 1处 | 追加本文档记录 |
+
+---
+
+**修改执行人**: AI Assistant
+**审核状态**: 待审核
+**文档版本**: v1.0
+**修改完成时间**: 2026-05-25
+
+---
+
 # PVP游戏邀请系统后端实现记录
 
 **修改日期**: 2026-05-25
