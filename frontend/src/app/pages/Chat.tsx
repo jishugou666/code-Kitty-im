@@ -77,6 +77,12 @@ export function Chat() {
       setMessages(prev => prev.filter(m => m.id !== newMessage.messageId));
     } else if (newMessage.type === 'messages-deleted') {
       setMessages(prev => prev.filter(m => m.sender_id !== newMessage.userId));
+    } else if (newMessage.type === 'game-invite-updated') {
+      setMessages(prev => prev.map(m =>
+        m.id === newMessage.id
+          ? { ...m, content: newMessage.content, type: 'game_invite' }
+          : m
+      ));
     } else {
       setMessages(prev => {
         if (prev.some(m => m.id === newMessage.id)) return prev;
@@ -194,17 +200,19 @@ export function Chat() {
     }
   };
 
-  const handleRespondGameInvite = async (matchId: number, accepted: boolean) => {
+  const handleRespondGameInvite = async (matchId: number, accepted: boolean, gameType?: string) => {
     if (!token) return;
     try {
       const { gameApi } = await import('../../api/game');
       const res = await gameApi.respondGameInvite({ matchId, accepted });
       if (res.code === 200 && accepted) {
         toast('接受成功！正在进入对局...', 'success');
+        const actualGameType = gameType || res.data?.game_type || '';
         setTimeout(() => {
-          window.location.href = '/games';
+          window.location.href = `/games?matchId=${matchId}&gameType=${actualGameType}`;
         }, 600);
       } else if (res.code === 200) {
+        setTimeout(() => loadMessages(), 500);
         toast('已拒绝邀请', 'info');
       }
     } catch (err: any) {
@@ -852,7 +860,7 @@ export function Chat() {
                                           <CheckCircle2 size={12} /> 同意
                                         </button>
                                         <button
-                                          onClick={() => handleRespondGameInvite(inviteData.matchId, false)}
+                                          onClick={() => handleRespondGameInvite(inviteData.matchId, false, inviteData.gameType)}
                                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 transition-colors"
                                         >
                                           <XCircle size={12} /> 拒绝

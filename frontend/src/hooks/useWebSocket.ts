@@ -42,6 +42,10 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
     }
   }, [fetchMessages]);
 
+  const handleMessageUpdated = useCallback((data: any) => {
+    onNewMessage?.(data);
+  }, [onNewMessage]);
+
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
@@ -55,18 +59,20 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
       channelRef.current.bind('new-message', handleNewMessage);
       channelRef.current.bind('message-read', handleMessageRead);
       channelRef.current.bind('message-recalled', handleMessageRecalled);
+      channelRef.current.bind('game-invite-updated', handleMessageUpdated);
 
       return () => {
         if (channelRef.current) {
           channelRef.current.unbind('new-message', handleNewMessage);
           channelRef.current.unbind('message-read', handleMessageRead);
           channelRef.current.unbind('message-recalled', handleMessageRecalled);
+          channelRef.current.unbind('game-invite-updated', handleMessageUpdated);
           pusher.unsubscribe(channelName);
           channelRef.current = null;
         }
       };
     }
-  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead, handleMessageRecalled]);
+  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead, handleMessageRecalled, handleMessageUpdated]);
 
   return {
     isConnected: true

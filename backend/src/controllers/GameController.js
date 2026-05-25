@@ -267,7 +267,7 @@ export const GameController = {
 
       try {
         const inviteMsg = await query(
-          "SELECT id, content FROM message WHERE type = 'game_invite' AND conversation_id IN (SELECT cm.conversation_id FROM conversation_member cm WHERE cm.user_id IN (?, (SELECT player1_id FROM game_match WHERE id = ?)) GROUP BY conversation_id HAVING COUNT(DISTINCT cm.user_id) = 2) ORDER BY id DESC LIMIT 1",
+          "SELECT id, conversation_id, content FROM message WHERE type = 'game_invite' AND conversation_id IN (SELECT cm.conversation_id FROM conversation_member cm WHERE cm.user_id IN (?, (SELECT player1_id FROM game_match WHERE id = ?)) GROUP BY conversation_id HAVING COUNT(DISTINCT cm.user_id) = 2) ORDER BY id DESC LIMIT 1",
           [userId, matchId]
         );
         if (inviteMsg.length > 0) {
@@ -276,6 +276,18 @@ export const GameController = {
           msgData.status = accepted ? 'accepted' : 'rejected';
           msgData.respondedAt = new Date().toISOString();
           await query("UPDATE message SET content = ? WHERE id = ?", [JSON.stringify(msgData), inviteMsg[0].id]);
+
+          const convIdForPusher = inviteMsg[0].conversation_id;
+          triggerEvent(`chat-${convIdForPusher}`, 'game-invite-updated', {
+            id: inviteMsg[0].id,
+            conversation_id: convIdForPusher,
+            content: JSON.stringify(msgData),
+            type: 'game_invite',
+            matchId,
+            gameType: msgData.gameType || '',
+            accepted,
+            respondedBy: userId
+          });
         }
       } catch (updateErr) {
         console.log('[Game] 邀请消息状态更新失败:', updateErr.message);
