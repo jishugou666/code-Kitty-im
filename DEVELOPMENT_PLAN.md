@@ -524,6 +524,25 @@
       - 后端：`backend/src/services/GameService.js`
       - 前端：`frontend/src/app/components/games/dynamicDifficulty.ts`
 
+- ✅ **Render部署失败修复：GameService.js TypeScript语法残留**
+  - **现象**：Render部署报错 `SyntaxError: Missing initializer in const declaration` at line 276
+  - **根因**：Node.js v22 默认启用ESM模块解析，`.js` 文件中的 TypeScript 类型注解被当作语法错误
+  - **错误位置**（2处）：
+    - 第276行：`const params: any[] = [currentUserId]`
+    - 第296行：`const RANK_NAMES: Record<string, string> = {`
+  - **修复**：移除所有 TypeScript 类型注解
+    ```javascript
+    // 修复前
+    const params: any[] = [currentUserId];
+    const RANK_NAMES: Record<string, string> = { ... };
+
+    // 修复后
+    const params = [currentUserId];
+    const RANK_NAMES = { ... };
+    ```
+  - **修改文件**：`backend/src/services/GameService.js`
+  - **预防措施**：后端 `.js` 文件禁止使用 TypeScript 语法，类型注解仅限前端 `.ts/.tsx`
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

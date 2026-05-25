@@ -273,7 +273,7 @@ export const GameService = {
   async getRandomOpponent(currentUserId, excludeId = null) {
     try {
       let excludeClause = 'WHERE u.id != ?';
-      const params: any[] = [currentUserId];
+      const params = [currentUserId];
       
       if (excludeId) {
         excludeClause += ' AND u.id != ?';
@@ -293,7 +293,7 @@ export const GameService = {
       if (users.length === 0) return null;
 
       const user = users[0];
-      const RANK_NAMES: Record<string, string> = {
+      const RANK_NAMES = {
         iron: '铁器', bronze: '青铜', silver: '白银',
         gold: '黄金', platinum: '铂金', diamond: '钻石',
         master: '大师', grandmaster: '宗师'
