@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { getPusher } from './useWebSocket';
 import { useAuthStore } from '../store/authStore';
 
@@ -35,23 +35,18 @@ export function useGameChannel(
 ) {
   const channelRef = useRef<ReturnType<ReturnType<typeof getPusher>['subscribe']> | null>(null);
   const { isAuthenticated, token } = useAuthStore();
-  const myUserId = useAuthStore.getState().user?.id;
+  const myUserIdRef = useRef(useAuthStore.getState().user?.id);
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
 
-  const handleMove = useCallback((data: any) => {
-    if (data && data.userId !== myUserId) {
-      callbacks.onRemoteMove?.(data as GameMoveEvent);
-    }
-  }, [callbacks.onRemoteMove, myUserId]);
-
-  const handleSurrender = useCallback((data: any) => {
-    if (data && data.userId !== myUserId) {
-      callbacks.onRemoteSurrender?.(data as GameSurrenderEvent);
-    }
-  }, [callbacks.onRemoteSurrender, myUserId]);
-
-  const handleFinished = useCallback((data: any) => {
-    callbacks.onRemoteFinished?.(data as GameFinishedEvent);
-  }, [callbacks.onRemoteFinished]);
+  useEffect(() => {
+    const unsub = useAuthStore.subscribe((state) => {
+      if (state.user?.id !== myUserIdRef.current) {
+        myUserIdRef.current = state.user?.id ?? null;
+      }
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !token || !matchId) return;
@@ -61,6 +56,22 @@ export function useGameChannel(
 
     channelRef.current = pusher.subscribe(channelName);
 
+    const handleMove = (data: any) => {
+      if (data && data.userId !== myUserIdRef.current) {
+        callbacksRef.current.onRemoteMove?.(data as GameMoveEvent);
+      }
+    };
+
+    const handleSurrender = (data: any) => {
+      if (data && data.userId !== myUserIdRef.current) {
+        callbacksRef.current.onRemoteSurrender?.(data as GameSurrenderEvent);
+      }
+    };
+
+    const handleFinished = (data: any) => {
+      callbacksRef.current.onRemoteFinished?.(data as GameFinishedEvent);
+    };
+
     channelRef.current.bind('game-move', handleMove);
     channelRef.current.bind('game-surrender', handleSurrender);
     channelRef.current.bind('game-finished', handleFinished);
@@ -69,10 +80,10 @@ export function useGameChannel(
       if (channelRef.current) {
         channelRef.current.unbind('game-move', handleMove);
         channelRef.current.unbind('game-surrender', handleSurrender);
-        channelRef.current.unbind('game-finished', handleFinished);
+        channelRef.current.unbind('game-finished', handleFinish);
         pusher.unsubscribe(channelName);
         channelRef.current = null;
       }
     };
-  }, [isAuthenticated, token, matchId, handleMove, handleSurrender, handleFinished]);
+  }, [isAuthenticated, token, matchId]);
 }

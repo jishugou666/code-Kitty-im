@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
@@ -23,28 +23,14 @@ export function getPusher(): Pusher {
 
 export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) => void) {
   const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
-  const { token, isAuthenticated, user } = useAuthStore();
-  const { addMessage, fetchConversations, fetchMessages } = useChatStore();
-
-  const handleNewMessage = useCallback((data: any) => {
-    if (data && data.id) {
-      addMessage(data.conversation_id, data);
-    }
-    onNewMessage?.(data);
-  }, [addMessage, onNewMessage]);
-
-  const handleMessageRead = useCallback((data: any) => {
-  }, []);
-
-  const handleMessageRecalled = useCallback((data: any) => {
-    if (data && data.messageId) {
-      fetchMessages(data.conversationId);
-    }
-  }, [fetchMessages]);
-
-  const handleMessageUpdated = useCallback((data: any) => {
-    onNewMessage?.(data);
-  }, [onNewMessage]);
+  const { token, isAuthenticated } = useAuthStore();
+  const { addMessage, fetchMessages } = useChatStore();
+  const onNewMessageRef = useRef(onNewMessage);
+  const addMessageRef = useRef(addMessage);
+  const fetchMessagesRef = useRef(fetchMessages);
+  onNewMessageRef.current = onNewMessage;
+  addMessageRef.current = addMessage;
+  fetchMessagesRef.current = fetchMessages;
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -56,15 +42,32 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 
       channelRef.current = pusher.subscribe(channelName);
 
+      const handleNewMessage = (data: any) => {
+        if (data && data.id) {
+          addMessageRef.current(data.conversation_id, data);
+        }
+        onNewMessageRef.current?.(data);
+      };
+
+      const handleMessageRecalled = (data: any) => {
+        if (data && data.messageId) {
+          fetchMessagesRef.current(data.conversationId);
+        }
+      };
+
+      const handleMessageUpdated = (data: any) => {
+        onNewMessageRef.current?.(data);
+      };
+
       channelRef.current.bind('new-message', handleNewMessage);
-      channelRef.current.bind('message-read', handleMessageRead);
+      channelRef.current.bind('message-read', () => {});
       channelRef.current.bind('message-recalled', handleMessageRecalled);
       channelRef.current.bind('game-invite-updated', handleMessageUpdated);
 
       return () => {
         if (channelRef.current) {
           channelRef.current.unbind('new-message', handleNewMessage);
-          channelRef.current.unbind('message-read', handleMessageRead);
+          channelRef.current.unbind('message-read', () => {});
           channelRef.current.unbind('message-recalled', handleMessageRecalled);
           channelRef.current.unbind('game-invite-updated', handleMessageUpdated);
           pusher.unsubscribe(channelName);
@@ -72,7 +75,7 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
         }
       };
     }
-  }, [isAuthenticated, token, conversationId, user?.id, handleNewMessage, handleMessageRead, handleMessageRecalled, handleMessageUpdated]);
+  }, [isAuthenticated, token, conversationId]);
 
   return {
     isConnected: true
@@ -82,25 +85,38 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 export function useGlobalWebSocket() {
   const { isAuthenticated, token, user } = useAuthStore();
   const { fetchConversations } = useChatStore();
+  const userChannelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
     const pusher = getPusher();
+    const currentUserId = user?.id;
 
-    const userChannel = pusher.subscribe(`user-${user?.id}`);
+    if (currentUserId) {
+      userChannelRef.current = pusher.subscribe(`user-${currentUserId}`);
 
-    userChannel.bind('conversation-update', (data: any) => {
-      fetchConversations();
-    });
+      const fetchConversationsRef = { current: fetchConversations };
+      const handleConversationUpdate = () => {
+        fetchConversationsRef.current();
+      };
 
-    userChannel.bind('new-message', (data: any) => {
-      console.log('[GlobalWebSocket] 📨 Received new-message on user channel:', data?.id, data?.sender_nickname);
-      messageEventBus.emit(data);
-    });
+      const handleGlobalNewMessage = (data: any) => {
+        console.log('[GlobalWebSocket] 📨 Received new-message on user channel:', data?.id, data?.sender_nickname);
+        messageEventBus.emit(data);
+      };
 
-    return () => {
-      pusher.unsubscribe(`user-${user?.id}`);
-    };
+      userChannelRef.current.bind('conversation-update', handleConversationUpdate);
+      userChannelRef.current.bind('new-message', handleGlobalNewMessage);
+
+      return () => {
+        if (userChannelRef.current) {
+          userChannelRef.current.unbind('conversation-update', handleConversationUpdate);
+          userChannelRef.current.unbind('new-message', handleGlobalNewMessage);
+          pusher.unsubscribe(`user-${currentUserId}`);
+          userChannelRef.current = null;
+        }
+      };
+    }
   }, [isAuthenticated, token, user?.id, fetchConversations]);
 }

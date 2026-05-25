@@ -1342,6 +1342,46 @@ bcrypt.hash(password, 10)
 - **基础分同步调整**：胜利75→10-12 / 失败30→6-8 / 平局50→8-9
 - **processMatchFinish fallback值**：全部从硬编码10/-5改为使用传入的defaultScore参数
 
+#### 🔴 致命架构缺陷修复：useGameChannel + useWebSocket 反复重订阅导致事件丢失
+- **问题1现象**：PVP联机对局第一手同步成功，第二手后双方卡死（对方收不到落子）
+- **问题2现象**：Chat会话消息列表不实时更新，明明已收到消息但UI不显示
+- **共同根因**：两个 Hook 都存在相同的 `useCallback + 内联回调` 依赖链缺陷
+  ```
+  调用方传入内联箭头函数 → useCallback依赖变化 → useEffect重新执行
+    → pusher.unsubscribe() ❌ 取消订阅
+    → pusher.subscribe()   ✅ 重新订阅
+      ⚠️ 窗口期内Pusher事件永久丢失！
+  ```
+- **useGameChannel 修复**：
+  - 新增 `callbacksRef` / `myUserIdRef` 存储**稳定引用**
+  - 事件处理函数从组件顶层 `useCallback` 移入 **useEffect 内部闭包**
+  - 依赖数组从 `[isAuthenticated, token, matchId, handleMove, handleSurrender, handleFinished]`(6个)
+    精简为 `[isAuthenticated, token, matchId]`(3个，对局期间不变)
+  - myUserId 通过 `authStore.subscribe` 实时同步到 ref
+- **useWebSocket 修复**：
+  - 同样使用 `onNewMessageRef` / `addMessageRef` / `fetchMessagesRef`
+  - `handleNewMessage/handleMessageRecalled/handleMessageUpdated` 全部移入 effect 内部
+  - 依赖数组精简为 `[isAuthenticated, token, conversationId]`(聊天期间不变)
+  - `useGlobalWebSocket` 同步修复（fetchConversations 用 ref 包装）
+- **效果**：PVP落子任意手数均可靠同步 / Chat消息实时到达不再丢失
+
+#### 🔴 严重Bug修复：game.js路由顺序导致全局API瘫痪
+- **现象**：Games页面排行榜/历史/个人资料全部显示"暂无数据"，控制台报错 `API Error: 对局不存在或无权访问`
+- **根因**：`router.get('/:matchId')` 放在 `router.get('/profile')` 等具体路由**之前**
+  ```
+  GET /api/game/profile → 被 /:matchId 匹配 → matchId="profile" → 查DB找不到 → "对局不存在"
+  GET /api/game/leaderboard → 同上 → matchId="leaderboard" → 同样错误
+  GET /api/game/history → 同上 → matchId="history" → 同样错误
+  ```
+- **影响范围**：所有游戏API（profile/leaderboard/history/random-opponent）+ PVP对局加载(getMatch)
+- **修复**：将 `GET /:matchId` 移到路由文件**最后一行**（Express按顺序匹配，通配符必须最后）
+- **审计结果**：其余13个路由文件均无此问题 ✅
+
+#### 🟡 中等Bug修复：GomokuBoard远程落子闭包过期
+- **现象**：PVP模式对方落子后胜负检测使用旧棋盘状态（少算一步）
+- **根因**：`onRemoteMove` 中 `setBoard(prev => ...)` 更新棋盘后，外层 `const tempBoard = board.map(...)` 使用的是**闭包中的旧board值**
+- **修复**：将胜负/平局检测移入 `setBoard` 回调内部，直接使用 `newBoard` 变量
+
 #### PVP联机对战完整实现（实时同步+对手信息+状态管理）
 - **问题诊断**：PVP模式6大断点 — 无真实对手信息、落子不同步、无游戏通道、无远程落子接收、不加载对局数据、结束状态不同步
 - **架构设计**：
