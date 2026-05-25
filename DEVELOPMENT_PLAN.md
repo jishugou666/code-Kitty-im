@@ -710,6 +710,61 @@
   - **修改文件**：`backend/src/controllers/GameController.js`
   - **影响范围**：PVP 邀请功能恢复，邀请者昵称正确显示在接收方弹窗中
 
+- ✅ **BUG修复：邀请下棋对方收不到弹窗（WebSocket认证方式不匹配）**
+  - **现象**：发起方看到"邀请已发送"成功提示，但对方界面无任何反应
+  - **根因分析**：
+    ```
+    推送链路追踪：
+    
+    后端 GameController.invite()
+      → GameService.createInvite() ✅ 成功创建 pending 对局
+      → sendToUser(opponentId, { type: 'game_invite', ... }) ✅ 调用推送
+    
+    后端 websocket.js sendToUser():
+      → clients.get(userId) 获取对方的 WS 连接
+      → ws.send(message) 发送消息
+    
+    前端 GameInviteReceiver.tsx 连接 WS：
+      → new WebSocket('/ws')              ← ❌ URL 无 token！
+      → onopen: send({ type: 'auth', token }) ← 太晚了！
+      
+    后端 websocket.js on('connection'):
+      → url.searchParams.get('token') → undefined（URL 里没有）
+      → verifyToken(undefined) → falsy
+      → ws.close(4002, 'Invalid token') ← 连接立即关闭！
+      
+    结果：GameInviteReceiver 的 WS 从未成功连接，
+         所有 game_invite 消息无法接收 → 对方看不到弹窗
+    ```
+  - **架构背景**：
+    ```
+    项目存在两套 WebSocket 系统：
+    1. Pusher（pusher-js）→ 主聊天功能使用（useWebSocket.ts）
+       通过 API key + channel 认证，不经过后端 /ws 端点
+       
+    2. 原生 WebSocket /ws → 后端自建端点（websocket.js）
+       通过 URL query parameter ?token=xxx 认证（JWT 验证）
+       
+    GameInviteReceiver 错误地混用了两种方式：
+    连接了原生 /ws 端点，却用 Pusher 的消息体认证方式
+    ```
+  - **修复方案**：
+    ```typescript
+    // 修复前 — URL 无 token，onopen 后发消息（❌ 连接已被关闭）
+    const wsUrl = `${protocol}//${host}/ws`;
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      ws?.send(JSON.stringify({ type: 'auth', token }));
+    };
+    
+    // 修复后 — token 放入 URL 参数（✅ 与后端匹配）
+    const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
+    ws = new WebSocket(wsUrl);
+    // 删除 onopen auth 消息（不再需要）
+    ```
+  - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`
+  - **构建验证**：✓ exit code 0, built in 11.56s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
