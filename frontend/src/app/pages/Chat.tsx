@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info } from "lucide-react";
+import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info, Gamepad2, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
@@ -12,6 +12,7 @@ import { tempConversationApi } from '../../api/tempConversation';
 import { messageApi } from '../../api/message';
 import { uploadApi } from '../../api/upload';
 import { conversationApi } from '../../api/conversation';
+import { gameApi } from '../../api/game';
 import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -46,6 +47,8 @@ export function Chat() {
   const [messageMenuPos, setMessageMenuPos] = useState({ x: 0, y: 0 });
   const [isNotificationConv, setIsNotificationConv] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [showGameInviteModal, setShowGameInviteModal] = useState(false);
+  const [isInvitingGame, setIsInvitingGame] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, token } = useAuthStore();
@@ -71,6 +74,23 @@ export function Chat() {
     } else {
       setMessages(prev => {
         if (prev.some(m => m.id === newMessage.id)) return prev;
+        
+        const isOwnMessage = newMessage.sender_id === user?.id;
+        if (isOwnMessage) {
+          const pendingIndex = prev.findIndex(
+            m => m.status === 'pending' &&
+                 m.sender_id === newMessage.sender_id &&
+                 m.conversation_id === newMessage.conversation_id &&
+                 m.content === newMessage.content &&
+                 m.type === newMessage.type
+          );
+          if (pendingIndex >= 0) {
+            const updated = [...prev];
+            updated[pendingIndex] = { ...newMessage, status: 'sent' };
+            return updated;
+          }
+        }
+        
         messageEventBus.emit(newMessage);
         return [...prev, newMessage];
       });
@@ -142,6 +162,33 @@ export function Chat() {
       fetchConversations();
     } catch (error) {
       console.error('标记已读失败:', error);
+    }
+  };
+
+  const handleInviteGame = async (gameType: string) => {
+    if (!otherUser?.id || !token) return;
+    setIsInvitingGame(true);
+    try {
+      const res = await gameApi.createMatch({
+        gameType,
+        mode: 'pvp',
+        opponentId: otherUser.id,
+        aiDifficulty: null
+      });
+      if (res.code === 200 && res.data?.id) {
+        setShowGameInviteModal(false);
+        toast('邀请发送成功！', 'success');
+        setTimeout(() => {
+          navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
+        }, 500);
+      } else {
+        toast(res.msg || '邀请失败', 'error');
+      }
+    } catch (error: any) {
+      console.error('Invite game error:', error);
+      toast(error.message || '邀请失败', 'error');
+    } finally {
+      setIsInvitingGame(false);
     }
   };
 
@@ -505,6 +552,15 @@ export function Chat() {
             </p>
           </div>
         </div>
+        {!isNotificationConv && conversation?.type !== 'world' && otherUser && (
+          <button
+            onClick={() => setShowGameInviteModal(true)}
+            className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}
+            title="邀请下棋"
+          >
+            <Gamepad2 size={isMobile ? 18 : 18} className="text-[#007AFF]" />
+          </button>
+        )}
       </div>
 
       {/* Temp Conversation Warning Banner */}
@@ -933,6 +989,73 @@ export function Chat() {
         </div>
       </div>
       )}
+
+      {/* Game Invite Modal */}
+      <AnimatePresence>
+        {showGameInviteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className={isMobile ? "w-full bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden" : "w-full max-w-sm bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden"}
+            >
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-white/10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">邀请对弈</h3>
+                  <button
+                    onClick={() => setShowGameInviteModal(false)}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <X size={18} className="text-gray-400" />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  邀请 <span className="font-medium text-gray-700 dark:text-gray-300">{otherUser?.nickname || otherUser?.username || '对方'}</span> 进行一局对战
+                </p>
+              </div>
+
+              <div className="p-4 space-y-3">
+                {[
+                  { key: 'tictactoe', name: '井字棋', icon: '⭕', desc: '简单快捷的三子连线' },
+                  { key: 'gomoku', name: '五子棋', icon: '⚫', desc: '经典五子连珠' },
+                  { key: 'chess', name: '中国象棋', icon: '♟️', desc: '楚河汉界，运筹帷幄' },
+                ].map((game) => (
+                  <button
+                    key={game.key}
+                    onClick={() => handleInviteGame(game.key)}
+                    disabled={isInvitingGame}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-white/10 hover:border-[#007AFF]/30 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all group disabled:opacity-50"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">{game.icon}</span>
+                    <div className="text-left flex-1">
+                      <p className="font-medium text-gray-900 dark:text-white">{game.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{game.desc}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 group-hover:text-[#007AFF] transition-colors" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="px-5 py-3 bg-gray-50 dark:bg-black/20 text-center">
+                <p className="text-xs text-gray-400">选择一个游戏模式开始对战</p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setShowGameInviteModal(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ToastContainer />
     </div>

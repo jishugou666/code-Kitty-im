@@ -179,3 +179,158 @@
 **审核状态**: 待审核
 **文档版本**: v1.0
 **修复完成时间**: 2026-05-25
+
+---
+
+# Chat页面邀请下棋功能添加记录
+
+**修改日期**: 2026-05-25
+**修改范围**: 前端 Chat.tsx 页面
+**功能类型**: 新增功能
+
+---
+
+## 一、功能概述
+
+### 1.1 功能描述
+在聊天界面头部右侧添加"邀请下棋"按钮，点击后弹出游戏模式选择弹窗，用户可选择井字棋、五子棋、中国象棋三种游戏模式，选择后创建PVP对局并跳转到游戏页面。
+
+### 1.2 功能特点
+- 仅在私聊会话中显示（通知会话和世界频道不显示）
+- 支持响应式设计（移动端/桌面端自适应）
+- 支持暗色模式
+- 弹窗使用 framer-motion 动画效果
+- 游戏类型与后端一致：tictactoe、gomoku、chess
+
+---
+
+## 二、修改内容
+
+### 2.1 Import 添加（第2行）
+**新增图标**:
+- `Gamepad2` - 邀请下棋按钮图标
+- `ChevronRight` - 弹窗选项箭头图标
+
+**新增API**:
+- `gameApi` - 游戏相关API接口
+
+### 2.2 State 变量添加（第49-50行）
+```typescript
+const [showGameInviteModal, setShowGameInviteModal] = useState(false);
+const [isInvitingGame, setIsInvitingGame] = useState(false);
+```
+
+### 2.3 处理函数添加（第148行后）
+**handleInviteGame 函数**:
+- 调用 gameApi.createMatch 创建PVP对局
+- 成功后显示toast提示，500ms后跳转游戏页面
+- 失败时显示错误信息
+- 完整的异常处理机制
+
+### 2.4 UI 组件添加
+
+#### Header 按钮（第556-564行）
+- 位置：Header右侧，用户信息旁边
+- 条件渲染：非通知会话 && 非世界频道 && 存在其他用户
+- 样式：蓝色 Gamepad2 图标，hover效果
+
+#### 邀请弹窗（ToastContainer之前）
+- 全屏遮罩层（absolute inset-0 z-50）
+- 居中弹窗卡片（max-w-sm）
+- 弹窗内容：
+  - 标题栏：邀请对弈 + 关闭按钮
+  - 提示文字：显示对方昵称/用户名
+  - 游戏选项列表：
+    - 井字棋（⭕）- 简单快捷的三子连线
+    - 五子棋（⚫）- 经典五子连珠
+    - 中国象棋（♟️）- 楚河汉界，运筹帷幄
+  - 底部提示：选择一个游戏模式开始对战
+
+---
+
+## 三、技术实现细节
+
+### 3.1 条件渲染逻辑
+```tsx
+{!isNotificationConv && conversation?.type !== 'world' && otherUser && (
+  <button>...</button>
+)}
+```
+确保只在有效的私聊会话中显示按钮。
+
+### 3.2 API 调用参数
+```typescript
+{
+  gameType: string,      // 'tictactoe' | 'gomoku' | 'chess'
+  mode: 'pvp',           // 玩家对战模式
+  opponentId: number,    // 对手用户ID
+  aiDifficulty: null     // PVP模式无AI难度
+}
+```
+
+### 3.3 跳转逻辑
+```typescript
+navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
+```
+携带对局ID和游戏类型参数跳转到游戏页面。
+
+### 3.4 动画效果
+- 弹窗入场：scale 0.9→1, y 20→0, spring动画
+- 遮罩层：opacity 0→1
+- 游戏选项hover：图标放大110%，边框变蓝
+
+---
+
+## 四、文件修改清单
+
+### 4.1 修改的文件
+- [Chat.tsx](file:///d:/Desktop/CDK%20IM/frontend/src/app/pages/Chat.tsx)
+  - 第2行：添加 Gamepad2、ChevronRight import
+  - 第15行：添加 gameApi import
+  - 第49-50行：添加 state 变量
+  - 第148-174行：添加 handleInviteGame 函数
+  - 第556-564行：添加 Header 按钮
+  - 第994-1061行：添加邀请弹窗组件
+
+### 4.2 未修改的文件
+- 所有消息收发逻辑保持不变
+- WebSocket实时通信不受影响
+- 其他UI组件未改动
+
+---
+
+## 五、测试要点
+
+### 5.1 功能测试
+- [ ] 私聊会话中显示邀请下棋按钮
+- [ ] 通知会话中不显示按钮
+- [ ] 世界频道中不显示按钮
+- [ ] 点击按钮弹出选择弹窗
+- [ ] 选择游戏模式后创建对局成功
+- [ ] 创建失败时显示错误提示
+- [ ] 成功后500ms跳转到游戏页面
+- [ ] 点击遮罩层关闭弹窗
+- [ ] 点击X按钮关闭弹窗
+- [ ] 移动端响应式正常
+- [ ] 暗色模式样式正确
+
+### 5.2 边界情况测试
+- [ ] 未登录状态下按钮不显示（otherUser为空）
+- [ ] 网络异常时的错误处理
+- [ ] 快速连续点击的防抖处理
+
+---
+
+## 六、注意事项
+
+1. **依赖关系**: 需要 `gameApi.createMatch` 方法已实现
+2. **路由依赖**: 需要 `/games` 路由已配置
+3. **权限控制**: 只有登录用户且存在其他用户时才显示按钮
+4. **性能影响**: 新增代码量约70行，不影响现有性能
+
+---
+
+**修改执行人**: AI Assistant
+**审核状态**: 待审核
+**文档版本**: v1.0
+**修改完成时间**: 2026-05-25

@@ -1,5 +1,5 @@
 import { query } from '../utils/db.js';
-import { hashPassword, comparePassword, generateToken, maskPhone, maskEmail, escapeLikeQuery } from '../utils/crypto.js';
+import { hashPassword, comparePassword, generateToken, maskPhone, escapeLikeQuery } from '../utils/crypto.js';
 
 export const UserService = {
   async register(password, nickname, email) {
@@ -254,9 +254,6 @@ export const UserService = {
     }
     if (sanitized.phone) {
       sanitized.phone = maskPhone(sanitized.phone);
-    }
-    if (sanitized.email) {
-      sanitized.email = maskEmail(sanitized.email);
     }
     if (sanitized.ban_status === 'banned') {
       sanitized.isBanned = true;
