@@ -1,42 +1,24 @@
-const SURNAMES = [
-  '王', '李', '张', '刘', '陈', '杨', '黄', '赵', '周', '吴',
-  '徐', '孙', '马', '朱', '胡', '郭', '何', '林', '罗', '高',
-  '郑', '梁', '谢', '宋', '唐', '许', '邓', '冯', '韩', '曹',
-  '曾', '彭', '萧', '蔡', '潘', '田', '董', '袁', '于', '余',
-  '叶', '蒋', '杜', '苏', '魏', '程', '吕', '丁', '沈', '任'
-];
+import { gameApi } from '../../api/game';
 
-const MALE_NAMES = [
-  '伟', '强', '磊', '军', '勇', '杰', '涛', '明', '超', '华',
-  '刚', '辉', '鹏', '斌', '波', '宇', '浩', '凯', '毅', '俊',
-  '峰', '龙', '威', '志', '亮', '健', '林', '洋', '昊', '飞',
-  '翔', '睿', '泽', '旭', '晨', '博', '天', '子', '轩', '然'
-];
+const RANK_NAMES: Record<string, string> = {
+  iron: '铁器', bronze: '青铜', silver: '白银',
+  gold: '黄金', platinum: '铂金', diamond: '钻石',
+  master: '大师', grandmaster: '宗师'
+};
 
-const FEMALE_NAMES = [
-  '芳', '娜', '敏', '静', '丽', '婷', '雪', '艳', '玲', '燕',
-  '萍', '红', '琳', '倩', '颖', '璐', '婷', '洁', '薇', '欣',
-  '怡', '悦', '萱', '馨', '妍', '茜', '露', '琪', '瑶', '蕾',
-  '涵', '彤', '嘉', '宁', '诗', '思', '雨', '梦', '柔', '晴'
+const FALLBACK_AVATARS = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=a1&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=b2&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=c3&backgroundColor=c0aede',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=d4&backgroundColor=d1f4d1',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=e5&backgroundColor=ffeaa7',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=f6&backgroundColor=74b9ff',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=g7&backgroundColor=a29bfe',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=h8&backgroundColor=fd79a8',
 ];
-
-const AVATARS = [
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=1&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=2&backgroundColor=ffd5dc',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=3&backgroundColor=c0aede',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=4&backgroundColor=d1f4d1',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=5&backgroundColor=ffeaa7',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=6&backgroundColor=74b9ff',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=7&backgroundColor=a29bfe',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=8&backgroundColor=fd79a8',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=9&backgroundColor=55efc4',
-  'https://api.dicebear.com/7.x/avataaars/svg?seed=10&backgroundColor=fab1a0',
-];
-
-const RANK_TITLES = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster'];
-const RANK_NAMES = ['铁器', '青铜', '白银', '黄金', '铂金', '钻石', '大师', '宗师'];
 
 export interface Opponent {
+  id?: number;
   nickname: string;
   avatar: string;
   rankTier: string;
@@ -44,24 +26,66 @@ export interface Opponent {
   rating: number;
 }
 
-export function generateOpponent(playerRating: number = 1000): Opponent {
-  const isFemale = Math.random() > 0.55;
-  const surname = SURNAMES[Math.floor(Math.random() * SURNAMES.length)];
-  const namePool = isFemale ? FEMALE_NAMES : MALE_NAMES;
-  const givenName = namePool[Math.floor(Math.random() * namePool.length)];
-  
-  const ratingVariance = Math.floor(Math.random() * 201) - 80;
-  const opponentRating = Math.max(800, playerRating + ratingVariance);
-  
-  const tierIndex = Math.max(0, Math.min(7, Math.floor((opponentRating - 800) / 200)));
-  
-  return {
-    nickname: `${surname}${givenName}`,
-    avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
-    rankTier: RANK_TITLES[tierIndex],
-    rankLabel: RANK_NAMES[tierIndex],
-    rating: opponentRating,
-  };
+let cachedOpponents: Opponent[] = [];
+let lastFetchTime = 0;
+const CACHE_TTL = 120000;
+
+async function fetchRealOpponents(): Promise<Opponent[]> {
+  try {
+    const res = await gameApi.getRandomOpponent();
+    if (res.code === 200 && res.data) {
+      const user = res.data;
+      return [{
+        id: user.id,
+        nickname: user.nickname,
+        avatar: user.avatar || FALLBACK_AVATARS[Math.floor(Math.random() * FALLBACK_AVATARS.length)],
+        rankTier: user.rankTier || 'iron',
+        rankLabel: RANK_NAMES[user.rankTier] || '铁器',
+        rating: user.rating || 1000,
+      }];
+    }
+  } catch (err) {
+    console.warn('[Matchmaking] 获取真实对手失败，使用缓存:', err.message);
+  }
+  return cachedOpponents.length > 0 ? cachedOpponents : [];
+}
+
+export async function generateOpponent(playerRating: number = 1000): Promise<Opponent> {
+  const now = Date.now();
+  if (cachedOpponents.length === 0 || now - lastFetchTime > CACHE_TTL) {
+    const fresh = await fetchRealOpponents();
+    if (fresh.length > 0) {
+      cachedOpponents = fresh;
+      lastFetchTime = now;
+    }
+  }
+
+  let opponent: Opponent;
+
+  if (cachedOpponents.length > 0) {
+    opponent = cachedOpponents[Math.floor(Math.random() * cachedOpponents.length)];
+    const ratingVariance = Math.floor(Math.random() * 201) - 100;
+    opponent = {
+      ...opponent,
+      rating: Math.max(800, playerRating + ratingVariance),
+    };
+  } else {
+    const SURNAMES = ['王','李','张','刘','陈','杨','黄','赵','周','吴','徐','孙','马'];
+    const NAMES = ['伟','强','磊','军','勇','杰','涛','明','超','华','芳','娜','敏','静','丽'];
+    const surname = SURNAMES[Math.floor(Math.random() * SURNAMES.length)];
+    const givenName = NAMES[Math.floor(Math.random() * NAMES.length)];
+    const ratingVariance = Math.floor(Math.random() * 201) - 80;
+
+    opponent = {
+      nickname: `${surname}${givenName}`,
+      avatar: FALLBACK_AVATARS[Math.floor(Math.random() * FALLBACK_AVATARS.length)],
+      rankTier: 'bronze',
+      rankLabel: '青铜',
+      rating: Math.max(800, playerRating + ratingVariance),
+    };
+  }
+
+  return opponent;
 }
 
 interface DifficultyState {
@@ -72,11 +96,11 @@ interface DifficultyState {
 }
 
 const DIFFICULTY_CONFIG = {
-  minThinkTime: 400,
-  maxThinkTime: 1400,
+  minThinkTime: 800,
+  maxThinkTime: 3500,
   minErrorRate: 0.02,
-  maxErrorRate: 0.35,
-  adjustmentSpeed: 0.15,
+  maxErrorRate: 0.30,
+  adjustmentSpeed: 0.12,
 };
 
 let state: DifficultyState = {
@@ -92,15 +116,30 @@ export function getDynamicDifficulty(): {
   errorRate: number;
 } {
   const level = state.currentLevel;
-  const thinkTime = Math.round(
-    DIFFICULTY_CONFIG.minThinkTime +
-      (DIFFICULTY_CONFIG.maxThinkTime - DIFFICULTY_CONFIG.minThinkTime) * level
-  );
+  
+  const baseThinkTime = DIFFICULTY_CONFIG.minThinkTime +
+    (DIFFICULTY_CONFIG.maxThinkTime - DIFFICULTY_CONFIG.minThinkTime) * level;
+  
+  const randomVariance = (Math.random() - 0.5) * baseThinkTime * 0.6;
+  const thinkTime = Math.round(Math.max(600, baseThinkTime + randomVariance));
+  
   const errorRate =
     DIFFICULTY_CONFIG.maxErrorRate -
       (DIFFICULTY_CONFIG.maxErrorRate - DIFFICULTY_CONFIG.minErrorRate) * level;
 
   return { level, thinkTime, errorRate };
+}
+
+export function getThinkingPhases(thinkTime: number): { phase: string; delay: number; progress: number }[] {
+  const phases: { phase: string; delay: number; progress: number }[] = [];
+  const totalDuration = thinkTime + Math.random() * 500;
+  
+  phases.push({ phase: 'analyzing', delay: Math.round(totalDuration * 0.15), progress: 15 });
+  phases.push({ phase: 'evaluating', delay: Math.round(totalDuration * 0.35), progress: 50 });
+  phases.push({ phase: 'deciding', delay: Math.round(totalDuration * 0.35), progress: 85 });
+  phases.push({ phase: 'ready', delay: Math.round(totalDuration * 0.15), progress: 100 });
+  
+  return phases;
 }
 
 export function recordGameResult(won: boolean): void {

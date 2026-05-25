@@ -88,6 +88,64 @@
     - 对手信息卡片：头像 + 昵称 + 段位 + 积分 + "实时匹配"标签
     - 状态栏显示对手昵称而非"AI"
     - 难度根据玩家表现实时调整，无需手动选择
+- ✅ **象棋棋盘尺寸优化**
+  - **问题**：象棋棋盘太小，影响操作体验
+  - **修复**：cellSizeVar 从 `min(28px, calc((100vw - 240px) / 9))` 调整为 `min(42px, calc((100vw - 300px) / 9))`
+- ✅ **真实用户匹配 + 增强思考动画**
+  - **问题**：对手使用随机假名容易穿帮，无思考延时，应使用站内注册用户
+  - **后端实现**：
+    - 新增 API: `GET /api/game/random-opponent` - 随机返回一个站内注册用户（排除当前用户）
+    - GameService.getRandomOpponent(): 从 user 表 JOIN user_game_profile 随机取1人
+    - 返回: id, nickname, avatar, rating, rankTier, rankLabel
+  - **前端实现**：
+    - dynamicDifficulty.ts 重写：
+      - `generateOpponent()` 改为 **async** 函数
+      - 优先从后端获取真实用户（带2分钟缓存）
+      - 获取失败时降级为随机中文名（兜底方案）
+      - **排除自己**: 后端 `WHERE u.id != currentUserId`
+    - 思考延时增强：
+      - 原始: 400-1400ms → **新: 800-3500ms** (更接近真人)
+      - 添加随机波动 ±30% (每次不同)
+      - 新增 `getThinkingPhases()` 返回4阶段:
+        - `分析棋局` (0-15%) → `评估策略` (15-50%) → `决策落子` (50-85%) → `即将落子` (85-100%)
+    - UI增强:
+      - 状态栏显示: "⚪ 张伟 分析棋局... (白方)" 动态切换
+      - 对手卡片加载态: 旋转spinner + "匹配对手中..."
+      - 进度条频率从 thinkTime/8 → thinkTime/10 (更平滑)
+  - **修改文件列表**：
+    - 后端: GameController.js, GameService.js, routes/game.js
+    - 前端: dynamicDifficulty.ts(重写), game.ts(API), GomokuBoard, ChineseChessBoard, TicTacToeBoard
+- ✅ **真人对局包装 - 清除所有AI/动态难度用户可见文本**
+  - **需求**：游戏界面不能出现任何 AI、动态难度、动态匹配 等字样，完全包装成真人对局
+  - **清理清单**：
+    | 原文 | 替换为 | 位置 |
+    |------|--------|------|
+    | `⚡动态匹配` (3处) | `●在线` 绿色脉冲 + "在线对局" | Games.tsx 游戏页面顶栏 |
+    | `<Zap />动态难度` (3处) | `●在线` 绿色脉冲标签 | 三个棋盘对手卡片 |
+    | `动态难度 Lv.XX% · 思考 XXXms` | `对局时长 MM:SS` | ChineseChessBoard 侧边栏 |
+    | `AI正在随意/分析/深度思考...` | `分析棋局/评估策略/决策落子/即将落子` | TicTacToeBoard 思考阶段 |
+    | `AI使用开局库+Minimax+Alpha-Beta...` | `休闲模式/竞技模式/大师模式` | TicTacToeBoard 难度描述 |
+    | `进攻力 (AI)` | `进攻力 (白方)` | GomokuBoard 局势评估 |
+    | `// AI赢，玩家输` (2处) | `// 对手获胜，玩家输` | 注释清理 |
+    | 未使用的 Zap import | 移除 | Games.tsx |
+  - **保留不变**：所有内部变量名（isAIThinking, getAIMove, dynamicDiff 等）和算法逻辑
+  - **修改文件**：Games.tsx, GomokuBoard.tsx, ChineseChessBoard.tsx, TicTacToeBoard.tsx
+  - **问题**：用户退出/刷新页面时对局无惩罚，应判负并扣分
+  - **后端实现**：
+    - 新增 `game_match.last_heartbeat` 字段记录最后心跳时间
+    - 新增 API: `POST /api/game/:matchId/heartbeat` - 更新心跳
+    - 新增 API: `GET /api/game/monitor/abandoned` - 管理员手动检测
+    - GameService.finishAbandonedMatches(): 自动检测超时对局（45秒无心跳）
+    - app.js 定时任务：每20秒扫描，自动将超时对局标记为 abandoned（判负-15分）
+  - **前端实现**：
+    - 新增 Hook: `useGameHeartbeat.ts` - 游戏专用心跳管理
+      - 每10秒发送一次心跳保持连接
+      - 页面关闭/刷新时自动发送 surrender (sendBeacon)
+      - 标签页切回时立即补发心跳
+    - 三个棋盘组件全部集成 useGameHeartbeat hook
+  - **修改文件列表**：
+    - 后端：backend/src/controllers/GameController.js, backend/src/services/GameService.js, backend/src/routes/game.js, backend/src/app.js
+    - 前端：frontend/src/api/game.ts, frontend/src/hooks/useGameHeartbeat.ts, 三个棋盘组件
 
 ### 2026-05-23
 - ✅ 娱乐游戏功能全栈开发完成（Phase P0-P1）

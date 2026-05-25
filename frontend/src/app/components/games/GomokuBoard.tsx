@@ -1,9 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Zap } from 'lucide-react';
+import { Zap, Brain, Search, Target } from 'lucide-react';
 import { gameApi } from '../../../api/game';
-import { generateOpponent, getDynamicDifficulty, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
+import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
+import type { Opponent } from './dynamicDifficulty';
+import { useGameHeartbeat } from '../../hooks/useGameHeartbeat';
 
 interface GomokuBoardProps {
   matchId?: number;
@@ -540,9 +542,16 @@ export function GomokuBoard({
   const [aiThinkProgress, setAiThinkProgress] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [matchId, setMatchId] = useState<number | null>(null);
-  const [opponent] = useState(() => generateOpponent());
+  const [opponent, setOpponent] = useState<Opponent | null>(null);
+  const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dynamicDiff = getDynamicDifficulty();
+
+  useEffect(() => {
+    generateOpponent().then(setOpponent);
+  }, []);
+
+  useGameHeartbeat(matchId, gameStatus === 'playing');
 
   useEffect(() => {
     const initMatch = async () => {
@@ -573,13 +582,25 @@ export function GomokuBoard({
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
-    const thinkTime = dynamicDiff.thinkTime;
+    const phases = getThinkingPhases(dynamicDiff.thinkTime);
     let progress = 0;
+    let phaseIndex = 0;
+    const phaseLabels: Record<string, string> = {
+      analyzing: '分析棋局',
+      evaluating: '评估策略',
+      deciding: '决策落子',
+      ready: '即将落子'
+    };
+    setThinkingPhase(phaseLabels[phases[0]?.phase] || '思考中');
     const interval = setInterval(() => {
-      progress += Math.random() * 25 + 10;
-      if (progress > 95) progress = 90 + Math.random() * 8;
+      progress += Math.random() * 20 + 8;
+      if (progress > 95) progress = 90 + Math.random() * 6;
       setAiThinkProgress(progress);
-    }, thinkTime / 8);
+      if (phaseIndex < phases.length - 1 && progress >= phases[phaseIndex + 1].progress) {
+        phaseIndex++;
+        setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
+      }
+    }, dynamicDiff.thinkTime / 10);
     const timer = setTimeout(() => {
       clearInterval(interval);
       setAiThinkProgress(100);
@@ -593,6 +614,7 @@ export function GomokuBoard({
       setHistory(h => [...h, { row: aiRow, col: aiCol, player: WHITE, timestamp: Date.now() }]);
       setIsAIThinking(false);
       setAiThinkProgress(0);
+      setThinkingPhase('');
       if (matchId) {
         gameApi.move(matchId, { position: [aiRow, aiCol], symbol: 'W' }).catch(() => {});
       }
@@ -605,7 +627,7 @@ export function GomokuBoard({
         
         if (matchId) {
         try {
-          // AI赢，玩家输
+          // 对手获胜，玩家输
           gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
@@ -628,7 +650,7 @@ export function GomokuBoard({
         onGameOver?.('draw');
       }
     }, dynamicDiff.thinkTime);
-    return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); };
+    return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
   }, [isAIThinking, gameStatus, board, onGameOver, dynamicDiff.thinkTime, history, matchId]);
 
   const stats: GameStats = useMemo(() => ({
@@ -772,7 +794,9 @@ export function GomokuBoard({
     } catch {}
   };
 
-  const statusText = gameStatus !== 'playing' ? '' : isAIThinking ? `\u26AA ${opponent.nickname} 思考中... (白方)` : '\u26AB 你的回合 (黑方)';
+  const statusText = gameStatus !== 'playing' ? '' : isAIThinking
+    ? `\u26AA ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (白方)`
+    : '\u26AB 你的回合 (黑方)';
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
     lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
@@ -1096,24 +1120,38 @@ export function GomokuBoard({
       <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
         {/* Opponent Info Card */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <img
-              src={opponent.avatar}
-              alt={opponent.nickname}
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
-              <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+          {opponent ? (
+            <>
+              <div className="flex items-center gap-3 mb-3">
+                <img
+                  src={opponent.avatar}
+                  alt={opponent.nickname}
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
+                  <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+                <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full">在线</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-400">匹配对手中...</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
-            <span className="flex items-center gap-1">
-              <Zap size={12} className="text-amber-500" />
-              动态难度
-            </span>
-          </div>
+          )}
         </div>
 
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
@@ -1151,7 +1189,7 @@ export function GomokuBoard({
           <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">局势评估</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-[10px]">
-              <span className="text-blue-600 dark:text-blue-400 font-medium">进攻力 (AI)</span>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">进攻力 (白方)</span>
               <span className="text-orange-600 dark:text-orange-400 font-medium">防守力 (你)</span>
             </div>
             <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">

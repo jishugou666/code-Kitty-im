@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Zap } from 'lucide-react';
+import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
@@ -59,8 +59,8 @@ export function Games() {
             返回大厅
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Zap size={14} className="text-amber-500" />
-            动态匹配
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            在线对局
           </div>
         </div>
         <TicTacToeBoard
@@ -83,8 +83,8 @@ export function Games() {
             返回大厅
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Zap size={14} className="text-amber-500" />
-            动态匹配
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            在线对局
           </div>
         </div>
         <GomokuBoard
@@ -107,8 +107,8 @@ export function Games() {
             返回大厅
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <Zap size={14} className="text-amber-500" />
-            动态匹配
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            在线对局
           </div>
         </div>
         <ChineseChessBoard

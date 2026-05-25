@@ -144,5 +144,46 @@ export const GameController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async heartbeat(req, res, next) {
+    try {
+      const { matchId } = req.params;
+      await GameService.updateHeartbeat(matchId, req.user.id);
+      res.json(success(null, '心跳更新'));
+    } catch (err) {
+      if (err.message === 'Match not found') {
+        return res.status(404).json(error('对局不存在', 404));
+      }
+      next(err);
+    }
+  },
+
+  async checkAbandonedMatches(req, res, next) {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json(error('无权限', 403));
+      }
+      const count = await GameService.finishAbandonedMatches();
+      res.json(success({ abandonedCount: count }, `已处理 ${count} 个逃跑对局`));
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async getRandomOpponent(req, res, next) {
+    try {
+      const { excludeId } = req.query;
+      const opponent = await GameService.getRandomOpponent(
+        req.user.id,
+        excludeId ? parseInt(excludeId) : undefined
+      );
+      if (!opponent) {
+        return res.status(404).json(error('暂无可用对手', 404));
+      }
+      res.json(success(opponent));
+    } catch (err) {
+      next(err);
+    }
   }
 };

@@ -72,4 +72,10 @@ export const gameApi = {
 
   getHistory: (params?: { limit?: number }) =>
     apiClient.get<GameMatch[]>('/game/history', { params }),
+
+  heartbeat: (matchId: number) =>
+    apiClient.post(`/game/${matchId}/heartbeat`),
+
+  getRandomOpponent: () =>
+    apiClient.get('/game/random-opponent'),
 };

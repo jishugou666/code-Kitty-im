@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft, Zap } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { gameApi } from '../../../api/game';
-import { generateOpponent, getDynamicDifficulty, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
+import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
+import type { Opponent } from './dynamicDifficulty';
+import { useGameHeartbeat } from '../../hooks/useGameHeartbeat';
 
 interface TicTacToeBoardProps {
   matchId?: number;
@@ -23,15 +25,16 @@ const WIN_LINES = [
 ];
 
 const THINKING_TIME: Record<string, number> = { easy: 800, medium: 600, hard: 400 };
-const AI_THINKING_TEXT: Record<string, string> = {
-  easy: 'AI正在随意思考...',
-  medium: 'AI正在分析局势...',
-  hard: 'AI正在深度计算...'
+const OPPONENT_THINKING_LABELS = {
+  analyzing: '分析棋局',
+  evaluating: '评估策略',
+  deciding: '决策落子',
+  ready: '即将落子'
 };
 const DIFFICULTY_DESC: Record<string, string> = {
-  easy: '简单模式：AI使用开局库+30%随机落子，搜索深度1，有意犯错，适合新手',
-  medium: '中等模式：AI使用完整Minimax+Alpha-Beta剪枝，前3优解随机选择，适合进阶玩家',
-  hard: '困难模式：AI使用完美Minimax+Alpha-Beta剪枝+专业开局库，不可战胜，最多平局'
+  easy: '休闲模式：节奏轻松，适合新手热身',
+  medium: '竞技模式：策略博弈，适合进阶挑战',
+  hard: '大师模式：极限对决，考验真实力'
 };
 
 const OPENING_BOOK: Record<number, number[]> = {
@@ -204,7 +207,8 @@ export function TicTacToeBoard({
   onGameOver,
   mode = 'ai'
 }: TicTacToeBoardProps) {
-  const [opponent] = useState(() => generateOpponent());
+  const [opponent, setOpponent] = useState<Opponent | null>(null);
+  const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const dynamicDiff = getDynamicDifficulty();
   const [board, setBoard] = useState<Board>(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState<boolean>(true);
@@ -233,6 +237,12 @@ export function TicTacToeBoard({
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [gameStatus]);
+
+  useEffect(() => {
+    generateOpponent().then(setOpponent);
+  }, []);
+
+  useGameHeartbeat(matchId, gameStatus === 'playing');
 
   const initMatch = useCallback(async () => {
     if (initializingRef.current) return;
@@ -344,8 +354,28 @@ export function TicTacToeBoard({
     setIsAIThinking(true);
   }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId]);
 
-  const aiMove = useCallback(() => {
-    setTimeout(() => {
+  useEffect(() => {
+    if (!isAIThinking || gameStatus !== 'playing') return;
+    const phases = getThinkingPhases(THINKING_TIME[dynamicDiff] as number);
+    let progress = 0;
+    let phaseIndex = 0;
+    const phaseLabels: Record<string, string> = {
+      analyzing: '分析棋局',
+      evaluating: '评估策略',
+      deciding: '决策落子',
+      ready: '即将落子'
+    };
+    setThinkingPhase(phaseLabels[phases[0]?.phase] || '思考中');
+    const interval = setInterval(() => {
+      progress += Math.random() * 20 + 8;
+      if (progress > 95) progress = 90 + Math.random() * 6;
+      if (phaseIndex < phases.length - 1 && progress >= phases[phaseIndex + 1].progress) {
+        phaseIndex++;
+        setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
+      }
+    }, THINKING_TIME[dynamicDiff] / 10);
+    const timer = setTimeout(() => {
+      clearInterval(interval);
       const currentBoard = [...board];
       const aiIdx = getAIMove(currentBoard, dynamicDiff);
 
@@ -360,6 +390,7 @@ export function TicTacToeBoard({
       setFlashCell(aiIdx);
       setTimeout(() => setFlashCell(null), 300);
       setIsAIThinking(false);
+      setThinkingPhase('');
 
       if (matchId) {
         gameApi.move(matchId, { position: [Math.floor(aiIdx / 3), aiIdx % 3], symbol: 'O' }).catch(() => {});
@@ -375,14 +406,13 @@ export function TicTacToeBoard({
         setStats(newStats);
         saveStatsToStorage(newStats);
         setScoreChange('-5');
-        
+
         if (matchId) {
-        try {
-          // 对手获胜，玩家输
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
-        
+          try {
+            gameApi.finish(matchId, { won: false }).catch(() => {});
+          } catch {}
+        }
+
         onGameOver?.('loss');
         recordDifficultyResult(false);
         return;
@@ -394,23 +424,19 @@ export function TicTacToeBoard({
         setStats(newStats);
         saveStatsToStorage(newStats);
         setScoreChange('+0');
-        
+
         if (matchId) {
-        try {
-          // 平局
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
-        
+          try {
+            gameApi.finish(matchId, { won: false }).catch(() => {});
+          } catch {}
+        }
+
         onGameOver?.('draw');
         recordDifficultyResult(false);
       }
     }, THINKING_TIME[dynamicDiff]);
-  }, [board, dynamicDiff, lastMoveIndex, stats, onGameOver, matchId]);
-
-  useEffect(() => {
-    if (isAIThinking && gameStatus === 'playing') aiMove();
-  }, [isAIThinking, gameStatus, aiMove]);
+    return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); };
+  }, [isAIThinking, gameStatus, board, dynamicDiff, lastMoveIndex, stats, onGameOver, matchId]);
 
   const handleUndo = useCallback(() => {
     if (history.length < 2 || gameStatus !== 'playing' || isAIThinking) return;
@@ -478,7 +504,7 @@ export function TicTacToeBoard({
   const statusText = gameStatus !== 'playing'
     ? ''
     : isAIThinking
-    ? `${opponent.nickname}正在思考...`
+    ? `${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'}`
     : '你的回合';
 
   const resultConfig = {
@@ -495,17 +521,28 @@ export function TicTacToeBoard({
     <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4 relative overflow-hidden">
       {/* Opponent Info Card */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
-        <div className="flex items-center gap-3 mb-3">
-          <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
-            <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+        {opponent ? (
+          <>
+            <div className="flex items-center gap-3 mb-3">
+              <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
+                <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+            </div>
+            <p className="text-sm font-medium text-gray-400">匹配对手中...</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
-          <span className="flex items-center gap-1"><Zap size={12} className="text-amber-500" />动态难度</span>
-        </div>
+        )}
       </div>
 
       <div className="w-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl p-[1px] shadow-lg">

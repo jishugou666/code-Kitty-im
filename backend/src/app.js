@@ -304,6 +304,27 @@ async function startServer() {
   }, 30000);
   console.log('[Heartbeat] Cleanup timer started (45s threshold, 30s interval)');
 
+  // 游戏对局逃跑检测定时器：每20秒检查，超过45秒无心跳的对局自动判负
+  try {
+    await query("ALTER TABLE game_match ADD COLUMN last_heartbeat TIMESTAMP NULL DEFAULT NULL");
+    console.log('[Migration] game_match.last_heartbeat column added');
+  } catch (err) {
+    console.log('[Migration] game_match.last_heartbeat may already exist:', err.message?.substring(0, 80));
+  }
+
+  const { GameService: GameMonitorService } = await import('./services/GameService.js');
+  setInterval(async () => {
+    try {
+      const count = await GameMonitorService.finishAbandonedMatches();
+      if (count > 0) {
+        console.log(`[GameMonitor] 处理了 ${count} 个逃跑对局`);
+      }
+    } catch (err) {
+      console.error('[GameMonitor] 检查失败:', err.message);
+    }
+  }, 20000);
+  console.log('[GameMonitor] Abandoned match detector started (45s threshold, 20s interval)');
+
   server.listen(config.port, () => {
     console.log(`Server running on http://localhost:${config.port}`);
     console.log(`WebSocket running on ws://localhost:${config.port}/ws`);

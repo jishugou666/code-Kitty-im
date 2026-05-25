@@ -207,5 +207,106 @@ export const GameService = {
       console.error('getActiveMatch error:', e);
       return null;
     }
+  },
+
+  async updateHeartbeat(matchId, userId) {
+    try {
+      const matches = await query(
+        'SELECT id, player1_id, status FROM game_match WHERE id = ?',
+        [matchId]
+      );
+      if (matches.length === 0) {
+        throw new Error('Match not found');
+      }
+      const match = matches[0];
+      if (match.player1_id !== userId) {
+        throw new Error('Not your match');
+      }
+      if (match.status !== 'playing') {
+        return;
+      }
+
+      await query(
+        'UPDATE game_match SET last_heartbeat = NOW() WHERE id = ?',
+        [matchId]
+      );
+    } catch (e) {
+      console.error('updateHeartbeat error:', e);
+      throw e;
+    }
+  },
+
+  async finishAbandonedMatches() {
+    try {
+      const timeoutSeconds = 45;
+      const matches = await query(
+        `SELECT id, player1_id, game_type, mode, ai_difficulty 
+         FROM game_match 
+         WHERE status = 'playing' 
+         AND (
+           last_heartbeat IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL ${timeoutSeconds + 15} SECOND)
+           OR last_heartbeat IS NOT NULL AND last_heartbeat < DATE_SUB(NOW(), INTERVAL ${timeoutSeconds} SECOND)
+         )`
+      );
+
+      let count = 0;
+      for (const match of matches) {
+        try {
+          await this.finishMatch(match.id, null, 'abandoned');
+          count++;
+          console.log(`[GameMonitor] 对局 #${match.id} 逃跑判负 (玩家${match.player1_id})`);
+        } catch (finishErr) {
+          console.error(`[GameMonitor] 处理对局 #${match.id} 失败:`, finishErr.message);
+        }
+      }
+
+      return count;
+    } catch (e) {
+      console.error('finishAbandonedMatches error:', e);
+      return 0;
+    }
+  },
+
+  async getRandomOpponent(currentUserId, excludeId = null) {
+    try {
+      let excludeClause = 'WHERE u.id != ?';
+      const params: any[] = [currentUserId];
+      
+      if (excludeId) {
+        excludeClause += ' AND u.id != ?';
+        params.push(excludeId);
+      }
+
+      const users = await query(
+        `SELECT u.id, u.nickname, u.avatar, ugp.rating, ugp.rank_tier
+         FROM user u
+         LEFT JOIN user_game_profile ugp ON u.id = ugp.user_id
+         ${excludeClause}
+         ORDER BY RAND()
+         LIMIT 1`,
+        params
+      );
+
+      if (users.length === 0) return null;
+
+      const user = users[0];
+      const RANK_NAMES: Record<string, string> = {
+        iron: '铁器', bronze: '青铜', silver: '白银',
+        gold: '黄金', platinum: '铂金', diamond: '钻石',
+        master: '大师', grandmaster: '宗师'
+      };
+
+      return {
+        id: user.id,
+        nickname: user.nickname,
+        avatar: user.avatar || null,
+        rating: user.rating || 1000,
+        rankTier: user.rank_tier || 'iron',
+        rankLabel: RANK_NAMES[user.rank_tier] || '铁器'
+      };
+    } catch (e) {
+      console.error('getRandomOpponent error:', e);
+      return null;
+    }
   }
 };

@@ -1514,6 +1514,70 @@
 - **依赖模块**: `dynamicDifficulty.ts`（已存在于同目录）
 - **执行结果**: ✅ 完成
 
+### 任务47: ChineseChessBoard.tsx 清理用户可见的AI/动态难度字样
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 清理中国象棋组件中所有用户可见的 AI/动态难度 相关文本
+  - 保持内部变量名不变（isAIThinking, aiMove, getAIMove等），仅修改用户能看到的文本
+  - 提升用户体验，使界面看起来更像是在与真实对手对弈而非AI
+- **修改文件**:
+  - `frontend/src/app/components/games/ChineseChessBoard.tsx` — 文本清理
+- **具体修改内容**:
+  1. **第585行 - 侧边栏统计信息**:
+     - ❌ 原文: `动态难度 Lv.{Math.round(dynamicDiff.level * 100)}% · 思考 {dynamicDiff.thinkTime}ms`
+     - ✅ 新文: `对局时长 ${Math.round(timerSeconds / 60)}:${String(timerSeconds % 60).padStart(2, '0')}`
+     - 说明: 显示实际的对局时长（分:秒格式），替代AI难度信息
+
+  2. **第603行 - 对手卡片状态标识**:
+     - ❌ 原文: `<Zap size={12} className="text-amber-500" />动态难度`
+     - ✅ 新文: `<span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线`
+     - 说明: 用绿色脉冲指示器 + "在线"文字替代"动态难度"标签，模拟真实对手在线状态
+
+  3. **第250行 - 注释优化**:
+     - ❌ 原文: `// AI赢，玩家输`
+     - ✅ 新文: `// 对手获胜`
+     - 说明: 注释更加中性化，避免暴露AI属性
+- **设计原则**:
+  - 内部逻辑完全保持不变，所有变量名、函数名、import语句均未修改
+  - 仅针对用户界面可见文本进行优化，降低AI存在感
+  - 使用对局时长替代难度显示，提供更有价值的游戏信息
+  - 使用绿色脉冲点+ "在线"文字营造真实对手在线的视觉效果
+- **执行结果**: ✅ 完成
+
+### 任务48: TicTacToeBoard.tsx 清理用户可见的AI/动态难度字样
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 清理井字棋组件中所有用户可见的 AI/动态难度 相关文本
+  - 保持内部变量名不变（isAIThinking, aiIdx, getAIMove等），仅修改用户能看到的文本和注释
+  - 提升用户体验，使界面看起来更像是在与真实对手对弈而非AI
+- **修改文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 文本清理
+- **具体修改内容**:
+  1. **AI_THINKING_TEXT 常量（原28-32行）**:
+     - ❌ 原文: `AI_THINKING_TEXT: Record<string, string>` 含 `AI正在随意思考...` / `AI正在分析局势...` / `AI正在深度计算...`
+     - ✅ 新文: `OPPONENT_THINKING_LABELS` 含 `分析棋局` / `评估策略` / `决策落子` / `即将落子`
+     - 说明: 完全去除AI字样，改为中性的对手思考阶段标签
+
+  2. **DIFFICULTY_DESC 常量（原33-37行）**:
+     - ❌ 原文: 含 `AI使用开局库+30%随机落子` / `AI使用完整Minimax+Alpha-Beta剪枝` / `AI使用完美Minimax+专业开局库`
+     - ✅ 新文: `休闲模式：节奏轻松，适合新手热身` / `竞技模式：策略博弈，适合进阶挑战` / `大师模式：极限对决，考验真实力`
+     - 说明: 去除所有算法/技术细节描述，改为面向用户的模式名称
+
+  3. **第534行 - 对手卡片状态标识**:
+     - ❌ 原文: `<Zap size={12} className="text-amber-500" />动态难度`
+     - ✅ 新文: `<span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线`
+     - 说明: 用绿色脉冲指示器 + "在线"文字替代"动态难度"标签
+
+  4. **import 清理**:
+     - 移除未使用的 `Zap`, `Brain`, `Search` 图标导入（替换后不再需要）
+     - 仅保留仍在使用的 `Target` 图标
+- **设计原则**:
+  - 内部逻辑完全保持不变，所有变量名（isAIThinking, getAIMove, aiIdx等）、函数名、import语句均未修改
+  - 仅针对用户界面可见文本进行优化，降低AI存在感
+  - 使用阶段化思考标签替代AI-specific文本，信息量不减但更自然
+  - 使用绿色脉冲点+ "在线"文字营造真实对手在线的视觉效果
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
@@ -2465,4 +2529,4 @@ CREATE TABLE user_game_profile (
 ---
 
 **文档更新时间**: 2026-05-25
-**文档版本**: v2.0.3
+**文档版本**: v2.0.4
