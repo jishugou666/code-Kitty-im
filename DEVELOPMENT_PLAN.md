@@ -765,6 +765,53 @@
   - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`
   - **构建验证**：✓ exit code 0, built in 11.56s
 
+- ✅ **BUG修复：邀请下棋对方依然收不到弹窗（WebSocket连接到错误服务器）**
+  - **现象**：修复 token 认证方式后，对方仍然看不到邀请弹窗，控制台无报错
+  - **根因分析**：
+    ```
+    前后端部署架构：
+    ┌─────────────────────────────────┐
+    │  前端: localhost:5173 (开发)    │  ← window.location.host 指向这里
+    │  或前端部署域名 (生产)          │
+    ├─────────────────────────────────┤
+    │  后端: code-kitty-im-backend.   │  ← VITE_API_BASE_URL 指向这里
+    │        onrender.com             │     WebSocket /ws 端点在这里！
+    └─────────────────────────────────┘
+    
+    GameInviteReceiver 的 WS 连接：
+    wsUrl = `${protocol}//${window.location.host}/ws?token=...`
+           ↑ 连到了前端服务器！不是后端！
+    
+    结果：WS 连接到了一个没有 /ws 端点的服务器
+         → 连接失败/无响应 → game_invite 消息永远收不到
+    
+    对比 API 请求（正常工作）：
+    apiClient baseURL = VITE_API_BASE_URL = https://code-kitty-im-backend.onrender.com/api
+                       ✅ 正确指向后端 Render 服务器
+    ```
+  - **修复方案**：
+    ```typescript
+    // 修复前 — 连接到前端域名（错误！）
+    const wsUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
+    // → ws://localhost:5173/ws ❌ 或 wss://frontend-domain/ws ❌
+    
+    // 修复后 — 从 VITE_API_BASE_URL 推导后端 WS 地址
+    const apiBase = import.meta.env.VITE_API_BASE_URL; // https://xxx.onrender.com/api
+    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = apiBase
+      .replace(/^https?/, wsProtocol)      // https:// → wss://
+      .replace(/\/api\/?$/, '');            // 移除 /api 后缀
+    const wsUrl = `${wsHost}/ws?token=${token}`;
+    // → wss://code-kitty-im-backend.onrender.com/ws ✅
+    ```
+  - **技术要点**：
+    - 项目前后端分离部署（Render），Vite 无 proxy 配置
+    - `window.location.host` 只能获取前端地址，无法用于跨服务器 WS 连接
+    - 必须从 `VITE_API_BASE_URL` 推导后端 WebSocket 地址
+    - 降级兜底：如果 `VITE_API_BASE_URL` 为空，回退到 `window.location.host`（同源部署场景）
+  - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`
+  - **构建验证**：✓ exit code 0, built in 10.38s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

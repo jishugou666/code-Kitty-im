@@ -34,8 +34,13 @@ export function GameInviteReceiver() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
-      
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = apiBase
+        ? apiBase.replace(/^https?/, wsProtocol).replace(/\/api\/?$/, '')
+        : `${wsProtocol}//${window.location.host}`;
+      const wsUrl = `${wsHost}/ws?token=${encodeURIComponent(token)}`;
+
       ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
