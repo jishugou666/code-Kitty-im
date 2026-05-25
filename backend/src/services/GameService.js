@@ -315,6 +315,64 @@ export const GameService = {
     }
   },
 
+  async createInvite(inviterId, opponentId, gameType) {
+    const validGameTypes = ['gomoku', 'tictactoe', 'chess'];
+    if (!validGameTypes.includes(gameType)) {
+      throw new Error('Invalid game type');
+    }
+
+    const result = await query(
+      `INSERT INTO game_match (game_type, mode, player1_id, player2_id, ai_difficulty, moves, status)
+       VALUES (?, 'pvp', ?, NULL, NULL, '[]', 'pending')`,
+      [gameType, inviterId]
+    );
+
+    await query(
+      "UPDATE game_match SET player2_id = ? WHERE id = ?",
+      [opponentId, result.insertId]
+    );
+
+    const matches = await query(
+      'SELECT * FROM game_match WHERE id = ?',
+      [result.insertId]
+    );
+    return matches[0];
+  },
+
+  async respondInvite(matchId, userId, accepted) {
+    const matches = await query(
+      'SELECT id, player1_id, player2_id, status, game_type FROM game_match WHERE id = ?',
+      [matchId]
+    );
+    if (matches.length === 0) {
+      return { success: false, error: '对局不存在' };
+    }
+    
+    const match = matches[0];
+    if (match.status !== 'pending') {
+      return { success: false, error: '该邀请已失效' };
+    }
+    if (String(match.player2_id) !== String(userId)) {
+      return { success: false, error: '无权操作此邀请' };
+    }
+
+    if (accepted) {
+      await query(
+        "UPDATE game_match SET status = 'playing' WHERE id = ?",
+        [matchId]
+      );
+      
+      const updated = await query('SELECT * FROM game_match WHERE id = ?', [matchId]);
+      return { success: true, match: updated[0] };
+    } else {
+      await query(
+        "UPDATE game_match SET status = 'rejected', finished_at = NOW() WHERE id = ?",
+        [matchId]
+      );
+      return { success: true, rejected: true, matchId };
+    }
+  },
+
   async getRandomOpponent(currentUserId, excludeId = null) {
     try {
       let excludeClause = 'WHERE u.id != ?';

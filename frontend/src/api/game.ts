@@ -113,4 +113,10 @@ export const gameApi = {
 
   getRandomOpponent: () =>
     apiClient.get('/game/random-opponent'),
+
+  sendGameInvite: (data: { opponentId: number; gameType: string }) =>
+    apiClient.post('/game/invite', data),
+
+  respondGameInvite: (data: { matchId: number; accepted: boolean }) =>
+    apiClient.post('/game/invite/respond', data),
 };

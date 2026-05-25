@@ -334,3 +334,345 @@ navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
 **审核状态**: 待审核
 **文档版本**: v1.0
 **修改完成时间**: 2026-05-25
+
+---
+
+# PVP游戏邀请系统后端实现记录
+
+**修改日期**: 2026-05-25
+**修改范围**: 后端三个文件
+**功能类型**: 新增功能
+
+---
+
+## 一、功能概述
+
+### 1.1 功能描述
+实现完整的PVP游戏邀请系统，支持用户向其他用户发送游戏邀请，被邀请方可以接受或拒绝邀请。系统通过WebSocket实时通知双方用户。
+
+### 1.2 核心功能
+- **创建邀请**: 邀请方选择游戏类型并发送邀请
+- **响应邀请**: 被邀请方可接受或拒绝邀请
+- **实时通知**: 通过WebSocket推送邀请状态变更
+- **状态管理**: pending（待响应）→ playing（进行中）/ rejected（已拒绝）
+
+---
+
+## 二、API接口设计
+
+### 2.1 创建邀请接口
+- **路由**: `POST /api/game/invite`
+- **认证**: 需要登录（authMiddleware）
+- **请求体**:
+  ```json
+  {
+    "opponentId": number,    // 被邀请用户ID
+    "gameType": string       // 游戏类型: gomoku | tictactoe | chess
+  }
+  ```
+- **响应**:
+  ```json
+  { "code": 200, "data": match, "msg": "邀请已发送" }
+  ```
+
+### 2.2 响应邀请接口
+- **路由**: `POST /api/game/invite/respond`
+- **认证**: 需要登录（authMiddleware）
+- **请求体**:
+  ```json
+  {
+    "matchId": number,       // 对局ID
+    "accepted": boolean      // true=接受, false=拒绝
+  }
+  ```
+- **响应（接受）**:
+  ```json
+  { "code": 200, "data": match, "msg": "接受成功，即将开始对局" }
+  ```
+- **响应（拒绝）**:
+  ```json
+  { "code": 200, "data": { "rejected": true }, "msg": "已拒绝邀请" }
+  ```
+
+---
+
+## 三、WebSocket消息类型
+
+### 3.1 邀请通知（发送给被邀请方）
+```json
+{
+  "type": "game_invite",
+  "data": {
+    "matchId": number,
+    "gameType": string,
+    "inviterId": number,
+    "inviterName": string
+  }
+}
+```
+
+### 3.2 接受通知（发送给邀请方）
+```json
+{
+  "type": "game_invite_accepted",
+  "data": {
+    "matchId": number,
+    "gameType": string
+  }
+}
+```
+
+### 3.3 拒绝通知（发送给邀请方）
+```json
+{
+  "type": "game_invite_rejected",
+  "data": {
+    "matchId": number
+  }
+}
+```
+
+---
+
+## 四、数据库设计
+
+### 4.1 game_match 表新增状态
+- `pending`: 邀待响应（新建邀请时的初始状态）
+- `rejected`: 已拒绝（被邀请方拒绝）
+
+### 4.2 数据流程
+1. 创建邀请时：插入记录，status='pending', mode='pvp'
+2. 接受邀请时：更新 status='playing'
+3. 拒绝邀请时：更新 status='rejected', 设置 finished_at
+
+---
+
+## 五、修改文件清单
+
+### 5.1 GameService.js
+**文件路径**: [GameService.js](file:///d:/Desktop/CDK%20IM/backend/src/services/GameService.js)
+**新增方法**:
+
+#### createInvite(inviterId, opponentId, gameType)
+- **位置**: 第318行（finishAbandonedMatches方法之后）
+- **功能**: 创建PVP游戏邀请
+- **参数验证**:
+  - gameType 必须是 gomoku/tictactoe/chess 之一
+- **数据库操作**:
+  1. INSERT 创建对局记录（status='pending'）
+  2. UPDATE 设置 player2_id
+  3. SELECT 返回完整对局信息
+- **返回值**: 完整的 match 对象
+
+#### respondInvite(matchId, userId, accepted)
+- **位置**: 第349行（createInvite方法之后）
+- **功能**: 响应游戏邀请（接受/拒绝）
+- **业务逻辑**:
+  1. 验证对局是否存在
+  2. 检查状态是否为 pending（防止重复响应）
+  3. 验证操作权限（只有被邀请方能操作）
+  4. 接受：更新 status='playing'
+  5. 拒绝：更新 status='rejected', 设置 finished_at
+- **返回值**:
+  - 成功接受: `{ success: true, match: updatedMatch }`
+  - 成功拒绝: `{ success: true, rejected: true, matchId }`
+  - 失败: `{ success: false, error: '错误信息' }`
+
+### 5.2 GameController.js
+**文件路径**: [GameController.js](file:///d:/Desktop/CDK%20IM/backend/src/controllers/GameController.js)
+**新增方法**:
+
+#### invite(req, res)
+- **位置**: 第190行（getRandomOpponent方法之后）
+- **功能**: 处理创建邀请的HTTP请求
+- **处理流程**:
+  1. 从 req.body 提取 opponentId 和 gameType
+  2. 参数校验（不能为空）
+  3. 调用 GameService.createInvite 创建邀请
+  4. 查询邀请方昵称（用于WS通知显示）
+  5. 通过 WebSocket 发送 game_invite 通知给被邀请方
+  6. 返回成功响应
+- **异常处理**:
+  - WS发送失败仅打印日志（用户可能离线）
+  - 其他错误返回500状态码
+
+#### respondInvite(req, res)
+- **位置**: 第232行（invite方法之后）
+- **功能**: 处理响应邀请的HTTP请求
+- **处理流程**:
+  1. 从 req.body 提取 matchId 和 accepted
+  2. 参数校验（matchId必填，accepted必须为boolean）
+  3. 调用 GameService.respondInvite 处理业务逻辑
+  4. 如果拒绝：通过WS发送 game_invite_rejected 通知给邀请方
+  5. 如果接受：通过WS发送 game_invite_accepted 通知给邀请方
+  6. 返回对应的成功响应
+- **异常处理**:
+  - WS通知失败静默处理（不影响主流程）
+  - 业务逻辑错误返回400状态码
+
+### 5.3 game.js 路由文件
+**文件路径**: [game.js](file:///d:/Desktop/CDK%20IM/backend/src/routes/game.js)
+**新增路由**:
+
+#### POST /invite
+- **位置**: 第8行（createMatch路由之后）
+- **中间件**: authMiddleware（需要登录）
+- **控制器**: GameController.invite
+
+#### POST /invite/respond
+- **位置**: 第9行（invite路由之后）
+- **中间件**: authMiddleware（需要登录）
+- **控制器**: GameController.respondInvite
+
+---
+
+## 六、技术特点
+
+### 6.1 安全性
+- ✅ 所有接口需要身份认证
+- ✅ 参数完整性校验
+- ✅ 权限验证（只有被邀请方能响应）
+- ✅ 状态校验（防止重复响应已失效的邀请）
+
+### 6.2 可靠性
+- ✅ WebSocket通知失败不影响主流程（容错机制）
+- ✅ 数据库事务保证数据一致性
+- ✅ 完善的错误处理和日志记录
+
+### 6.3 实时性
+- ✅ 使用WebSocket实现毫秒级消息推送
+- ✅ 支持三种消息类型（邀请/接受/拒绝）
+- ✅ 消息格式统一规范
+
+### 6.4 扩展性
+- ✅ 游戏类型通过数组配置，易于扩展
+- ✅ 消息类型可扩展（如超时自动取消等）
+- ✅ 状态机清晰，便于添加新状态
+
+---
+
+## 七、使用示例
+
+### 7.1 前端调用示例（创建邀请）
+```typescript
+// 用户A邀请用户B玩五子棋
+const response = await fetch('/api/game/invite', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    opponentId: 123,
+    gameType: 'gomoku'
+  })
+});
+const result = await response.json();
+// result.data.matchId = 新建的对局ID
+```
+
+### 7.2 前端调用示例（响应邀请）
+```typescript
+// 用户B接受邀请
+const response = await fetch('/api/game/invite/respond', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    matchId: 456,
+    accepted: true
+  })
+});
+const result = await response.json();
+// result.data = 对局信息（包含完整棋盘状态）
+```
+
+### 7.3 WebSocket监听示例
+```typescript
+// 被邀请方监听邀请通知
+socket.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  if (message.type === 'game_invite') {
+    // 显示邀请弹窗
+    showInviteDialog(message.data);
+  }
+};
+```
+
+---
+
+## 八、测试要点
+
+### 8.1 功能测试
+- [ ] 创建邀请成功（有效参数）
+- [ ] 创建邀请失败（无效gameType）
+- [ ] 创建邀请失败（缺少参数）
+- [ ] 接受邀请成功（状态变为playing）
+- [ ] 拒绝邀请成功（状态变为rejected）
+- [ ] 重复响应邀请失败（状态非pending）
+- [ ] 无权响应邀请（非player2_id用户）
+- [ ] 对局不存在时返回错误
+
+### 8.2 WebSocket测试
+- [ ] 被邀请方在线时收到邀请通知
+- [ ] 被邀请方离线时不影响邀请创建
+- [ ] 接受邀请后邀请方收到接受通知
+- [ ] 拒绝邀请后邀请方收到拒绝通知
+- [ ] WS通知包含正确的数据（matchId、gameType等）
+
+### 8.3 边界情况测试
+- [ ] 邀请自己（应该允许或阻止）
+- [ ] 同时收到多个邀请
+- [ ] 邀请已存在的对局中的用户
+- [ ] 网络中断后的重试机制
+
+---
+
+## 九、注意事项
+
+1. **依赖项**:
+   - 需要 `query` 函数（从 ../utils/db.js 导入）✅ 已有
+   - 需要 `sendToUser` 函数（从 ../utils/websocket.js 导入）✅ 已有
+   - 需要 `authMiddleware` 中间件 ✅ 已有
+
+2. **数据库要求**:
+   - game_match 表需支持 status 字段存储 'pending' 和 'rejected' 值
+   - player2_id 字段可为 NULL（创建时先NULL再UPDATE）
+
+3. **前端配合**:
+   - 需要前端实现邀请UI组件
+   - 需要前端监听WebSocket的 game_invite 消息
+   - 需要前端调用 /invite/respond 接口响应用户操作
+
+4. **性能考虑**:
+   - 创建邀请涉及两次数据库操作（INSERT + UPDATE），可优化为单次INSERT
+   - WebSocket通知使用动态import避免循环依赖
+
+---
+
+## 十、未来优化方向
+
+### 10.1 功能增强
+- [ ] 添加邀请超时自动取消（如30秒未响应）
+- [ ] 添加邀请列表查询接口（查看收到的所有邀请）
+- [ ] 添加撤销邀请功能（邀请方主动取消）
+- [ ] 添加邀请消息自定义（附带留言）
+
+### 10.2 性能优化
+- [ ] 将 INSERT + UPDATE 合并为单次SQL操作
+- [ ] 添加Redis缓存减少数据库查询
+- [ ] 批量WebSocket推送优化
+
+### 10.3 安全加固
+- [ ] 添加请求频率限制（防刷邀请）
+- [ ] 添加黑名单/屏蔽功能
+- [ ] 添加邀请次数限制（每日上限）
+
+---
+
+**修改执行人**: AI Assistant
+**审核状态**: 待审核
+**文档版本**: v1.0
+**修改完成时间**: 2026-05-25

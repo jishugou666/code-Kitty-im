@@ -185,5 +185,89 @@ export const GameController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async invite(req, res) {
+    try {
+      const { opponentId, gameType } = req.body;
+      const inviterId = req.user.id;
+
+      if (!opponentId || !gameType) {
+        res.json({ code: 400, data: null, msg: '缺少必要参数' });
+        return;
+      }
+
+      const match = await GameService.createInvite(inviterId, opponentId, gameType);
+
+      const inviterProfile = await query('SELECT nickname FROM users WHERE id = ?', [inviterId]);
+      const inviterName = inviterProfile.length > 0 ? inviterProfile[0].nickname : '对方';
+
+      try {
+        const { sendToUser } = await import('../utils/websocket.js');
+        sendToUser(Number(opponentId), JSON.stringify({
+          type: 'game_invite',
+          data: {
+            matchId: match.id,
+            gameType,
+            inviterId,
+            inviterName
+          }
+        }));
+      } catch (wsErr) {
+        console.log('[Game] WS通知发送失败(用户可能离线):', wsErr.message);
+      }
+
+      res.json({ code: 200, data: match, msg: '邀请已发送' });
+    } catch (error) {
+      console.error('Invite error:', error);
+      res.json({ code: 500, data: null, msg: error.message });
+    }
+  },
+
+  async respondInvite(req, res) {
+    try {
+      const { matchId, accepted } = req.body;
+      const userId = req.user.id;
+
+      if (!matchId || typeof accepted !== 'boolean') {
+        res.json({ code: 400, data: null, msg: '缺少必要参数' });
+        return;
+      }
+
+      const result = await GameService.respondInvite(matchId, userId, accepted);
+
+      if (!result.success) {
+        res.json({ code: 400, data: null, msg: result.error });
+        return;
+      }
+
+      if (result.rejected) {
+        try {
+          const matchInfo = await query('SELECT player1_id FROM game_match WHERE id = ?', [matchId]);
+          if (matchInfo.length > 0) {
+            const { sendToUser } = await import('../utils/websocket.js');
+            sendToUser(matchInfo[0].player1_id, JSON.stringify({
+              type: 'game_invite_rejected',
+              data: { matchId }
+            }));
+          }
+        } catch {}
+        res.json({ code: 200, data: { rejected: true }, msg: '已拒绝邀请' });
+        return;
+      }
+
+      try {
+        const { sendToUser } = await import('../utils/websocket.js');
+        sendToUser(result.match.player1_id, JSON.stringify({
+          type: 'game_invite_accepted',
+          data: { matchId: result.match.id, gameType: result.match.game_type }
+        }));
+      } catch {}
+
+      res.json({ code: 200, data: result.match, msg: '接受成功，即将开始对局' });
+    } catch (error) {
+      console.error('Respond invite error:', error);
+      res.json({ code: 500, data: null, msg: error.message });
+    }
   }
 };

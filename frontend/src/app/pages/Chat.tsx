@@ -17,6 +17,12 @@ import { useIsMobile } from '../components/ui/use-mobile';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const GAME_TYPE_NAMES: Record<string, string> = {
+  tictactoe: '井字棋',
+  gomoku: '五子棋',
+  chess: '中国象棋'
+};
+
 function formatLastSeen(lastSeen: string | null | undefined): string {
   if (!lastSeen) return '离线';
   const now = Date.now();
@@ -169,18 +175,13 @@ export function Chat() {
     if (!otherUser?.id || !token) return;
     setIsInvitingGame(true);
     try {
-      const res = await gameApi.createMatch({
-        gameType,
-        mode: 'pvp',
+      const res = await gameApi.sendGameInvite({
         opponentId: otherUser.id,
-        aiDifficulty: null
+        gameType
       });
-      if (res.code === 200 && res.data?.id) {
+      if (res.code === 200) {
         setShowGameInviteModal(false);
-        toast('邀请发送成功！', 'success');
-        setTimeout(() => {
-          navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
-        }, 500);
+        toast(`已向 ${otherUser.nickname || otherUser.username || '对方'} 发送${GAME_TYPE_NAMES[gameType]}邀请，等待对方回应...`, 'success');
       } else {
         toast(res.msg || '邀请失败', 'error');
       }
