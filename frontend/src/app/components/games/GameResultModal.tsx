@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Star, Trophy, Zap, Shield, Flame, Target, Crown, Share2, ChevronDown, ChevronUp } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Star, Trophy, Zap, Shield, Flame, Target, Crown, Share2, ChevronDown, ChevronUp, Home } from 'lucide-react';
 import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -72,9 +73,9 @@ const GRADE_COLORS: Record<string, { primary: string; gradient: string; glow: st
 };
 
 const RESULT_CONFIG = {
-  win: { emoji: '🎉', text: '胜利!', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30' },
-  loss: { emoji: '😔', text: '失败', color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30' },
-  draw: { emoji: '🤝', text: '平局', color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' }
+  win: { emoji: '\u{1F389}', text: '胜利!', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30' },
+  loss: { emoji: '\u{1F614}', text: '失败', color: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30' },
+  draw: { emoji: '\u{1F91D}', text: '平局', color: 'text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' }
 };
 
 const GAME_TYPE_NAMES: Record<string, string> = {
@@ -114,13 +115,13 @@ function CountUpAnimation({ target, duration = 1500 }: { target: number; duratio
 
   return (
     <div className="flex items-baseline justify-center font-bold tabular-nums">
-      <span className="text-5xl md:text-6xl lg:text-7xl tracking-tight">{integerPart}</span>
-      <span className="text-2xl md:text-3xl lg:text-4xl opacity-80">.{decimalPart}</span>
+      <span className="text-5xl md:text-6xl tracking-tight text-white drop-shadow-lg">{integerPart}</span>
+      <span className="text-2xl md:text-3xl opacity-80 text-white/80">.{decimalPart}</span>
     </div>
   );
 }
 
-function GradeBadge({ grade, gradeColor }: { grade: string; gradeColor: string }) {
+function GradeBadge({ grade }: { grade: string }) {
   const config = GRADE_COLORS[grade] || GRADE_COLORS.D;
   const isSGrade = grade === 'S';
 
@@ -160,18 +161,6 @@ function GradeBadge({ grade, gradeColor }: { grade: string; gradeColor: string }
 function HighlightTag({ highlight, index }: { highlight: NonNullable<GameResultModalProps['performanceData']>['highlights'][number]; index: number }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const getIconComponent = () => {
-    switch (highlight.icon) {
-      case 'zap': return <Zap size={16} />;
-      case 'shield': return <Shield size={16} />;
-      case 'flame': return <Flame size={16} />;
-      case 'target': return <Target size={16} />;
-      case 'trophy': return <Trophy size={16} />;
-      case 'star': return <Star size={16} />;
-      default: return <Star size={16} />;
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -183,17 +172,14 @@ function HighlightTag({ highlight, index }: { highlight: NonNullable<GameResultM
     >
       <div className={clsx(
         'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-        'bg-white/5 border border-white/10',
-        'hover:bg-white/10 hover:border-white/20',
+        'bg-white/10 border border-white/20',
+        'hover:bg-white/15 hover:border-white/30',
         'transition-all cursor-default'
       )}>
-        <span className="text-amber-400">{getIconComponent()}</span>
-        <span className="text-sm font-medium text-gray-200 dark:text-gray-300 whitespace-nowrap">
+        <span className="text-base">{highlight.icon}</span>
+        <span className="text-sm font-medium text-white whitespace-nowrap">
           {highlight.name}
         </span>
-        {highlight.bonus > 0 && (
-          <span className="text-xs text-emerald-400">+{highlight.bonus}</span>
-        )}
       </div>
 
       <AnimatePresence>
@@ -203,12 +189,12 @@ function HighlightTag({ highlight, index }: { highlight: NonNullable<GameResultM
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg bg-gray-900/95 dark:bg-gray-800/95 border border-white/10 shadow-xl max-w-xs"
+            className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg bg-gray-950 border border-white/15 shadow-xl max-w-xs"
           >
-            <p className="text-xs text-gray-300 whitespace-normal leading-relaxed">
+            <p className="text-xs text-gray-200 whitespace-normal leading-relaxed">
               {highlight.desc}
             </p>
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900/95 dark:bg-gray-800/95 border-l border-t border-white/10" />
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-950 border-l border-t border-white/15" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -232,52 +218,54 @@ export function GameResultModal({
   const formatDuration = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}分${secs.toString().padStart(2, '0')}秒`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
   if (!open) return null;
 
-  return (
+  const content = (
     <AnimatePresence mode="wait">
       <motion.div
+        key="game-result-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
         onClick={(e) => e.target === e.currentTarget && onClose?.()}
       >
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/75" />
 
         <motion.div
-          initial={{ opacity: 0, y: 100, scale: 0.9 }}
+          key="game-result-card"
+          initial={{ opacity: 0, y: 80, scale: 0.92 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 100, scale: 0.9 }}
+          exit={{ opacity: 0, y: 80, scale: 0.92 }}
           transition={{
             type: 'spring',
-            stiffness: 300,
-            damping: 25,
-            delay: 0.1
+            stiffness: 280,
+            damping: 26,
+            delay: 0.08
           }}
-          className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-gray-900/95 dark:bg-gray-800/95 border border-white/10 shadow-2xl"
+          className="relative w-[92vw] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border border-white/10 shadow-2xl shadow-black/50 max-h-[90vh]"
         >
           <div className="relative overflow-hidden">
             {gradeConfig && (
               <div className={clsx(
-                'absolute inset-0 opacity-10',
+                'absolute inset-0 opacity-[0.07]',
                 'bg-gradient-to-br',
                 gradeConfig.gradient
               )} />
             )}
 
-            <div className="relative p-6 md:p-8 space-y-6">
+            <div className="relative p-5 sm:p-6 space-y-5">
               {/* 顶部结果区 */}
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15, duration: 0.4 }}
+                transition={{ delay: 0.12, duration: 0.35 }}
                 className={clsx(
-                  'flex items-center justify-between p-4 rounded-xl border',
+                  'flex items-center justify-between p-3.5 rounded-xl border',
                   resultConfig.bgColor,
                   resultConfig.borderColor
                 )}
@@ -286,13 +274,13 @@ export function GameResultModal({
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 400, delay: 0.25 }}
-                    className="text-3xl"
+                    transition={{ type: 'spring', stiffness: 400, delay: 0.22 }}
+                    className="text-2xl"
                   >
                     {resultConfig.emoji}
                   </motion.span>
                   <div>
-                    <h2 className={clsx('text-xl font-bold', resultConfig.color)}>
+                    <h2 className={clsx('text-lg font-bold', resultConfig.color)}>
                       {resultConfig.text}
                     </h2>
                     <p className="text-xs text-gray-400 mt-0.5">
@@ -305,17 +293,17 @@ export function GameResultModal({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3, type: 'spring', stiffness: 300 }}
+                    transition={{ delay: 0.28, type: 'spring', stiffness: 300 }}
                     className="text-right"
                   >
                     <div className={clsx(
-                      'text-2xl font-bold tabular-nums',
+                      'text-xl font-bold tabular-nums',
                       performanceData.ratingChange > 0 ? 'text-emerald-400' :
                       performanceData.ratingChange < 0 ? 'text-red-400' : 'text-gray-400'
                     )}>
                       {performanceData.ratingChange > 0 ? '+' : ''}{performanceData.ratingChange}
                     </div>
-                    <p className="text-xs text-gray-500">积分变化</p>
+                    <p className="text-[11px] text-gray-500">积分</p>
                   </motion.div>
                 )}
               </motion.div>
@@ -323,22 +311,22 @@ export function GameResultModal({
               {/* 核心表现分区 */}
               {performanceData && (
                 <motion.div
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 25 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.5 }}
-                  className="space-y-4 py-6"
+                  transition={{ delay: 0.18, duration: 0.45 }}
+                  className="space-y-3 py-4"
                 >
-                  <div className="flex flex-col items-center gap-4">
-                    <GradeBadge grade={performanceData.grade} gradeColor={performanceData.gradeColor} />
+                  <div className="flex flex-col items-center gap-3">
+                    <GradeBadge grade={performanceData.grade} />
 
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-1.5">
                       <CountUpAnimation target={performanceData.score} />
 
                       <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8 }}
-                        className="text-base font-medium text-gray-300"
+                        transition={{ delay: 0.75 }}
+                        className="text-sm font-semibold text-white/90"
                       >
                         "{performanceData.title}"
                       </motion.p>
@@ -346,7 +334,7 @@ export function GameResultModal({
                   </div>
 
                   {performanceData.highlights.length > 0 && (
-                    <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
                       {performanceData.highlights.map((highlight, index) => (
                         <HighlightTag key={highlight.key} highlight={highlight} index={index} />
                       ))}
@@ -360,20 +348,20 @@ export function GameResultModal({
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.9 }}
-                  className="space-y-3"
+                  transition={{ delay: 0.85 }}
+                  className="space-y-2.5"
                 >
                   <button
                     onClick={() => setShowDetails(!showDetails)}
                     className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
                   >
-                    <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+                    <span className="text-xs font-semibold text-gray-300 group-hover:text-white uppercase tracking-wider transition-colors">
                       详细数据
                     </span>
                     {showDetails ? (
-                      <ChevronUp size={18} className="text-gray-400" />
+                      <ChevronUp size={16} className="text-gray-400" />
                     ) : (
-                      <ChevronDown size={18} className="text-gray-400" />
+                      <ChevronDown size={16} className="text-gray-400" />
                     )}
                   </button>
 
@@ -383,31 +371,30 @@ export function GameResultModal({
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
                         className="overflow-hidden"
                       >
-                        <div className="space-y-4 pb-2">
-                          {/* 游戏统计 */}
+                        <div className="space-y-3 pb-2">
                           {gameStats && (
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="text-center p-3 rounded-lg bg-white/5">
-                                <p className="text-lg font-bold text-blue-400 tabular-nums">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="text-center p-2.5 rounded-lg bg-white/5">
+                                <p className="text-base font-bold text-blue-400 tabular-nums">
                                   {formatDuration(gameStats.durationSeconds)}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">用时</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">用时</p>
                               </div>
-                              <div className="text-center p-3 rounded-lg bg-white/5">
-                                <p className="text-lg font-bold text-purple-400 tabular-nums">
+                              <div className="text-center p-2.5 rounded-lg bg-white/5">
+                                <p className="text-base font-bold text-purple-400 tabular-nums">
                                   {gameStats.moveCount}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">步数</p>
+                                <p className="text-[11px] text-gray-500 mt-0.5">步数</p>
                               </div>
                               {gameStats.winRate !== undefined && (
-                                <div className="text-center p-3 rounded-lg bg-white/5">
-                                  <p className="text-lg font-bold text-emerald-400">
+                                <div className="text-center p-2.5 rounded-lg bg-white/5">
+                                  <p className="text-base font-bold text-emerald-400">
                                     {gameStats.winRate}
                                   </p>
-                                  <p className="text-xs text-gray-500 mt-1">胜率</p>
+                                  <p className="text-[11px] text-gray-500 mt-0.5">胜率</p>
                                 </div>
                               )}
                             </div>
@@ -415,49 +402,37 @@ export function GameResultModal({
 
                           {performanceData && (
                             <>
-                              {/* 系数信息 */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                                  <span className="text-sm text-gray-400">难度系数</span>
-                                  <span className="text-sm font-semibold text-amber-400">
-                                    ×{performanceData.difficultyCoeff.toFixed(1)}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                                  <span className="text-xs text-gray-400">难度系数</span>
+                                  <span className="text-xs font-semibold text-amber-400">
+                                    x{performanceData.difficultyCoeff.toFixed(1)}
                                   </span>
                                 </div>
-                                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                                  <span className="text-sm text-gray-400">对手强度</span>
-                                  <span className="text-sm font-semibold text-cyan-400">
-                                    ×{performanceData.strengthCoeff.toFixed(1)}
+                                <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                                  <span className="text-xs text-gray-400">对手强度</span>
+                                  <span className="text-xs font-semibold text-cyan-400">
+                                    x{performanceData.strengthCoeff.toFixed(1)}
                                   </span>
                                 </div>
                               </div>
 
-                              {/* 加成明细 */}
                               {performanceData.performanceBonuses.length > 0 && (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <div className="space-y-1.5">
+                                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                                     表现加成
                                   </p>
                                   {performanceData.performanceBonuses.map((bonus) => (
-                                    <div key={bonus.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5">
-                                      <span className="text-sm text-gray-300">{bonus.label}</span>
+                                    <div key={bonus.key} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/5">
+                                      <span className="text-xs text-gray-300">{bonus.label}</span>
                                       <span className={clsx(
-                                        'text-sm font-semibold tabular-nums',
+                                        'text-xs font-semibold tabular-nums',
                                         bonus.value >= 0 ? 'text-emerald-400' : 'text-red-400'
                                       )}>
                                         {bonus.value >= 0 ? '+' : ''}{bonus.value}
                                       </span>
                                     </div>
                                   ))}
-
-                                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/10 border border-white/10">
-                                    <span className="text-sm font-medium text-gray-200">原始积分变化</span>
-                                    <span className={clsx(
-                                      'text-sm font-bold tabular-nums',
-                                      performanceData.rawRatingChange >= 0 ? 'text-emerald-400' : 'text-red-400'
-                                    )}>
-                                      {performanceData.rawRatingChange >= 0 ? '+' : ''}{performanceData.rawRatingChange}
-                                    </span>
-                                  </div>
                                 </div>
                               )}
                             </>
@@ -471,30 +446,45 @@ export function GameResultModal({
 
               {/* 底部操作区 */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.0, duration: 0.4 }}
-                className="flex gap-3 pt-4 border-t border-white/10"
+                transition={{ delay: 0.95, duration: 0.35 }}
+                className="flex gap-2.5 pt-3 border-t border-white/10"
               >
                 <motion.button
                   whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onRestart}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onClose}
                   className={clsx(
-                    'flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-white',
-                    'bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500',
-                    'hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400',
-                    'shadow-lg shadow-blue-500/25',
-                    'transition-all duration-200'
+                    'flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-semibold text-sm',
+                    'bg-white/5 text-gray-300 border border-white/10',
+                    'hover:bg-white/10 hover:text-white',
+                    'transition-all duration-150'
                   )}
                 >
-                  <Target size={18} />
+                  <Home size={16} />
+                  返回大厅
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onRestart}
+                  className={clsx(
+                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm text-white',
+                    'bg-gradient-to-r from-blue-600 via-indigo-500 to-violet-500',
+                    'hover:from-blue-500 hover:via-indigo-400 hover:to-violet-400',
+                    'shadow-lg shadow-blue-500/20',
+                    'transition-all duration-150'
+                  )}
+                >
+                  <Target size={16} />
                   再来一局
                 </motion.button>
 
                 <motion.button
                   whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     if (navigator.share) {
                       navigator.share({
@@ -507,14 +497,13 @@ export function GameResultModal({
                     }
                   }}
                   className={clsx(
-                    'flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold',
-                    'border border-white/20 text-gray-300',
+                    'flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl font-semibold text-sm',
+                    'bg-white/5 text-gray-300 border border-white/10',
                     'hover:bg-white/10 hover:text-white',
-                    'transition-all duration-200'
+                    'transition-all duration-150'
                   )}
                 >
-                  <Share2 size={18} />
-                  分享
+                  <Share2 size={16} />
                 </motion.button>
               </motion.div>
             </div>
@@ -523,4 +512,6 @@ export function GameResultModal({
       </motion.div>
     </AnimatePresence>
   );
+
+  return createPortal(content, document.body);
 }
