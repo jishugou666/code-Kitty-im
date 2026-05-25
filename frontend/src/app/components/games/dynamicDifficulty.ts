@@ -88,46 +88,39 @@ export async function generateOpponent(playerRating: number = 1000): Promise<Opp
   return opponent;
 }
 
+export type GameType = 'tictactoe' | 'gomoku' | 'chinese_chess';
+
+const GAME_TIME_RANGE: Record<GameType, { minSec: number; maxSec: number }> = {
+  tictactoe: { minSec: 2, maxSec: 5 },
+  gomoku: { minSec: 3, maxSec: 8 },
+  chinese_chess: { minSec: 3, maxSec: 7 },
+};
+
 interface DifficultyState {
-  currentLevel: number;
   consecutiveWins: number;
   consecutiveLosses: number;
   totalGames: number;
 }
 
-const DIFFICULTY_CONFIG = {
-  minThinkTime: 800,
-  maxThinkTime: 3500,
-  minErrorRate: 0.02,
-  maxErrorRate: 0.30,
-  adjustmentSpeed: 0.12,
-};
-
 let state: DifficultyState = {
-  currentLevel: 0.5,
   consecutiveWins: 0,
   consecutiveLosses: 0,
   totalGames: 0,
 };
 
-export function getDynamicDifficulty(): {
-  level: number;
+export function getDynamicDifficulty(gameType: GameType, moveCount: number = 0): {
   thinkTime: number;
-  errorRate: number;
 } {
-  const level = state.currentLevel;
-  
-  const baseThinkTime = DIFFICULTY_CONFIG.minThinkTime +
-    (DIFFICULTY_CONFIG.maxThinkTime - DIFFICULTY_CONFIG.minThinkTime) * level;
-  
-  const randomVariance = (Math.random() - 0.5) * baseThinkTime * 0.6;
-  const thinkTime = Math.round(Math.max(600, baseThinkTime + randomVariance));
-  
-  const errorRate =
-    DIFFICULTY_CONFIG.maxErrorRate -
-      (DIFFICULTY_CONFIG.maxErrorRate - DIFFICULTY_CONFIG.minErrorRate) * level;
+  const range = GAME_TIME_RANGE[gameType];
 
-  return { level, thinkTime, errorRate };
+  const progressRatio = Math.min(moveCount / 20, 1);
+  const adjustedMin = range.minSec + (range.maxSec - range.minSec) * progressRatio * 0.6;
+
+  const thinkTime = Math.round(
+    (adjustedMin + Math.random() * (range.maxSec - adjustedMin)) * 1000
+  );
+
+  return { thinkTime };
 }
 
 export function getThinkingPhases(thinkTime: number): { phase: string; delay: number; progress: number }[] {

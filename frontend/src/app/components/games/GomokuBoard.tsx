@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { Zap, Brain, Search, Target } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
-import type { Opponent } from './dynamicDifficulty';
+import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 
 interface GomokuBoardProps {
@@ -518,7 +518,7 @@ export function GomokuBoard({
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dynamicDiff = getDynamicDifficulty();
+  const dynamicDiff = getDynamicDifficulty('gomoku' as GameType, history.length);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);

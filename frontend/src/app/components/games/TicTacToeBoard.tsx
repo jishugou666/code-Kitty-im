@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2 } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
-import type { Opponent } from './dynamicDifficulty';
+import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 
 interface TicTacToeBoardProps {
@@ -202,13 +202,13 @@ export function TicTacToeBoard({
 }: TicTacToeBoardProps) {
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
-  const dynamicDiff = getDynamicDifficulty();
   const [board, setBoard] = useState<Board>(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState<boolean>(true);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [winningLine, setWinningLine] = useState<number[] | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
+  const dynamicDiff = getDynamicDifficulty('tictactoe' as GameType, moveCount);
   const [lastMoveIndex, setLastMoveIndex] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -370,7 +370,7 @@ export function TicTacToeBoard({
     const timer = setTimeout(() => {
       clearInterval(interval);
       const currentBoard = [...board];
-      const aiIdx = getAIMove(currentBoard, dynamicDiff);
+      const aiIdx = getAIMove(currentBoard, 'medium');
 
       setHistory(h => [...h, { board: currentBoard, isXNext: false, lastMove: lastMoveIndex }].slice(-20));
 

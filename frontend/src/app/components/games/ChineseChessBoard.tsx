@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { gameApi } from '../../../api/game';
 import { Zap, Brain, Search, Target } from 'lucide-react';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
-import type { Opponent } from './dynamicDifficulty';
+import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
@@ -112,7 +112,7 @@ export function ChineseChessBoard({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
-  const dynamicDiff = getDynamicDifficulty();
+  const dynamicDiff = getDynamicDifficulty('chinese_chess' as GameType, history.length);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);

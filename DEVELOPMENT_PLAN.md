@@ -400,6 +400,35 @@
     - ✅ 外层容器不再裁剪内容
   - **构建验证**：✓ exit code 0, built in 11.68s
 
+- ✅ **思考延时算法重写：游戏级联固定范围 + 步数递增**
+  - **需求**：用户反馈等待时间过长，要求固定随机范围并随对局深入逐步加长缩小
+  - **新算法设计**：
+    ```typescript
+    // 按游戏类型固定时间范围（秒）
+    const GAME_TIME_RANGE = {
+      tictactoe:     { minSec: 2, maxSec: 5 },   // 2000-5000ms
+      gomoku:        { minSec: 3, maxSec: 8 },   // 3000-8000ms
+      chinese_chess: { minSec: 3, maxSec: 7 },   // 3000-7000ms
+    };
+    
+    // 随步数递增算法（20步达到最大压缩）
+    progressRatio = Math.min(moveCount / 20, 1);
+    adjustedMin = minSec + (maxSec - minSec) × progressRatio × 0.6;
+    
+    // 以象棋为例：从(3s,7s)逐步变为(~5.4s,7s)
+    // 步数 0  → 范围 3.0-7.0s（开局快速）
+    // 步数10 → 范围 4.2-7.0s（中盘思考）
+    // 步数20+→ 范围 5.4-7.0s（残局谨慎）
+    ```
+  - **修改文件**：
+    - `dynamicDifficulty.ts`：完全重写 `getDynamicDifficulty(gameType, moveCount)`
+    - `TicTacToeBoard.tsx`：传入 `('tictactoe', moveCount)`
+    - `GomokuBoard.tsx`：传入 `('gomoku', history.length)`
+    - `ChineseChessBoard.tsx`：传入 `('chinese_chess', history.length)`
+  - **移除内容**：删除旧的 level/errorRate/DIFFICULTY_CONFIG 复杂度系统
+  - **效果**：开局快节奏(2-5s)，残局慢思考(5-7s)，模拟真人越下越谨慎
+  - **构建验证**：✓ exit code 0, built in 10.76s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
