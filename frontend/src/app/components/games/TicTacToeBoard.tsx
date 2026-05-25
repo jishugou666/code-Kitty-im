@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Target } from 'lucide-react';
+import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2 } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent } from './dynamicDifficulty';

@@ -3,7 +3,7 @@
 **制定日期**: 2026-04-18
 **版本**: v2.0.1
 **状态**: 执行中
-**最后更新**: 2026-05-24
+**最后更新**: 2026-05-25
 
 ---
 
@@ -263,6 +263,47 @@
     2. **前端**：
        - api/game.ts：finish 接口参数改为 { won: boolean }
        - 三个棋盘组件：所有调用 finish 的地方改成传 won: true/false
+
+### 2026-05-25
+- ✅ **Vite生产构建错误彻底修复（6处）**
+  - **错误1 — ESBuild严格模式**：
+    - 文件：`chessEngine.ts` 第516行
+    - 错误：`const score = evaluateBoard(newBoard)` 在第517行被 `score = -score` 重新赋值
+    - 修复：`const score` → `let score`
+  - **错误2-4 — Rollup路径解析失败（useGameHeartbeat导入）**：
+    - 根因：从 `src/app/components/games/` 到 `src/hooks/` 需要3级 `../`，但代码只写了2级
+    - 影响文件（全部修复为3级 `../../../hooks/useGameHeartbeat`）：
+      - TicTacToeBoard.tsx 第8行
+      - GomokuBoard.tsx 第8行
+      - ChineseChessBoard.tsx 第8行
+  - **错误5-6 — Rollup路径解析失败（game API导入）**：
+    - dynamicDifficulty.ts：从 games/ 到 api/ 需要3级 `../`，修正为 `../../../api/game`
+    - useGameHeartbeat.ts：从 hooks/ 到 api/ 只需1级 `../`，修正为 `../api/game`
+  - **构建结果**：✓ 2826 modules transformed, built in 9.57s, exit code 0
+  - **经验教训**：
+    - 路径层级计算必须精确：components/games(2级)→hooks(1级) = 3个 ../
+    - ESBuild strict mode 下 const/let 必须正确使用
+    - 建议添加 ESLint rule: `no-import-path-depth-check`
+
+- ✅ **运行时错误修复：HelpCircle is not defined**
+  - **现象**：选择任意游戏模式后报错 `ReferenceError: HelpCircle is not defined`，React Router ErrorBoundary 捕获
+  - **根因分析**：
+    - `TicTacToeBoard.tsx` 在JSX中使用了7个 lucide-react 图标组件
+    - 但 import 语句只导入了 `{ Target }`，缺少其余6个图标
+    - 缺失图标：HelpCircle, Trophy, Clock, RotateCcw, History, Share2
+  - **修复方案**：
+    ```typescript
+    // 修复前
+    import { Target } from 'lucide-react';
+    
+    // 修复后
+    import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2 } from 'lucide-react';
+    ```
+  - **影响范围**：仅 TicTacToeBoard.tsx（其他游戏组件无此问题）
+  - **验证结果**：✓ 构建成功 exit code 0, 2826 modules, built in 11.44s
+  - **预防措施建议**：
+    - 使用 ESLint plugin: `eslint-plugin-react` 的 `jsx-no-undef` 规则
+    - IDE 配置 TypeScript 严格模式可提前检测未定义变量
 
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
