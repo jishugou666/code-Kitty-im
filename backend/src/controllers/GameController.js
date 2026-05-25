@@ -50,6 +50,16 @@ export const GameController = {
       }
 
       const result = await GameService.recordMove(matchId, position, symbol);
+
+      triggerEvent(`game-${matchId}`, 'game-move', {
+        matchId: Number(matchId),
+        position,
+        symbol,
+        userId: req.user.id,
+        moveCount: result.moveCount,
+        timestamp: new Date().toISOString()
+      });
+
       res.json(success(result, '落子成功'));
     } catch (err) {
       if (err.message === 'Match not found') {
@@ -66,6 +76,13 @@ export const GameController = {
     try {
       const { matchId } = req.params;
       const match = await GameService.abandonMatch(matchId);
+
+      triggerEvent(`game-${matchId}`, 'game-surrender', {
+        matchId: Number(matchId),
+        userId: req.user.id,
+        timestamp: new Date().toISOString()
+      });
+
       res.json(success(match, '已认输'));
     } catch (err) {
       if (err.message === 'Match not found') {
@@ -103,6 +120,15 @@ export const GameController = {
       }
       
       const updatedMatch = await GameService.finishMatch(matchId, winnerId, status);
+
+      triggerEvent(`game-${matchId}`, 'game-finished', {
+        matchId: Number(matchId),
+        winnerId,
+        status,
+        scoreChange: updatedMatch.score_change,
+        timestamp: new Date().toISOString()
+      });
+
       res.json(success(updatedMatch, '对局已结束'));
     } catch (err) {
       if (err.message === 'Match not found') {

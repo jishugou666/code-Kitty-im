@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2 } from 'lucide-react';
+import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2, User } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { useGameChannel } from '../../../hooks/useGameChannel';
+import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 
 interface TicTacToeBoardProps {
@@ -225,6 +227,9 @@ export function TicTacToeBoard({
   const [scoreChange, setScoreChange] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
   const [performanceResult, setPerformanceResult] = useState<any>(null);
+  const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(null);
+  const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
+  const [pvpLoaded, setPvpLoaded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const initializingRef = useRef(false);
@@ -298,12 +303,106 @@ export function TicTacToeBoard({
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
+  useGameChannel(matchId, {
+    onRemoteMove: (data) => {
+      const idx = (data.position[0] || 0) * 3 + (data.position[1] || 0);
+      if (idx < 0 || idx > 8) return;
+      setBoard(prev => { const b = [...prev]; b[idx] = data.symbol; return b; });
+      setIsXNext(prev => !prev);
+      setLastMoveIndex(idx);
+      setMoveCount(c => c + 1);
+      setFlashCell(idx);
+      setTimeout(() => setFlashCell(null), 300);
+    },
+    onRemoteSurrender: () => {
+      if (gameStatus !== 'playing') return;
+      setGameStatus('won');
+      setBoardGlow(true);
+      setTimeout(() => setBoardGlow(false), 1500);
+      const newStats = { ...stats, wins: stats.wins + 1 };
+      setStats(newStats);
+      saveStatsToStorage(newStats);
+      setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
+      processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '对方认输');
+      setShowResultModal(true);
+      onGameOver?.('win');
+    },
+    onRemoteFinished: (data) => {
+      if (gameStatus !== 'playing') return;
+      const myId = useAuthStore.getState().user?.id;
+      const iWon = data.winnerId === myId;
+      if (iWon) {
+        setGameStatus('won');
+        setBoardGlow(true);
+        setTimeout(() => setBoardGlow(false), 1500);
+        const newStats = { ...stats, wins: stats.wins + 1 };
+        setStats(newStats); saveStatsToStorage(newStats);
+        setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
+        processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
+        setShowResultModal(true);
+        onGameOver?.('win');
+      } else if (data.status === 'finished' && data.winnerId) {
+        setGameStatus('lost');
+        setBoardShake(true);
+        setTimeout(() => setBoardShake(false), 500);
+        const newStats = { ...stats, losses: stats.losses + 1 };
+        setStats(newStats); saveStatsToStorage(newStats);
+        setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
+        processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
+        setShowResultModal(true);
+        onGameOver?.('loss');
+      } else {
+        setGameStatus('draw');
+        const newStats = { ...stats, draws: stats.draws + 1 };
+        setStats(newStats); saveStatsToStorage(newStats);
+        setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
+        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+        setShowResultModal(true);
+        onGameOver?.('draw');
+      }
+    }
+  });
+
   const initMatch = useCallback(async () => {
     if (initializingRef.current) return;
     initializingRef.current = true;
     try {
       if (mode === 'pvp' && _matchId) {
         setMatchId(_matchId);
+        const res = await gameApi.getMatch(_matchId);
+        if (res.code === 200 && res.data) {
+          const m = res.data;
+          const myId = useAuthStore.getState().user?.id;
+          setMySymbol(Number(m.player1_id) === myId ? 'X' : 'O');
+          const oppId = Number(m.player1_id) === myId ? m.player2_id : m.player1_id;
+          const oppName = Number(m.player1_id) === myId
+            ? (m.player2_name || '对方')
+            : (m.player1_name || '对方');
+          const oppAvatar = Number(m.player1_id) === myId
+            ? (m.player2_avatar || null)
+            : (m.player1_avatar || null);
+          setPvpOpponent({ nickname: oppName, avatar: oppAvatar });
+          if (m.moves && Array.isArray(m.moves)) {
+            try {
+              const parsed = typeof m.moves === 'string' ? JSON.parse(m.moves) : m.moves;
+              if (parsed.length > 0) {
+                const rebuilt: Board = Array(9).fill(null);
+                let xNext = true;
+                for (const mv of parsed) {
+                  const idx = (mv.position[0] || 0) * 3 + (mv.position[1] || 0);
+                  if (idx >= 0 && idx < 9) {
+                    rebuilt[idx] = mv.symbol || (xNext ? 'X' : 'O');
+                    xNext = !xNext;
+                  }
+                }
+                setBoard(rebuilt);
+                setIsXNext(parsed.length % 2 === 0);
+                setMoveCount(parsed.length);
+              }
+            } catch {}
+          }
+        }
+        setPvpLoaded(true);
         return;
       }
       const res = await gameApi.createMatch({
@@ -352,7 +451,9 @@ export function TicTacToeBoard({
     ) return;
 
     const currentSymbol = isXNext ? 'X' : 'O';
-    const isMyTurn = mode === 'pvp' ? true : isXNext;
+    const isMyTurn = mode === 'pvp'
+      ? (mySymbol ? currentSymbol === mySymbol : true)
+      : isXNext;
     if (!isMyTurn) return;
 
     setHistory(h => [...h, { board: [...board], isXNext, lastMove: lastMoveIndex }].slice(-20));
@@ -423,7 +524,7 @@ export function TicTacToeBoard({
       setIsAIThinking(true);
       thinkTimeRef.current = getDynamicDifficulty('tictactoe' as GameType, moveCount).thinkTime;
     }
-  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId, mode]);
+  }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId, mode, mySymbol]);
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing' || mode === 'pvp') return;
@@ -588,8 +689,12 @@ export function TicTacToeBoard({
     : isAIThinking
     ? `${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'}`
     : mode === 'pvp'
-      ? `${isXNext ? 'X' : 'O'} 的回合`
+      ? (mySymbol === isXNext ? mySymbol : (mySymbol === 'X' ? 'O' : 'X')) + ` 的回合${!pvpLoaded ? ' (连接中...)' : ''}`
       : '你的回合';
+
+  const displayOpponent = mode === 'pvp' && pvpOpponent
+    ? { nickname: pvpOpponent.nickname, avatar: pvpOpponent.avatar || '', rankLabel: 'PVP对手', rating: 0 }
+    : opponent;
 
   const resultConfig = {
     won: { emoji: '🎉', text: '胜利!', score: scoreChange || '+10', color: 'text-green-500' },
@@ -625,18 +730,30 @@ export function TicTacToeBoard({
 
       {/* Opponent Info Card */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
-        {opponent ? (
+        {displayOpponent ? (
           <>
             <div className="flex items-center gap-3 mb-3">
-              <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+              {mode === 'pvp' && pvpOpponent?.avatar ? (
+                <img src={pvpOpponent.avatar} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+              ) : (
+                <img src={displayOpponent.avatar} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
-                <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
+                <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${mySymbol || '?'}` : `${displayOpponent.rankLabel} · ${displayOpponent.rating}分`}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+              {mode === 'pvp' ? (
+                <>
+                  <span className={`px-2 py-0.5 rounded-full ${pvpLoaded ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400'}`}>
+                    {pvpLoaded ? '已连接' : '连接中...'}
+                  </span>
+                  <span className="flex items-center gap-1"><User size={12} />{mySymbol === 'X' ? '先手' : '后手'}</span>
+                </>
+              ) : (
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线</span>
+              )}
             </div>
           </>
         ) : (

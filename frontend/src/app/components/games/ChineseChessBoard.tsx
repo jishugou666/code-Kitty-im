@@ -2,10 +2,12 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { gameApi } from '../../../api/game';
-import { Zap, Brain, Search, Target } from 'lucide-react';
+import { Zap, Brain, Search, Target, User } from 'lucide-react';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { useGameChannel } from '../../../hooks/useGameChannel';
+import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
@@ -116,6 +118,9 @@ export function ChineseChessBoard({
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
   const [performanceResult, setPerformanceResult] = useState<any>(null);
+  const [myColor, setMyColor] = useState<'red' | 'black' | null>(null);
+  const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
+  const [pvpLoaded, setPvpLoaded] = useState(false);
 
   const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
     if (!matchId) {
@@ -177,11 +182,106 @@ export function ChineseChessBoard({
   }, [mode]);
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
+  useGameChannel(matchId, {
+    onRemoteMove: (data) => {
+      if (gameStatus !== 'playing') return;
+      const toRow = data.position[0] ?? 0;
+      const toCol = data.position[1] ?? 0;
+      const moveColor = data.symbol === 'R' ? 'red' : 'black';
+      setBoard(prevBoard => {
+        let fromPos: Position | null = null;
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const p = prevBoard[r][c];
+            if (p && p.color === moveColor) {
+              const legalMoves = getLegalMoves(prevBoard, { row: r, col: c });
+              if (legalMoves.some(m => m.row === toRow && m.col === toCol)) {
+                fromPos = { row: r, col: c };
+                break;
+              }
+            }
+          }
+          if (fromPos) break;
+        }
+        if (!fromPos) return prevBoard;
+        const { newBoard, captured } = makeMove(prevBoard, fromPos, { row: toRow, col: toCol });
+        const nextTurn = moveColor === 'red' ? 'black' : 'red';
+        setCurrentTurn(nextTurn);
+        setLastMoveFrom(fromPos);
+        setLastMoveTo({ row: toRow, col: toCol });
+        setHistory(h => [...h, {
+          from: fromPos,
+          to: { row: toRow, col: toCol },
+          piece: prevBoard[fromPos.row][fromPos.col]!,
+          captured
+        }]);
+        setSelectedPos(null);
+        setLegalMoves([]);
+        if (captured?.type === 'king') {
+          if (moveColor === myColor) {
+            setGameStatus('won');
+            saveGameResult('win');
+            recordDifficultyResult(true);
+            processMatchFinish(true, 80, 'B', '棋坛新秀');
+            setShowResultModal(true);
+            onGameOver?.('win');
+          } else {
+            setGameStatus('lost');
+            saveGameResult('loss');
+            recordDifficultyResult(false);
+            processMatchFinish(false, 35, 'D', '继续努力');
+            setShowResultModal(true);
+            onGameOver?.('loss');
+          }
+          return newBoard;
+        }
+        const opponentKingColor = nextTurn;
+        if (isInCheck(newBoard, opponentKingColor)) setCheckState(opponentKingColor);
+        else setCheckState(null);
+        return newBoard;
+      });
+    },
+    onRemoteSurrender: () => {
+      if (gameStatus !== 'playing') return;
+      setGameStatus('won');
+      saveGameResult('win');
+      recordDifficultyResult(true);
+      processMatchFinish(true, 80, 'B', '对方认输');
+      setShowResultModal(true);
+      onGameOver?.('win');
+    },
+    onRemoteFinished: (data) => {
+      if (gameStatus !== 'playing') return;
+      const myId = useAuthStore.getState().user?.id;
+      const iWon = data.winnerId === myId;
+      if (iWon) {
+        setGameStatus('won');
+        saveGameResult('win');
+        recordDifficultyResult(true);
+        processMatchFinish(true, 80, 'B', '表现出色');
+        setShowResultModal(true);
+        onGameOver?.('win');
+      } else if (data.status === 'finished' && data.winnerId) {
+        setGameStatus('lost');
+        saveGameResult('loss');
+        recordDifficultyResult(false);
+        processMatchFinish(false, 35, 'D', '继续加油');
+        setShowResultModal(true);
+        onGameOver?.('loss');
+      } else {
+        setGameStatus('draw');
+        processMatchFinish(false, 50, 'C', '势均力敌');
+        setShowResultModal(true);
+        onGameOver?.('draw');
+      }
+    }
+  });
+
   const handleClick = useCallback((row: number, col: number) => {
     if (gameStatus !== 'playing' || isAIThinking) return;
 
     const clickedPiece = board[row][col];
-    const canInteract = mode === 'pvp' ? true : currentTurn === 'red';
+    const canInteract = mode === 'pvp' ? (myColor ? currentTurn === myColor : true) : currentTurn === 'red';
     if (!canInteract && !selectedPos) return;
 
     if (selectedPos) {
@@ -251,7 +351,7 @@ export function ChineseChessBoard({
       setSelectedPos(null);
       setLegalMoves([]);
     }
-  }, [board, gameStatus, currentTurn, isAIThinking, selectedPos, legalMoves, matchId, onGameOver, mode]);
+  }, [board, gameStatus, currentTurn, isAIThinking, selectedPos, legalMoves, matchId, onGameOver, mode, myColor]);
 
   useEffect(() => {
     if (gameStatus === 'playing') {
@@ -337,6 +437,21 @@ export function ChineseChessBoard({
     try {
       if (mode === 'pvp' && _matchId) {
         setMatchId(_matchId);
+        const res = await gameApi.getMatch(_matchId);
+        if (res.code === 200 && res.data) {
+          const m = res.data;
+          const myId = useAuthStore.getState().user?.id;
+          setMyColor(Number(m.player1_id) === myId ? 'red' : 'black');
+          const oppId = Number(m.player1_id) === myId ? m.player2_id : m.player1_id;
+          const oppName = Number(m.player1_id) === myId
+            ? (m.player2_name || '对方')
+            : (m.player1_name || '对方');
+          const oppAvatar = Number(m.player1_id) === myId
+            ? (m.player2_avatar || null)
+            : (m.player1_avatar || null);
+          setPvpOpponent({ nickname: oppName, avatar: oppAvatar });
+        }
+        setPvpLoaded(true);
         return;
       }
       const res = await gameApi.createMatch({
@@ -412,10 +527,14 @@ export function ChineseChessBoard({
     catch { return { wins: 0, losses: 0, draws: 0, games: 0 }; }
   }, []);
 
+  const displayOpponent = mode === 'pvp' && pvpOpponent
+    ? { nickname: pvpOpponent.nickname, avatar: pvpOpponent.avatar || '', rankLabel: 'PVP对手', rating: 0 }
+    : opponent;
+
   const statusText = gameStatus !== 'playing'
     ? ''
     : isAIThinking ? `⚫ ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (黑方)`
-    : mode === 'pvp' ? `${currentTurn === 'red' ? '🔴' : '⚫'} ${currentTurn === 'red' ? '红方' : '黑方'}的回合`
+    : mode === 'pvp' ? `${currentTurn === 'red' ? '🔴' : '⚫'} ${currentTurn === 'red' ? '红方' : '黑方'}的回合${currentTurn === myColor ? ' (你的回合)' : ''}${!pvpLoaded ? ' (连接中...)' : ''}`
     : '🔴 你的回合 (红方)';
 
   const resultConfig = {
@@ -561,7 +680,7 @@ export function ChineseChessBoard({
                 const isCaptureTarget = isLegalTarget && piece !== null;
                 const kingInCheck = piece && checkState === piece.color && piece.type === 'king';
                 const canClick = gameStatus === 'playing' && !isAIThinking
-                  && (mode === 'pvp' || currentTurn === 'red');
+                  && (mode === 'pvp' ? (myColor ? currentTurn === myColor : true) : currentTurn === 'red');
 
                 return (
                   <button
@@ -703,18 +822,33 @@ export function ChineseChessBoard({
       <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
         {/* Opponent Info Card */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
-          {opponent ? (
+          {displayOpponent ? (
             <>
               <div className="flex items-center gap-3 mb-3">
-                <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                {mode === 'pvp' && pvpOpponent?.avatar ? (
+                  <img src={pvpOpponent.avatar} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                ) : (
+                  <img src={displayOpponent.avatar} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
-                  <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
+                  <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'red' ? '红' : '黑'}` : `${displayOpponent.rankLabel} · ${displayOpponent.rating}分`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线</span>
+                {mode === 'pvp' ? (
+                  <>
+                    <span className={`px-2 py-0.5 rounded-full ${pvpLoaded ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400'}`}>
+                      {pvpLoaded ? '已连接' : '连接中...'}
+                    </span>
+                    <span className="flex items-center gap-1"><User size={12} />{myColor === 'red' ? '先手' : '后手'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线</span>
+                  </>
+                )}
               </div>
             </>
           ) : (
@@ -743,7 +877,7 @@ export function ChineseChessBoard({
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-br from-red-200 to-red-400 border border-red-400" />
-                <span className="text-xs text-gray-500">红方(你)</span>
+                <span className="text-xs text-gray-500">红方{mode === 'pvp' ? (myColor === 'red' ? '(你)' : `(${pvpOpponent?.nickname || '对方'})`) : '(你)'}</span>
               </div>
               <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
                 {history.filter(h => h.piece.color === 'red').length}
@@ -752,7 +886,7 @@ export function ChineseChessBoard({
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-br from-gray-400 to-gray-800" />
-                <span className="text-xs text-gray-500">黑方({opponent?.nickname || '对手'})</span>
+                <span className="text-xs text-gray-500">黑方{mode === 'pvp' ? (myColor === 'black' ? '(你)' : `(${pvpOpponent?.nickname || '对方'})`) : `(${opponent?.nickname || '对手'})`}</span>
               </div>
               <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
                 {history.filter(h => h.piece.color === 'black').length}

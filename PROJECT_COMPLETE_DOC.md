@@ -1323,6 +1323,55 @@ bcrypt.hash(password, 10)
 - finish API调用后解析表现分数据传入 GameResultModal
 - 旧弹窗通过 `!showResultModal` 条件互斥
 
+#### 井字棋AI难度提升 + 加分机制调整（6-12分范围）
+- **Easy模式优化**：
+  - 纯随机概率：30% → **12%**（大幅降低"送分"频率）
+  - minimax搜索深度：depth=1 → **depth=2**（更深搜索）
+  - 次优选择概率：40% → **18%**
+- **Medium模式优化**：
+  - 最优候选数：top-3随机 → **top-2随机**（更精准）
+  - 新增8%概率选第3优（故意失误，保持趣味性）
+- **Hard模式**：不变（完美minimax + centerBias）
+- **加分范围调整至6-12分**：
+  | 结果 | 调整前 | 调整后 |
+  |------|--------|--------|
+  | 胜利 | +10 (固定) | **+10 ~ +12** (动态) |
+  | 失败 | -5 (固定) | **-3 ~ -5** (动态) |
+  | 平局 | +0 (固定) | **+1 ~ +3** (动态) |
+  | 认输 | -5 (固定) | **-6 ~ -8** (动态) |
+- **基础分同步调整**：胜利75→10-12 / 失败30→6-8 / 平局50→8-9
+- **processMatchFinish fallback值**：全部从硬编码10/-5改为使用传入的defaultScore参数
+
+#### PVP联机对战完整实现（实时同步+对手信息+状态管理）
+- **问题诊断**：PVP模式6大断点 — 无真实对手信息、落子不同步、无游戏通道、无远程落子接收、不加载对局数据、结束状态不同步
+- **架构设计**：
+  ```
+  发起者 → move API → 后端 recordMove + Pusher triggerEvent('game-{matchId}', 'game-move') → 同意者接收并更新棋盘
+  ```
+
+- **后端改造** ([GameController.js](backend/src/controllers/GameController.js))：
+  - `move()` 方法：recordMove 后触发 `game-move` 事件（含 position/symbol/userId/moveCount）
+  - `surrender()` 方法：abandonMatch 后触发 `game-surrender` 事件（含 userId）
+  - `finish()` 方法：finishMatch 后触发 `game-finished` 事件（含 winnerId/status/scoreChange）
+  - 推送通道：`game-{matchId}`（Pusher Channels）
+
+- **前端新增** [useGameChannel.ts](frontend/src/hooks/useGameChannel.ts)：
+  - 订阅 Pusher `game-{matchId}` 通道
+  - 绑定3个事件：`game-move` / `game-surrender` / `game-finished`
+  - 自动过滤自身发出的消息（userId比对）
+  - 回调式设计：onRemoteMove / onRemoteSurrender / onRemoteFinished
+
+- **三个棋盘组件PVP改造**（TicTacToeBoard/GomokuBoard/ChineseChessBoard）：
+  | 改造项 | 说明 |
+  |--------|------|
+  | 真实对手信息 | initMatch 调用 getMatch API → 提取 player1/player2 昵称头像 → 显示在对手卡片 |
+  | 己方符号确定 | 对比 player1_id 与当前用户ID → mySymbol(X/O) / myColor(black/white/red/black) |
+  | 远程落子接收 | useGameChannel.onRemoteMove → 应用到本地棋盘 state → 切换回合 |
+  | 认输/结束同步 | onRemoteSurrender/onRemoteFinished → 更新 gameStatus + 结算弹窗 |
+  | 回合控制 | handleClick/canInteract 基于 mySymbol/myColor 判断是否己方回合 |
+  | 连接状态显示 | pvpLoaded 标志 → "连接中..."/"已连接" + 先手/后手标识 |
+  | 历史落子恢复 | 进入PVP对局时从 DB moves 数组重建本地棋盘状态 |
+
 ---
 
 ### 2026-05-24

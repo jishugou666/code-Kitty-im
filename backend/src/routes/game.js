@@ -11,11 +11,11 @@ router.post('/:matchId/move', authMiddleware, GameController.move);
 router.post('/:matchId/surrender', authMiddleware, GameController.surrender);
 router.post('/:matchId/finish', authMiddleware, GameController.finish);
 router.post('/:matchId/heartbeat', authMiddleware, GameController.heartbeat);
-router.get('/:matchId', authMiddleware, GameController.getMatchById);
 router.get('/profile', authMiddleware, GameController.getProfile);
 router.get('/leaderboard', authMiddleware, GameController.getLeaderboard);
 router.get('/history', authMiddleware, GameController.getHistory);
 router.get('/random-opponent', authMiddleware, GameController.getRandomOpponent);
 router.get('/monitor/abandoned', authMiddleware, GameController.checkAbandonedMatches);
+router.get('/:matchId', authMiddleware, GameController.getMatchById);
 
 export default router;

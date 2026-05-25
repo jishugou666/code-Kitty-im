@@ -337,6 +337,401 @@ navigate(`/games?matchId=${res.data.id}&gameType=${gameType}`);
 
 ---
 
+# ChineseChessBoard 完整 PVP 联机对战功能改造记录
+
+**修改日期**: 2026-05-25
+**修改范围**: 前端 ChineseChessBoard.tsx
+**功能类型**: 功能增强
+
+---
+
+## 一、改造概述
+
+### 1.1 改造目标
+参考已完成的 TicTacToeBoard PVP 改造模式，为中国象棋棋盘组件实现完整的 PVP 联机对战功能，包括：
+- WebSocket 实时通信（通过 useGameChannel）
+- 双方玩家轮流走棋（基于 myColor 回合控制）
+- 远程落子接收与本地棋盘同步
+- 对方认输/对局结束通知处理
+- 真实对手信息显示
+
+### 1.2 改造参考
+- [TicTacToeBoard.tsx](frontend/src/app/components/games/TicTacToeBoard.tsx) - 已完成的 PVP 改造参考实现
+- [useGameChannel.ts](frontend/src/hooks/useGameChannel.ts) - WebSocket 游戏频道订阅 Hook
+- [chessEngine.ts](frontend/src/app/components/games/chessEngine.ts) - 象棋引擎（类型定义、走法验证等）
+
+---
+
+## 二、修改内容详解
+
+### 2.1 Import 添加
+
+#### 新增依赖导入
+```typescript
+// 第3行 - lucide-react 图标
+import { Zap, Brain, Search, Target, User } from 'lucide-react';
+
+// 第8-9行 - PVP 功能核心依赖
+import { useGameChannel } from '../../../hooks/useGameChannel';
+import { useAuthStore } from '../../../store/authStore';
+```
+
+**说明**:
+- `User` 图标用于 PVP 模式下显示"先手/后手"标识
+- `useGameChannel` 实现 WebSocket 实时通信订阅
+- `useAuthStore` 获取当前用户 ID 用于确定棋子颜色
+
+### 2.2 PVP 状态变量添加
+
+**位置**: 第119-121行（performanceResult 之后）
+
+```typescript
+const [myColor, setMyColor] = useState<'red' | 'black' | null>(null);
+const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
+const [pvpLoaded, setPvpLoaded] = useState(false);
+```
+
+**变量说明**:
+| 变量名 | 类型 | 用途 |
+|--------|------|------|
+| `myColor` | `'red' \| 'black' \| null` | 当前用户执子颜色（player1=红, player2=黑） |
+| `pvpOpponent` | `{ nickname, avatar } \| null` | 对手信息（昵称、头像） |
+| `pvpLoaded` | `boolean` | PVP 对局数据是否加载完成 |
+
+### 2.3 initMatch 函数改造
+
+**位置**: 第346-367行
+
+**改造前**:
+```typescript
+if (mode === 'pvp' && _matchId) {
+  setMatchId(_matchId);
+  return;
+}
+```
+
+**改造后**:
+```typescript
+if (mode === 'pvp' && _matchId) {
+  setMatchId(_matchId);
+  const res = await gameApi.getMatch(_matchId);
+  if (res.code === 200 && res.data) {
+    const m = res.data;
+    const myId = useAuthStore.getState().user?.id;
+    // 确定 myColor：player1 执红，player2 执黑
+    setMyColor(Number(m.player1_id) === myId ? 'red' : 'black');
+    // 提取对手信息
+    const oppName = Number(m.player1_id) === myId
+      ? (m.player2_name || '对方')
+      : (m.player1_name || '对方');
+    const oppAvatar = Number(m.player1_id) === myId
+      ? (m.player2_avatar || null)
+      : (m.player1_avatar || null);
+    setPvpOpponent({ nickname: oppName, avatar: oppAvatar });
+  }
+  setPvpLoaded(true);
+  return;
+}
+```
+
+**关键逻辑**:
+1. 调用 `gameApi.getMatch(_matchId)` 获取完整对局数据
+2. 对比 `player1_id` 与当前用户 ID 确定 `myColor`
+3. 提取对手昵称和头像到 `pvpOpponent` state
+4. 设置 `pvpLoaded(true)` 标记加载完成
+
+### 2.4 useGameChannel 订阅添加
+
+**位置**: 第185-281行（useGameHeartbeat 之后）
+
+#### onRemoteMove 处理逻辑
+```typescript
+onRemoteMove: (data) => {
+  if (gameStatus !== 'playing') return;
+  const toRow = data.position[0] ?? 0;
+  const toCol = data.position[1] ?? 0;
+  const moveColor = data.symbol === 'R' ? 'red' : 'black';
+  
+  setBoard(prevBoard => {
+    // 遍历棋盘找到能到达目标位置的合法落子
+    let fromPos: Position | null = null;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const p = prevBoard[r][c];
+        if (p && p.color === moveColor) {
+          const legalMoves = getLegalMoves(prevBoard, { row: r, col: c });
+          if (legalMoves.some(m => m.row === toRow && m.col === toCol)) {
+            fromPos = { row: r, col: c };
+            break;
+          }
+        }
+      }
+      if (fromPos) break;
+    }
+    
+    if (!fromPos) return prevBoard;
+    
+    // 应用落子到本地棋盘
+    const { newBoard, captured } = makeMove(prevBoard, fromPos, { row: toRow, col: toCol });
+    // 更新所有相关状态...
+    return newBoard;
+  });
+}
+```
+
+**特殊处理说明**:
+- **远程落子推断**: 由于象棋 API 只传目标位置 `[row, col]` 和符号 `'R'/'B'`，需要遍历同色所有棋子的合法走法来推断起始位置
+- **吃将判定**: 如果 `captured?.type === 'king'`，根据 `moveColor === myColor` 判断胜负
+- **将军检测**: 落子后检查对方是否被将军
+
+#### onRemoteSurrender 处理
+```typescript
+onRemoteSurrender: () => {
+  if (gameStatus !== 'playing') return;
+  // 对方认输 → 我方胜利
+  setGameStatus('won');
+  saveGameResult('win');
+  recordDifficultyResult(true);
+  processMatchFinish(true, 80, 'B', '对方认输');
+  setShowResultModal(true);
+  onGameOver?.('win');
+}
+```
+
+#### onRemoteFinished 处理
+```typescript
+onRemoteFinished: (data) => {
+  if (gameStatus !== 'playing') return;
+  const myId = useAuthStore.getState().user?.id;
+  const iWon = data.winnerId === myId;
+  
+  if (iWon) {
+    // 我方胜利
+    setGameStatus('won');
+    // ...结算逻辑
+  } else if (data.status === 'finished' && data.winnerId) {
+    // 对方胜利
+    setGameStatus('lost');
+    // ...结算逻辑
+  } else {
+    // 和棋
+    setGameStatus('draw');
+    // ...结算逻辑
+  }
+}
+```
+
+### 2.5 PVP 回合控制修复
+
+#### handleClick 中的 canInteract
+**修改前**:
+```typescript
+const canInteract = mode === 'pvp' ? true : currentTurn === 'red';
+```
+
+**修改后**:
+```typescript
+const canInteract = mode === 'pvp' 
+  ? (myColor ? currentTurn === myColor : true) 
+  : currentTurn === 'red';
+```
+
+**效果**: PVP 模式下只有轮到自己回合才能交互，而非之前的双方都能操作。
+
+#### JSX 中的 canClick 条件
+**修改前**:
+```typescript
+const canClick = gameStatus === 'playing' && !isAIThinking
+  && (mode === 'pvp' || currentTurn === 'red');
+```
+
+**修改后**:
+```typescript
+const canClick = gameStatus === 'playing' && !isAIThinking
+  && (mode === 'pvp' ? (myColor ? currentTurn === myColor : true) : currentTurn === 'red');
+```
+
+#### 依赖数组更新
+```typescript
+// handleClick useCallback 依赖数组添加 myColor
+}, [..., myColor]);
+```
+
+### 2.6 displayOpponent 变量添加
+
+**位置**: 第530-532行
+
+```typescript
+const displayOpponent = mode === 'pvp' && pvpOpponent
+  ? { nickname: pvpOpponent.nickname, avatar: pvpOpponent.avatar || '', rankLabel: 'PVP对手', rating: 0 }
+  : opponent;
+```
+
+**用途**: 统一 AI 模式和 PVP 模式的对手数据格式，简化后续渲染逻辑。
+
+### 2.7 statusText 更新
+
+**修改前**:
+```typescript
+mode === 'pvp' 
+  ? `${currentTurn === 'red' ? '🔴' : '⚫'} ${currentTurn === 'red' ? '红方' : '黑方'}的回合`
+```
+
+**修改后**:
+```typescript
+mode === 'pvp' 
+  ? `${currentTurn === 'red' ? '🔴' : '⚫'} ${currentTurn === 'red' ? '红方' : '黑方'}的回合${currentTurn === myColor ? ' (你的回合)' : ''}${!pvpLoaded ? ' (连接中...)' : ''}`
+```
+
+**显示效果示例**:
+- `🔴 红方的回合 (你的回合)` - 轮到己方走棋
+- `⚫ 黑方的回合` - 轮到对方走棋
+- `🔴 红方的回合 (连接中...)` - 正在建立连接
+
+### 2.8 对手信息卡片更新
+
+#### 头像显示优化
+```tsx
+{mode === 'pvp' && pvpOpponent?.avatar ? (
+  <img src={pvpOpponent.avatar} className="object-cover" />  // PVP 真实头像
+) : (
+  <img src={displayOpponent.avatar} />  // AI 虚拟头像
+)}
+```
+
+#### 副标题动态显示
+- **PVP 模式**: `PVP对战 · 你执红/黑`
+- **AI 模式**: `{rankLabel} · {rating}分`
+
+#### 状态标签区分
+**PVP 模式**:
+- 已连接: 绿色标签 + `User` 图标 + 先手/后手标识
+- 连接中: 黄色标签 + 同上
+
+**AI 模式**:
+- "实时匹配" 蓝色标签 + 绿色脉冲在线指示器
+
+### 2.9 对局信息卡片更新
+
+#### 红方标签
+```tsx
+红方{mode === 'pvp' 
+  ? (myColor === 'red' ? '(你)' : `(${pvpOpponent?.nickname || '对方'})`) 
+  : '(你)'}
+```
+
+#### 黑方标签
+```tsx
+黑方{mode === 'pvp' 
+  ? (myColor === 'black' ? '(你)' : `(${pvpOpponent?.nickname || '对方'})`) 
+  : `(${opponent?.nickname || '对手'})`}
+```
+
+---
+
+## 三、技术要点
+
+### 3.1 象棋远程落子的特殊性
+与井字棋不同，象棋的落子需要 **from → to** 两步操作。由于 `gameApi.move` 上报的 `position` 只是目标位置 `[row, col]`，远程接收时需要：
+1. 从 `symbol` (`'R'`/`'B'`) 确定落子颜色
+2. 遍历该颜色所有棋子
+3. 检查每个棋子的合法走法是否包含目标位置
+4. 找到唯一匹配的起始位置后调用 `makeMove()`
+
+### 3.2 边界情况处理
+- **找不到 fromPos**: 直接返回原棋盘不变（可能状态已过期）
+- **多个匹配**: 取第一个合法匹配（理论上不会出现）
+- **gameStatus 非 playing**: 忽略所有远程事件
+
+### 3.3 状态同步保证
+- `setCurrentTurn()` 在 `setBoard()` 回调内调用，确保基于最新棋盘状态
+- `setLastMoveFrom/To` 同步更新高亮显示
+- `setHistory` 追加 MoveRecord 保持历史记录完整性
+
+---
+
+## 四、保持不变的部分
+
+以下功能在两种模式下行为完全一致：
+
+| 功能 | 说明 |
+|------|------|
+| AI 思考动画 | 仅在 `mode === 'ai'` 时触发 |
+| processMatchFinish | 结算逻辑完全不变 |
+| GameResultModal | 结算弹窗完全不变 |
+| useGameHeartbeat | 心跳检测已支持任意 matchId |
+| surrender | 认输逻辑不变 |
+| resetBoard | 重开总是创建新 AI 对局 |
+| saveGameResult | localStorage 统计不变 |
+| 所有动画效果 | framer-motion 动画不变 |
+| UI 布局/样式 | 整体布局不变 |
+
+---
+
+## 五、数据流对比
+
+### AI 模式（默认）
+```
+用户选子(红) → 选目标位置 → makeMove → 上报move API → 检查胜负
+→ 触发isAIThinking → AI思考动画 → AI落子(黑) → 上报move API → 循环
+```
+
+### PVP 模式
+```
+我方选子(myColor) → 选目标位置 → makeMove → 上报move API → 检查胜负
+→ 切换nextTurn → 等待WebSocket → onRemoteMove → 推断fromPos → makeMove
+→ 更新本地棋盘 → 切换nextTurn → 循环
+（无AI介入，双方通过WebSocket同步）
+```
+
+---
+
+## 六、文件修改清单
+
+| 文件 | 改动数 | 改动类型 |
+|------|--------|---------|
+| [ChineseChessBoard.tsx](frontend/src/app/components/games/ChineseChessBoard.tsx) | 12处 | Import+State+initMatch+Channel+回控+UI+statusText |
+| [MODIFICATION_RECORD_20260525.md](MODIFICATION_RECORD_20260525.md) | 1处 | 追加本文档记录 |
+
+---
+
+## 七、验证要点
+
+### 7.1 AI模式回归测试
+- [ ] 默认进入游戏仍为 AI 模式，行为与改造前完全一致
+- [ ] 对手卡片正常显示虚拟对手信息
+- [ ] AI 思考进度条正常
+- [ ] 胜负判定正常
+- [ ] 积分结算正常
+
+### 7.2 PVP模式功能测试
+- [ ] 传入 `mode='pvp'` + `matchId` 后正确获取对局数据
+- [ ] myColor 根据 player1_id/player2_id 正确设置
+- [ ] pvpOpponent 显示真实对手昵称和头像
+- [ ] 只有轮到我方回合才能选子和落子
+- [ ] 对方回合时棋盘不可点击
+- [ ] 远程落子正确应用到本地棋盘
+- [ ] 对方认输触发我方胜利
+- [ ] 对局结束通知正确处理
+- [ ] statusText 显示正确的当前方和己方标识
+- [ ] 对手卡片显示 PVP 对战信息和连接状态
+- [ ] 对局信息卡片红方/黑方标签正确显示"(你)"或对手昵称
+
+### 7.3 边界情况测试
+- [ ] PVP 模式下重开游戏的行为
+- [ ] PVP 模式下认输功能正常
+- [ ] 快速连续点击不会导致状态异常
+- [ ] 网络断开重连后的状态恢复
+
+---
+
+**修改执行人**: AI Assistant
+**审核状态**: 待审核
+**文档版本**: v1.0
+**修改完成时间**: 2026-05-25
+
+---
+
 # 三个棋盘组件 PVP（玩家对战）模式支持改造记录
 
 **修改日期**: 2026-05-25

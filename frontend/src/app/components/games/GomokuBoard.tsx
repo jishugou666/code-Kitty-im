@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Zap, Brain, Search, Target } from 'lucide-react';
+import { Zap, Brain, Search, Target, User } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { useGameChannel } from '../../../hooks/useGameChannel';
+import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 
 interface GomokuBoardProps {
@@ -520,6 +522,9 @@ export function GomokuBoard({
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
   const [performanceResult, setPerformanceResult] = useState<any>(null);
+  const [myColor, setMyColor] = useState<'black' | 'white' | null>(null);
+  const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
+  const [pvpLoaded, setPvpLoaded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thinkTimeRef = useRef<number>(4000);
 
@@ -584,10 +589,136 @@ export function GomokuBoard({
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
+  useGameChannel(matchId, {
+    onRemoteMove: (data) => {
+      const [row, col] = data.position;
+      if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+      const symbol = data.symbol === 'B' || data.symbol === BLACK ? BLACK : WHITE;
+      setBoard(prev => {
+        const newBoard = prev.map(r => [...r]);
+        newBoard[row][col] = symbol;
+        const winCells = checkFive(row, col, symbol, newBoard);
+        if (winCells.length > 0) {
+          setTimeout(() => {
+            setWinningCells(winCells);
+            if (symbol === (myColor === 'black' ? BLACK : WHITE)) {
+              setGameStatus('won');
+              saveGameResult('win');
+              recordDifficultyResult(true);
+              processMatchFinish(true, 78, 'B', '连珠新星');
+              setShowResultModal(true);
+              onGameOver?.('win');
+            } else {
+              setGameStatus('lost');
+              saveGameResult('loss');
+              recordDifficultyResult(false);
+              processMatchFinish(false, 32, 'D', '再接再厉');
+              setShowResultModal(true);
+              onGameOver?.('loss');
+            }
+          }, 0);
+          return newBoard;
+        }
+        if (newBoard.every(r => r.every(c => c !== EMPTY))) {
+          setTimeout(() => {
+            setGameStatus('draw');
+            saveGameResult('draw');
+            recordDifficultyResult(false);
+            processMatchFinish(false, 50, 'C', '势均力敌');
+            setShowResultModal(true);
+            onGameOver?.('draw');
+          }, 0);
+        }
+        return newBoard;
+      });
+      setCurrentPlayer(symbol === BLACK ? WHITE : BLACK);
+      setLastMove([row, col]);
+      setHistory(h => [...h, { row, col, player: symbol, timestamp: Date.now() }]);
+    },
+    onRemoteSurrender: () => {
+      if (gameStatus !== 'playing') return;
+      setGameStatus('won');
+      saveGameResult('win');
+      recordDifficultyResult(true);
+      processMatchFinish(true, 78, 'B', '对方认输');
+      setShowResultModal(true);
+      onGameOver?.('win');
+    },
+    onRemoteFinished: (data) => {
+      if (gameStatus !== 'playing') return;
+      const myId = useAuthStore.getState().user?.id;
+      const iWon = data.winnerId === myId;
+      if (iWon) {
+        setGameStatus('won');
+        saveGameResult('win');
+        recordDifficultyResult(true);
+        processMatchFinish(true, 78, 'B', '表现出色');
+        setShowResultModal(true);
+        onGameOver?.('win');
+      } else if (data.status === 'finished' && data.winnerId) {
+        setGameStatus('lost');
+        saveGameResult('loss');
+        recordDifficultyResult(false);
+        processMatchFinish(false, 32, 'D', '继续加油');
+        setShowResultModal(true);
+        onGameOver?.('loss');
+      } else {
+        setGameStatus('draw');
+        saveGameResult('draw');
+        recordDifficultyResult(false);
+        processMatchFinish(false, 50, 'C', '势均力敌');
+        setShowResultModal(true);
+        onGameOver?.('draw');
+      }
+    }
+  });
+
   const initMatch = useCallback(async () => {
     try {
       if (mode === 'pvp' && _matchId) {
         setMatchId(_matchId);
+        const res = await gameApi.getMatch(_matchId);
+        if (res.code === 200 && res.data) {
+          const m = res.data;
+          const myId = useAuthStore.getState().user?.id;
+          setMyColor(Number(m.player1_id) === myId ? 'black' : 'white');
+          const oppId = Number(m.player1_id) === myId ? m.player2_id : m.player1_id;
+          const oppName = Number(m.player1_id) === myId
+            ? (m.player2_name || '对方')
+            : (m.player1_name || '对方');
+          const oppAvatar = Number(m.player1_id) === myId
+            ? (m.player2_avatar || null)
+            : (m.player1_avatar || null);
+          setPvpOpponent({ nickname: oppName, avatar: oppAvatar });
+          if (m.moves && Array.isArray(m.moves)) {
+            try {
+              const parsed = typeof m.moves === 'string' ? JSON.parse(m.moves) : m.moves;
+              if (parsed.length > 0) {
+                const rebuiltBoard = createEmptyBoard();
+                const rebuiltHistory: MoveRecord[] = [];
+                let currentTurn = BLACK;
+                for (const mv of parsed) {
+                  const row = mv.position[0] || 0;
+                  const col = mv.position[1] || 0;
+                  if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) {
+                    const symbol = mv.symbol === 'B' || mv.symbol === BLACK ? BLACK : WHITE;
+                    rebuiltBoard[row][col] = symbol;
+                    rebuiltHistory.push({ row, col, player: symbol, timestamp: Date.now() });
+                    currentTurn = symbol === BLACK ? WHITE : BLACK;
+                  }
+                }
+                setBoard(rebuiltBoard);
+                setHistory(rebuiltHistory);
+                setCurrentPlayer(currentTurn);
+                if (rebuiltHistory.length > 0) {
+                  const lastMoveRecord = rebuiltHistory[rebuiltHistory.length - 1];
+                  setLastMove([lastMoveRecord.row, lastMoveRecord.col]);
+                }
+              }
+            } catch {}
+          }
+        }
+        setPvpLoaded(true);
         return;
       }
       const res = await gameApi.createMatch({
@@ -696,7 +827,9 @@ export function GomokuBoard({
 
   const handleClick = useCallback((row: number, col: number) => {
     if (board[row][col] !== EMPTY || gameStatus !== 'playing' || isAIThinking) return;
-    const isMyTurn = mode === 'pvp' ? true : currentPlayer === BLACK;
+    const isMyTurn = mode === 'pvp'
+      ? (myColor ? currentPlayer === (myColor === 'black' ? BLACK : WHITE) : true)
+      : currentPlayer === BLACK;
     if (!isMyTurn) return;
     const currentSymbol = currentPlayer;
 
@@ -750,7 +883,7 @@ export function GomokuBoard({
       setIsAIThinking(true);
       thinkTimeRef.current = getDynamicDifficulty('gomoku' as GameType, history.length).thinkTime;
     }
-  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId, mode]);
+  }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId, mode, myColor]);
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
@@ -852,8 +985,12 @@ export function GomokuBoard({
   const statusText = gameStatus !== 'playing' ? '' : isAIThinking
     ? `\u26AA ${opponent?.nickname || '对手'} ${thinkingPhase ? thinkingPhase + '...' : '思考中'} (白方)`
     : mode === 'pvp'
-      ? `${currentPlayer === BLACK ? '\u26AB' : '\u26AA'} ${currentPlayer === BLACK ? '黑方' : '白方'}的回合`
+      ? `${currentPlayer === BLACK ? '\u26AB' : '\u26AA'} ${currentPlayer === BLACK ? '黑方' : '白方'}的回合${!pvpLoaded ? ' (连接中...)' : ''}`
       : '\u26AB 你的回合 (黑方)';
+
+  const displayOpponent = mode === 'pvp' && pvpOpponent
+    ? { nickname: pvpOpponent.nickname, avatar: pvpOpponent.avatar || '', rankLabel: 'PVP对手', rating: 0 }
+    : opponent;
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
     lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
@@ -1198,22 +1335,37 @@ export function GomokuBoard({
       <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
         {/* Opponent Info Card */}
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
-          {opponent ? (
+          {displayOpponent ? (
             <>
               <div className="flex items-center gap-3 mb-3">
-                <img
-                  src={opponent.avatar}
-                  alt={opponent.nickname}
-                  className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
-                />
+                {mode === 'pvp' && pvpOpponent?.avatar ? (
+                  <img src={pvpOpponent.avatar} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                ) : (
+                  <img
+                    src={displayOpponent.avatar}
+                    alt={displayOpponent.nickname}
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
+                  />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
-                  <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
+                  <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'black' ? '黑' : '白'}` : `${displayOpponent.rankLabel} · ${displayOpponent.rating}分`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
-                <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full">在线</span>
+                {mode === 'pvp' ? (
+                  <>
+                    <span className={`px-2 py-0.5 rounded-full ${pvpLoaded ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-50 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400'}`}>
+                      {pvpLoaded ? '已连接' : '连接中...'}
+                    </span>
+                    <span className="flex items-center gap-1"><User size={12} />{myColor === 'black' ? '先手' : '后手'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+                    <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full">在线</span>
+                  </>
+                )}
               </div>
             </>
           ) : (
