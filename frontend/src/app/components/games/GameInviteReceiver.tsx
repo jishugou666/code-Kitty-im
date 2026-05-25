@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Clock, Gamepad2, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../../../hooks/useToast';
@@ -20,7 +19,6 @@ const GAME_TYPE_MAP: Record<string, { name: string; icon: string; color: string 
 const COUNTDOWN_SECONDS = 30;
 
 export function GameInviteReceiver() {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
@@ -54,7 +52,7 @@ export function GameInviteReceiver() {
           } else if (msg.type === 'game_invite_accepted') {
             toast('对方接受了你的邀请！正在进入对局...', 'success');
             setTimeout(() => {
-              navigate(`/games?matchId=${msg.data.matchId}&gameType=${msg.data.gameType}`);
+              window.location.href = `/games?matchId=${msg.data.matchId}&gameType=${msg.data.gameType}`;
             }, 800);
           } else if (msg.type === 'game_invite_rejected') {
             toast('对方拒绝了你的邀请', 'info');
@@ -116,7 +114,7 @@ export function GameInviteReceiver() {
       if (res.code === 200 && accepted) {
         toast('接受成功！进入对局...', 'success');
         setTimeout(() => {
-          navigate(`/games?matchId=${invite.matchId}&gameType=${invite.gameType}`);
+          window.location.href = `/games?matchId=${invite.matchId}&gameType=${invite.gameType}`;
         }, 600);
       } else {
         setInvite(null);
@@ -126,7 +124,7 @@ export function GameInviteReceiver() {
     } finally {
       setResponding(false);
     }
-  }, [invite, responding, navigate, toast]);
+  }, [invite, responding, toast]);
 
   if (!invite) return null;
 
