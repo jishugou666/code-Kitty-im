@@ -24,19 +24,12 @@ const WIN_LINES = [
   [0, 4, 8], [2, 4, 6]
 ];
 
-const THINKING_TIME: Record<string, number> = { easy: 800, medium: 600, hard: 400 };
 const OPPONENT_THINKING_LABELS = {
   analyzing: '分析棋局',
   evaluating: '评估策略',
   deciding: '决策落子',
   ready: '即将落子'
 };
-const DIFFICULTY_DESC: Record<string, string> = {
-  easy: '休闲模式：节奏轻松，适合新手热身',
-  medium: '竞技模式：策略博弈，适合进阶挑战',
-  hard: '大师模式：极限对决，考验真实力'
-};
-
 const OPENING_BOOK: Record<number, number[]> = {
   0: [4, 2, 6, 8],
   2: [4, 0, 6, 8],
@@ -356,7 +349,7 @@ export function TicTacToeBoard({
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
-    const phases = getThinkingPhases(THINKING_TIME[dynamicDiff] as number);
+    const phases = getThinkingPhases(dynamicDiff.thinkTime);
     let progress = 0;
     let phaseIndex = 0;
     const phaseLabels: Record<string, string> = {
@@ -373,7 +366,7 @@ export function TicTacToeBoard({
         phaseIndex++;
         setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
       }
-    }, THINKING_TIME[dynamicDiff] / 10);
+    }, dynamicDiff.thinkTime / 10);
     const timer = setTimeout(() => {
       clearInterval(interval);
       const currentBoard = [...board];
@@ -434,9 +427,9 @@ export function TicTacToeBoard({
         onGameOver?.('draw');
         recordDifficultyResult(false);
       }
-    }, THINKING_TIME[dynamicDiff]);
+    }, dynamicDiff.thinkTime);
     return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, dynamicDiff, lastMoveIndex, stats, onGameOver, matchId]);
+  }, [isAIThinking, gameStatus, board, dynamicDiff.thinkTime, lastMoveIndex, stats, onGameOver, matchId]);
 
   const handleUndo = useCallback(() => {
     if (history.length < 2 || gameStatus !== 'playing' || isAIThinking) return;
@@ -575,7 +568,7 @@ export function TicTacToeBoard({
                 <button
                   onClick={() => setShowDifficultyTip(v => !v)}
                   className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  aria-label={`难度说明：${DIFFICULTY_DESC[dynamicDiff]}`}
+                  aria-label="对局信息"
                 >
                   <HelpCircle size={16} className="text-gray-400" />
                 </button>
@@ -587,10 +580,10 @@ export function TicTacToeBoard({
                       exit={{ opacity: 0, scale: 0.9, y: -5 }}
                       className="absolute right-0 top-full mt-2 w-56 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
                     >
-                      <p>{DIFFICULTY_DESC[dynamicDiff]}</p>
+                      <p>在线对局模式</p>
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between">
                         <span className="text-gray-400">思考时间</span>
-                        <span className="font-medium">{THINKING_TIME[dynamicDiff]}ms</span>
+                        <span className="font-medium">{dynamicDiff.thinkTime}ms</span>
                       </div>
                     </motion.div>
                   )}

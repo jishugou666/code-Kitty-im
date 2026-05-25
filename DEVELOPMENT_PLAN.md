@@ -305,6 +305,41 @@
     - 使用 ESLint plugin: `eslint-plugin-react` 的 `jsx-no-undef` 规则
     - IDE 配置 TypeScript 严格模式可提前检测未定义变量
 
+- ✅ **井字棋思考延时修复：对手零延迟立即落子**
+  - **现象**：用户反馈"对手没有停顿，跟人机一样一秒决策"，三个游戏都需要动态等待
+  - **根因分析**：
+    - `TicTacToeBoard.tsx` 存在严重的变量引用错误
+    - 第27行定义了旧的固定时间常量：`THINKING_TIME = { easy: 800, medium: 600, hard: 400 }`
+    - 但代码中错误地使用 `THINKING_TIME[dynamicDiff]` 作为索引
+    - `dynamicDiff` 是对象 `{level, thinkTime, errorRate}`，用对象作为键查找 → **undefined**
+    - `setTimeout(callback, undefined)` → **立即执行（0ms延迟）** → 对手瞬间落子！
+  - **修复方案（5处修改）**：
+    ```typescript
+    // 删除无用常量
+    - const THINKING_TIME: Record<string, number> = { easy: 800, medium: 600, hard: 400 };
+    
+    // 修复所有引用（5处）
+    - getThinkingPhases(THINKING_TIME[dynamicDiff] as number)  // undefined
+    + getThinkingPhases(dynamicDiff.thinkTime)                 // 800-3500ms ✅
+    
+    - THINKING_TIME[dynamicDiff] / 10                          // NaN
+    + dynamicDiff.thinkTime / 10                               // 正确间隔 ✅
+    
+    - setTimeout(callback, THINKING_TIME[dynamicDiff])         // 立即执行
+    + setTimeout(callback, dynamicDiff.thinkTime)              // 真正等待 ✅
+    
+    - {THINKING_TIME[dynamicDiff]}ms                           // undefined ms
+    + {dynamicDiff.thinkTime}ms                                // 显示真实时间 ✅
+    ```
+  - **其他游戏验证**：
+    - GomokuBoard.tsx：✅ 已正确使用 `dynamicDiff.thinkTime`（无需修改）
+    - ChineseChessBoard.tsx：✅ 已正确使用 `dynamicDiff.thinkTime`（无需修改）
+  - **修复效果**：
+    - 井字棋：⏱️ 800-3500ms 动态延时 + 4阶段思考动画（与五子棋/象棋一致）
+    - 对手信息栏实时显示："分析棋局..." → "评估策略..." → "决策落子..." → "即将落子..."
+    - 每次落子时间都不同（±30%随机波动），模拟真人思考的不确定性
+  - **构建验证**：✓ exit code 0, built in 11.36s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
