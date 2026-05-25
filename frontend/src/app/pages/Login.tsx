@@ -18,6 +18,12 @@ export function Login() {
   const [email, setEmail] = useState('');
   const isMobile = useIsMobile();
   const [isChecking, setIsChecking] = useState(true);
+  const [emailError, setEmailError] = useState('');
+  const [nicknameError, setNicknameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [nicknameTouched, setNicknameTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && token) {
@@ -34,13 +40,6 @@ export function Login() {
       </div>
     );
   }
-
-  const [emailError, setEmailError] = useState('');
-  const [nicknameError, setNicknameError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [nicknameTouched, setNicknameTouched] = useState(false);
-  const [passwordTouched, setPasswordTouched] = useState(false);
 
   const validateEmail = (value: string) => {
     if (!value.trim()) return '请输入邮箱';
