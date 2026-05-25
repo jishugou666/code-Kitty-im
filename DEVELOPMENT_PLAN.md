@@ -543,6 +543,68 @@
   - **修改文件**：`backend/src/services/GameService.js`
   - **预防措施**：后端 `.js` 文件禁止使用 TypeScript 语法，类型注解仅限前端 `.ts/.tsx`
 
+- ✅ **重大新功能：表现分系统（Performance Score System）**
+  - **设计参考**：王者荣耀/和平精英/无畏契约对局结束评分制度
+  - **核心问题解决**：
+    - 旧系统：固定分数制（井字棋±10、五子棋±25、象棋±40），打简单模式刷分严重
+    - 新系统：每局动态计算表现分(0-100)，根据表现决定实际积分变化
+  - **表现分计算公式**：
+    ```
+    FinalScore = BaseScore × 难度系数 × 对手强度系数 × (1+表现加成) × (1+高光加成)
+    RatingChange = round(FinalScore × 结果系数)
+      胜利: ×1.0 | 失败: ×(-0.5) | 平局: ×0.1 | 逃跑: ×(-0.8)
+    ```
+  - **难度系数（防刷分）**：
+    | 游戏 | 系数 | 原因 |
+    |------|------|------|
+    | 井字棋 | **×0.4** | 最简单，刷分收益低 |
+    | 五子棋 | **×0.85** | 中等难度 |
+    | 象棋 | **×1.2** | 最难，加分最多 |
+  - **对手强度系数**：AI easy=0.5x / medium=1.0x / hard=1.4x；PVP按rating差值±500分级
+  - **高光时刻系统（12种）**：
+    - 通用：⚡闪电战 👑完美对局 🛡️铜墙铁壁 🔄绝地反击 🔥连胜加持 🎯中心统治
+    - 五子棋：💎连珠大师
+    - 象棋：♟️将军 🗡️弃子攻杀 🎯绝杀 🏆以弱胜强
+  - **称号系统（S/A/B/C/D五级）**：
+    - S级(90+): "三子之神"/"五珠至尊"/"象棋宗师"
+    - A级(75-89): "战术大师"/"布局大师"/"棋坛精英"
+    - B级(60-74): "稳健选手"/"稳扎稳打"/"中规中矩"
+    - C级(40-59): "初学者"/"五子新手"/"楚汉初学"
+    - D级(<40): "新手入门"/"刚上路"/"继续加油"
+  - **新建文件**：
+    - `backend/src/services/PerformanceService.js` — 表现分计算引擎核心
+    - `backend/src/migrations/performanceMigration.js` — 数据库迁移模块
+    - `backend/src/migrations/001_add_performance.sql` — SQL参考文档
+    - `frontend/src/app/components/games/GameResultModal.tsx` — 结算弹窗组件
+  - **修改文件**：
+    - `backend/src/services/RankingService.js` — calculateRatingChange支持动态表现分参数
+    - `backend/src/services/GameService.js` — finishMatch集成PerformanceService + 查询真实rating
+    - `backend/src/app.js` — 启动时自动执行数据库迁移
+    - `frontend/src/api/game.ts` — 新增 PerformanceResult/Highlight/Bonus 接口
+    - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 集成GameResultModal
+    - `frontend/src/app/components/games/GomokuBoard.tsx` — 集成GameResultModal
+    - `frontend/src/app/components/games/ChineseChessBoard.tsx` — 集成GameResultModal
+    - `frontend/src/app/pages/Games.tsx` — 主页段位显示增强（进度条/动画/排行特效）
+  - **数据库新增字段（game_match表）**：
+    - `performance_score` DECIMAL(5,2) — 表现分0-100
+    - `performance_grade` VARCHAR(2) — S/A/B/C/D
+    - `performance_title` VARCHAR(50) — 称号
+    - `highlights` JSON — 高光时刻key数组
+    - `performance_details` JSON — 详细拆解
+  - **前端结算弹窗特性**：
+    - 等级徽章（径向渐变+S级脉冲发光）
+    - 表现分数字滚动动画（CountUp 1.5秒）
+    - 高光时刻标签（stagger入场+hover提示）
+    - 可折叠详细数据区（用时/步数/系数/加成明细）
+    - Web Share API分享功能
+  - **主页增强**：
+    - 段位进度条（到下一段位的距离百分比）
+    - 胜率环形进度条（SVG conic-gradient）
+    - 连胜火焰动画
+    - 游戏卡片显示难度系数和加分范围
+    - 排行榜前三名金银铜边框+皇冠
+  - **构建验证**：✓ exit code 0, 2827 modules, built in 10.29s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

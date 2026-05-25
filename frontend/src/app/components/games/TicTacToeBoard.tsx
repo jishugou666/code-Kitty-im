@@ -6,6 +6,7 @@ import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { GameResultModal } from './GameResultModal';
 
 interface TicTacToeBoardProps {
   matchId?: number;
@@ -219,10 +220,65 @@ export function TicTacToeBoard({
   const [stats, setStats] = useState(() => getStatsFromStorage());
   const [matchId, setMatchId] = useState<number | null>(null);
   const [scoreChange, setScoreChange] = useState<string>('');
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [performanceResult, setPerformanceResult] = useState<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const initializingRef = useRef(false);
   const thinkTimeRef = useRef<number>(3000);
+
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+    if (!matchId) {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
+        bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
+        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        difficultyCoeff: 0.4, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      return;
+    }
+    try {
+      const finishRes = await gameApi.finish(matchId, { won });
+      if (finishRes.data?.performance_score !== undefined) {
+        setPerformanceResult({
+          score: finishRes.data.performance_score,
+          grade: finishRes.data.performance_grade || defaultGrade,
+          gradeLabel: finishRes.data.performance_title || defaultTitle,
+          gradeColor: '#22C55E',
+          bgGradient: 'from-green-500 to-emerald-500',
+          title: finishRes.data.performance_title || defaultTitle,
+          ratingChange: finishRes.data.score_change || (won ? 10 : -5),
+          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 10 : -5)) / 1),
+          difficultyCoeff: 0.4,
+          strengthCoeff: 1.0,
+          highlights: finishRes.data.highlights || [],
+          performanceBonuses: [],
+          breakdown: finishRes.data.performance_details || {}
+        });
+      } else {
+        setPerformanceResult({
+          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+          title: defaultTitle, ratingChange: won ? 10 : -5,
+          rawRatingChange: won ? 10 : -5,
+          difficultyCoeff: 0.4, strengthCoeff: 1.0,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+      }
+    } catch {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? 10 : -5,
+        rawRatingChange: won ? 10 : -5,
+        difficultyCoeff: 0.4, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+    }
+  }, [matchId]);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -313,13 +369,8 @@ export function TicTacToeBoard({
       saveStatsToStorage(newStats);
       setScoreChange('+10');
       
-      if (matchId) {
-        try {
-          // 玩家获胜
-          gameApi.finish(matchId, { won: true }).catch(() => {});
-        } catch {}
-      }
-      
+      processMatchFinish(true, 75, 'B', '表现出色');
+      setShowResultModal(true);
       onGameOver?.('win');
       recordDifficultyResult(true);
       return;
@@ -332,13 +383,8 @@ export function TicTacToeBoard({
       saveStatsToStorage(newStats);
       setScoreChange('+0');
       
-      if (matchId) {
-        try {
-          // 平局
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
-      
+      processMatchFinish(false, 50, 'C', '势均力敌');
+      setShowResultModal(true);
       onGameOver?.('draw');
       recordDifficultyResult(false);
       return;
@@ -402,11 +448,8 @@ export function TicTacToeBoard({
         saveStatsToStorage(newStats);
         setScoreChange('-5');
 
-        if (matchId) {
-          try {
-            gameApi.finish(matchId, { won: false }).catch(() => {});
-          } catch {}
-        }
+        processMatchFinish(false, 30, 'D', '继续加油');
+        setShowResultModal(true);
 
         onGameOver?.('loss');
         recordDifficultyResult(false);
@@ -420,11 +463,8 @@ export function TicTacToeBoard({
         saveStatsToStorage(newStats);
         setScoreChange('+0');
 
-        if (matchId) {
-          try {
-            gameApi.finish(matchId, { won: false }).catch(() => {});
-          } catch {}
-        }
+        processMatchFinish(false, 50, 'C', '势均力敌');
+        setShowResultModal(true);
 
         onGameOver?.('draw');
         recordDifficultyResult(false);
@@ -474,6 +514,22 @@ export function TicTacToeBoard({
     setStats(newStats);
     saveStatsToStorage(newStats);
     setScoreChange('-5');
+    setPerformanceResult({
+      score: 30,
+      grade: 'D',
+      gradeLabel: '认输',
+      gradeColor: '#9CA3AF',
+      bgGradient: 'from-gray-400 to-gray-300',
+      title: '认输',
+      ratingChange: -5,
+      rawRatingChange: -5,
+      difficultyCoeff: 0.4,
+      strengthCoeff: 1.0,
+      highlights: [],
+      performanceBonuses: [],
+      breakdown: {}
+    });
+    setShowResultModal(true);
     onGameOver?.('loss');
     recordDifficultyResult(false);
   };
@@ -514,6 +570,26 @@ export function TicTacToeBoard({
 
   return (
     <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4 relative overflow-hidden">
+      {/* 新的表现分结算弹窗 */}
+      <GameResultModal
+        open={showResultModal}
+        result={gameStatus === 'won' ? 'win' : gameStatus === 'lost' ? 'loss' : 'draw'}
+        gameType="tictactoe"
+        performanceData={performanceResult}
+        gameStats={{
+          moveCount: moveCount,
+          durationSeconds: elapsedTime,
+          winRate: `${winRate}%`,
+          totalWins: stats.wins,
+          totalGames: stats.wins + stats.losses + stats.draws
+        }}
+        onRestart={() => {
+          setShowResultModal(false);
+          resetBoard();
+        }}
+        onClose={() => setShowResultModal(false)}
+      />
+
       {/* Opponent Info Card */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
         {opponent ? (

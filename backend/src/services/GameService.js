@@ -1,5 +1,6 @@
 import { query } from '../utils/db.js';
 import { RankingService } from './RankingService.js';
+import { PerformanceService } from './PerformanceService.js';
 
 export const GameService = {
   async createMatch(playerId, gameType, mode = 'ai', aiDifficulty = 'medium') {
@@ -106,11 +107,31 @@ export const GameService = {
       let scoreChange = 0;
       if (winnerId && status === 'finished') {
         const won = winnerId === match.player1_id;
+
+        const playerProfile = await query(
+          'SELECT rating FROM user_game_profile WHERE user_id = ?',
+          [match.player1_id]
+        );
+        const playerRating = playerProfile.length > 0 ? playerProfile[0].rating : 1000;
+
+        const matchDataForPerf = {
+          gameType: match.game_type,
+          won: won,
+          aiDifficulty: match.mode === 'ai' ? match.ai_difficulty : null,
+          opponentRating: null,
+          playerRating: playerRating,
+          moves: [],
+          durationSeconds: durationSeconds
+        };
+
+        const perfResult = PerformanceService.calculatePerformance(matchDataForPerf);
+
         const ratingResult = RankingService.calculateRatingChange(
           match.game_type,
           won,
-          1000,
-          match.mode === 'ai' ? match.ai_difficulty : null
+          playerRating,
+          match.mode === 'ai' ? match.ai_difficulty : null,
+          perfResult.rawRatingChange
         );
         scoreChange = ratingResult.change;
 
@@ -118,8 +139,11 @@ export const GameService = {
           match.player1_id,
           match.game_type,
           won,
-          match.mode === 'ai' ? match.ai_difficulty : null
+          match.mode === 'ai' ? match.ai_difficulty : null,
+          perfResult.rawRatingChange
         );
+
+        await PerformanceService.savePerformanceResult(matchId, perfResult);
 
         if (match.player2_id && match.mode === 'pvp') {
           const player2Won = winnerId === match.player2_id;
@@ -131,12 +155,33 @@ export const GameService = {
           );
         }
       } else if (status === 'abandoned') {
+        const playerProfile = await query(
+          'SELECT rating FROM user_game_profile WHERE user_id = ?',
+          [match.player1_id]
+        );
+        const playerRating = playerProfile.length > 0 ? playerProfile[0].rating : 1000;
+
+        const matchDataForPerf = {
+          gameType: match.game_type,
+          won: false,
+          aiDifficulty: match.mode === 'ai' ? match.ai_difficulty : null,
+          opponentRating: null,
+          playerRating: playerRating,
+          moves: [],
+          durationSeconds: durationSeconds
+        };
+
+        const perfResult = PerformanceService.calculatePerformance(matchDataForPerf);
+
         await RankingService.updateProfileAfterGame(
           match.player1_id,
           match.game_type,
           false,
-          match.mode === 'ai' ? match.ai_difficulty : null
+          match.mode === 'ai' ? match.ai_difficulty : null,
+          perfResult.rawRatingChange
         );
+
+        await PerformanceService.savePerformanceResult(matchId, perfResult);
       }
 
       await query(

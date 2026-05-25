@@ -283,6 +283,13 @@ async function startServer() {
     console.log('[Migration] user_game_profile table check failed:', err.message?.substring(0, 80));
   }
 
+  try {
+    const { runMigrations } = await import('./migrations/performanceMigration.js');
+    await runMigrations();
+  } catch (err) {
+    console.log('[Migration] Performance fields migration check:', err.message?.substring(0, 80));
+  }
+
   // 添加 last_seen 字段用于心跳在线检测
   try {
     await query("ALTER TABLE user ADD COLUMN last_seen TIMESTAMP NULL DEFAULT NULL");

@@ -14,6 +14,11 @@ export interface GameMatch {
   score_change: number | null;
   created_at: string;
   finished_at: string | null;
+  performance_score: number | null;
+  performance_grade: string | null;
+  performance_title: string | null;
+  highlights: string[] | null;
+  performance_details: Record<string, any> | null;
 }
 
 export interface UserProfile {
@@ -49,6 +54,36 @@ export interface RankTier {
   name: string;
   min: number;
   color: string;
+}
+
+export interface PerformanceHighlight {
+  key: string;
+  icon: string;
+  name: string;
+  desc: string;
+  bonus: number;
+}
+
+export interface PerformanceBonus {
+  key: string;
+  value: number;
+  label: string;
+}
+
+export interface PerformanceResult {
+  score: number;
+  grade: string;
+  gradeLabel: string;
+  gradeColor: string;
+  bgGradient: string;
+  title: string;
+  ratingChange: number;
+  rawRatingChange: number;
+  difficultyCoeff: number;
+  strengthCoeff: number;
+  highlights: PerformanceHighlight[];
+  performanceBonuses: PerformanceBonus[];
+  breakdown: Record<string, any>;
 }
 
 export const gameApi = {

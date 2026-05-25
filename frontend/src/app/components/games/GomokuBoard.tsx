@@ -6,6 +6,7 @@ import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { GameResultModal } from './GameResultModal';
 
 interface GomokuBoardProps {
   matchId?: number;
@@ -517,8 +518,63 @@ export function GomokuBoard({
   const [matchId, setMatchId] = useState<number | null>(null);
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [performanceResult, setPerformanceResult] = useState<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thinkTimeRef = useRef<number>(4000);
+
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+    if (!matchId) {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
+        bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
+        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        difficultyCoeff: 0.85, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      return;
+    }
+    try {
+      const finishRes = await gameApi.finish(matchId, { won });
+      if (finishRes.data?.performance_score !== undefined) {
+        setPerformanceResult({
+          score: finishRes.data.performance_score,
+          grade: finishRes.data.performance_grade || defaultGrade,
+          gradeLabel: finishRes.data.performance_title || defaultTitle,
+          gradeColor: '#22C55E',
+          bgGradient: 'from-green-500 to-emerald-500',
+          title: finishRes.data.performance_title || defaultTitle,
+          ratingChange: finishRes.data.score_change || (won ? 22 : -12),
+          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 22 : -12)) / 1),
+          difficultyCoeff: 0.85,
+          strengthCoeff: 1.0,
+          highlights: finishRes.data.highlights || [],
+          performanceBonuses: [],
+          breakdown: finishRes.data.performance_details || {}
+        });
+      } else {
+        setPerformanceResult({
+          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+          title: defaultTitle, ratingChange: won ? 22 : -12,
+          rawRatingChange: won ? 22 : -12,
+          difficultyCoeff: 0.85, strengthCoeff: 1.0,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+      }
+    } catch {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? 22 : -12,
+        rawRatingChange: won ? 22 : -12,
+        difficultyCoeff: 0.85, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+    }
+  }, [matchId]);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);
@@ -599,11 +655,8 @@ export function GomokuBoard({
         saveGameResult('loss');
         recordDifficultyResult(false);
 
-        if (matchId) {
-        try {
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
+        processMatchFinish(false, 32, 'D', '再接再厉');
+        setShowResultModal(true);
 
         onGameOver?.('loss');
         return;
@@ -613,11 +666,8 @@ export function GomokuBoard({
         saveGameResult('draw');
         recordDifficultyResult(false);
 
-        if (matchId) {
-        try {
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
+        processMatchFinish(false, 50, 'C', '势均力敌');
+        setShowResultModal(true);
 
         onGameOver?.('draw');
       }
@@ -657,12 +707,8 @@ export function GomokuBoard({
       saveGameResult('win');
       recordDifficultyResult(true);
       
-      if (matchId) {
-        try {
-          // 玩家获胜
-          gameApi.finish(matchId, { won: true }).catch(() => {});
-        } catch {}
-      }
+      processMatchFinish(true, 78, 'B', '连珠新星');
+      setShowResultModal(true);
       
       onGameOver?.('win');
       return;
@@ -672,12 +718,8 @@ export function GomokuBoard({
       saveGameResult('draw');
       recordDifficultyResult(false);
       
-      if (matchId) {
-        try {
-          // 平局
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
+      processMatchFinish(false, 50, 'C', '势均力敌');
+      setShowResultModal(true);
       
       onGameOver?.('draw');
       return;
@@ -750,6 +792,22 @@ export function GomokuBoard({
       setGameStatus('lost');
       saveGameResult('loss');
       recordDifficultyResult(false);
+      setPerformanceResult({
+        score: 30,
+        grade: 'D',
+        gradeLabel: '认输',
+        gradeColor: '#9CA3AF',
+        bgGradient: 'from-gray-400 to-gray-300',
+        title: '认输',
+        ratingChange: -12,
+        rawRatingChange: -12,
+        difficultyCoeff: 0.85,
+        strengthCoeff: 1.0,
+        highlights: [],
+        performanceBonuses: [],
+        breakdown: {}
+      });
+      setShowResultModal(true);
       onGameOver?.('loss');
     }
   };
@@ -786,6 +844,26 @@ export function GomokuBoard({
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start relative overflow-hidden">
+      {/* 新的表现分结算弹窗 */}
+      <GameResultModal
+        open={showResultModal}
+        result={gameStatus === 'won' ? 'win' : gameStatus === 'lost' ? 'loss' : 'draw'}
+        gameType="gomoku"
+        performanceData={performanceResult}
+        gameStats={{
+          moveCount: stats.totalMoves,
+          durationSeconds: timerSeconds,
+          winRate: storedStats.games > 0 ? `${Math.round(storedStats.wins / storedStats.games * 100)}%` : '0%',
+          totalWins: storedStats.wins,
+          totalGames: storedStats.games
+        }}
+        onRestart={() => {
+          setShowResultModal(false);
+          resetBoard();
+        }}
+        onClose={() => setShowResultModal(false)}
+      />
+
       <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
         {/* Top Info Bar */}
         <div className="w-full max-w-[560px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm border border-gray-200/60 dark:border-gray-700/50">

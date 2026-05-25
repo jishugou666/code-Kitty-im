@@ -39,26 +39,33 @@ export const RankingService = {
     }
   },
 
-  calculateRatingChange(gameType, won, currentRating, aiDifficulty, opponentRating) {
+  calculateRatingChange(gameType, won, currentRating, aiDifficulty, opponentRating, performanceRatingChange) {
     try {
-      const scoreConfig = this.SCORE_MAP[gameType];
-      if (!scoreConfig) return 0;
+      let baseScore;
 
-      let baseScore = won ? scoreConfig.win : scoreConfig.loss;
+      if (typeof performanceRatingChange === 'number' && !isNaN(performanceRatingChange)) {
+        baseScore = performanceRatingChange;
+      } else {
+        const scoreConfig = this.SCORE_MAP[gameType];
+        if (!scoreConfig) return { change: 0, newRating: currentRating, newTier: this.getTierFromRating(currentRating) };
 
-      if (aiDifficulty) {
-        const multiplier = this.AI_MULTIPLIER[aiDifficulty] || 1.0;
-        baseScore = Math.round(baseScore * multiplier);
+        baseScore = won ? scoreConfig.win : scoreConfig.loss;
+
+        if (aiDifficulty) {
+          const multiplier = this.AI_MULTIPLIER[aiDifficulty] || 1.0;
+          baseScore = Math.round(baseScore * multiplier);
+        }
       }
 
       const newRating = Math.max(0, currentRating + baseScore);
       return {
         change: baseScore,
         newRating,
-        newTier: this.getTierFromRating(newRating)
+        newTier: this.getTierFromRating(newRating),
+        performanceRatingChange: typeof performanceRatingChange === 'number' ? performanceRatingChange : undefined
       };
     } catch (e) {
-      return { change: 0, newRating: currentRating, newTier: this.getTierFromRating(currentRating) };
+      return { change: 0, newRating: currentRating, newTier: this.getTierFromRating(currentRating), performanceRatingChange: undefined };
     }
   },
 
@@ -90,7 +97,7 @@ export const RankingService = {
     }
   },
 
-  async updateProfileAfterGame(userId, gameType, won, aiDifficulty) {
+  async updateProfileAfterGame(userId, gameType, won, aiDifficulty, performanceRatingChange) {
     try {
       const profile = await this.getOrCreateProfile(userId);
 
@@ -98,7 +105,9 @@ export const RankingService = {
         gameType,
         won,
         profile.rating,
-        aiDifficulty
+        aiDifficulty,
+        null,
+        performanceRatingChange
       );
 
       const totalGames = profile.total_games + 1;

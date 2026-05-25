@@ -6,6 +6,7 @@ import { Zap, Brain, Search, Target } from 'lucide-react';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
+import { GameResultModal } from './GameResultModal';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
   isCheckmate, isInCheck, MoveRecord
@@ -113,6 +114,61 @@ export function ChineseChessBoard({
   const thinkTimeRef = useRef<number>(3500);
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [performanceResult, setPerformanceResult] = useState<any>(null);
+
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+    if (!matchId) {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
+        bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
+        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        difficultyCoeff: 1.2, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      return;
+    }
+    try {
+      const finishRes = await gameApi.finish(matchId, { won });
+      if (finishRes.data?.performance_score !== undefined) {
+        setPerformanceResult({
+          score: finishRes.data.performance_score,
+          grade: finishRes.data.performance_grade || defaultGrade,
+          gradeLabel: finishRes.data.performance_title || defaultTitle,
+          gradeColor: '#22C55E',
+          bgGradient: 'from-green-500 to-emerald-500',
+          title: finishRes.data.performance_title || defaultTitle,
+          ratingChange: finishRes.data.score_change || (won ? 30 : -15),
+          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 30 : -15)) / 1),
+          difficultyCoeff: 1.2,
+          strengthCoeff: 1.0,
+          highlights: finishRes.data.highlights || [],
+          performanceBonuses: [],
+          breakdown: finishRes.data.performance_details || {}
+        });
+      } else {
+        setPerformanceResult({
+          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+          title: defaultTitle, ratingChange: won ? 30 : -15,
+          rawRatingChange: won ? 30 : -15,
+          difficultyCoeff: 1.2, strengthCoeff: 1.0,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+      }
+    } catch {
+      setPerformanceResult({
+        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+        title: defaultTitle, ratingChange: won ? 30 : -15,
+        rawRatingChange: won ? 30 : -15,
+        difficultyCoeff: 1.2, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+    }
+  }, [matchId]);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);
@@ -152,12 +208,8 @@ export function ChineseChessBoard({
           saveGameResult('win');
           recordDifficultyResult(true);
           
-          if (matchId) {
-        try {
-          // 玩家获胜
-          gameApi.finish(matchId, { won: true }).catch(() => {});
-        } catch {}
-      }
+          processMatchFinish(true, 80, 'B', '棋坛新秀');
+          setShowResultModal(true);
           
           onGameOver?.('win');
           return;
@@ -247,11 +299,8 @@ export function ChineseChessBoard({
         saveGameResult('loss');
         recordDifficultyResult(false);
 
-        if (matchId) {
-        try {
-          gameApi.finish(matchId, { won: false }).catch(() => {});
-        } catch {}
-      }
+        processMatchFinish(false, 35, 'D', '继续努力');
+        setShowResultModal(true);
 
         onGameOver?.('loss');
         return;
@@ -301,6 +350,22 @@ export function ChineseChessBoard({
     setGameStatus('lost');
     saveGameResult('loss');
     recordDifficultyResult(false);
+    setPerformanceResult({
+      score: 30,
+      grade: 'D',
+      gradeLabel: '认输',
+      gradeColor: '#9CA3AF',
+      bgGradient: 'from-gray-400 to-gray-300',
+      title: '认输',
+      ratingChange: -15,
+      rawRatingChange: -15,
+      difficultyCoeff: 1.2,
+      strengthCoeff: 1.0,
+      highlights: [],
+      performanceBonuses: [],
+      breakdown: {}
+    });
+    setShowResultModal(true);
     onGameOver?.('loss');
   };
 
@@ -336,6 +401,26 @@ export function ChineseChessBoard({
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start relative">
+      {/* 新的表现分结算弹窗 */}
+      <GameResultModal
+        open={showResultModal}
+        result={gameStatus === 'won' ? 'win' : gameStatus === 'lost' ? 'loss' : 'draw'}
+        gameType="chess"
+        performanceData={performanceResult}
+        gameStats={{
+          moveCount: history.length,
+          durationSeconds: timerSeconds,
+          winRate: storedStats.games > 0 ? `${Math.round(storedStats.wins / storedStats.games * 100)}%` : '0%',
+          totalWins: storedStats.wins,
+          totalGames: storedStats.games
+        }}
+        onRestart={() => {
+          setShowResultModal(false);
+          resetBoard();
+        }}
+        onClose={() => setShowResultModal(false)}
+      />
+
       <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
         <div className="w-full max-w-[560px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm border border-gray-200/60 dark:border-gray-700/50">
           <div className="flex items-center justify-between gap-3">

@@ -1578,6 +1578,94 @@
   - 使用绿色脉冲点+ "在线"文字营造真实对手在线的视觉效果
 - **执行结果**: ✅ 完成
 
+### 任务49: 表现分系统数据库迁移文件创建
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 创建数据库迁移文件，为 game_match 表添加表现分系统相关字段
+  - 实现 Node.js 迁移模块，支持安全检测列是否存在再添加（解决 MySQL 不支持 IF NOT EXISTS 的问题）
+  - 建立迁移日志记录机制，确保幂等性和可追溯性
+- **新增文件**:
+  - `backend/src/migrations/001_add_performance.sql` — SQL 迁移脚本（文档用途）
+    - 包含完整的 ALTER TABLE 语句
+    - 添加 5 个字段：performance_score, performance_grade, performance_title, highlights, performance_details
+    - 每个字段都有详细的中文注释说明用途
+  - `backend/src/migrations/performanceMigration.js` — 可执行的 Node.js 迁移模块
+    - 导入项目现有的 `query` 和 `getConnection` 函数（来自 `../utils/db.js`）
+    - `columnExists(tableName, columnName)` 函数：使用 `SHOW COLUMNS FROM` 语句安全检测列是否存在
+    - `createMigrationLogTable()` 函数：自动创建 migration_log 表记录迁移历史
+    - `isMigrationExecuted(migrationName)` 函数：检查特定迁移是否已执行
+    - `recordMigration()` 函数：记录迁移执行状态（成功/失败）和错误信息
+    - `runPerformanceMigration()` 核心函数：
+      - 遍历 5 个待添加字段
+      - 对每个字段先检测是否存在
+      - 不存在则执行 ALTER TABLE ADD COLUMN
+      - 存在则跳过并记录日志
+      - 汇总执行结果（成功添加的列、跳过的列）
+    - `runMigrations()` 导出函数：供 app.js 在启动时调用
+    - 完整的错误处理和日志输出
+- **数据库变更**:
+  - `game_match` 表新增 5 个字段：
+    | 字段名 | 类型 | 说明 |
+    |--------|------|------|
+    | performance_score | DECIMAL(5,2) | 表现分(0-100) |
+    | performance_grade | VARCHAR(2) | 表现等级(S/A/B/C/D) |
+    | performance_title | VARCHAR(50) | 表现称号 |
+    | highlights | JSON | 高光时刻列表 |
+    | performance_details | JSON | 表现分详细拆解 |
+  - 新增 `migration_log` 表用于记录所有迁移操作
+- **技术实现要点**:
+  - **MySQL 兼容性**：MySQL 不支持 `ADD COLUMN IF NOT EXISTS` 语法，通过 Node.js 层面先查询 `SHOW COLUMNS` 再决定是否执行 ALTER TABLE
+  - **幂等性设计**：重复执行不会报错，已存在的列会跳过，已执行的迁移会记录在日志中避免重复运行
+  - **错误隔离**：单个字段添加失败不影响其他字段的添加，最终汇总所有错误信息
+  - **日志可追溯**：migration_log 表记录每次迁移的名称、版本、时间、状态、错误信息
+  - **与现有代码集成**：使用项目统一的 db.js 工具函数，保持代码风格一致
+- **与 PerformanceService.js 的关系**:
+  - PerformanceService.js 的 `savePerformanceResult(matchId, performanceResult)` 方法需要写入这 5 个字段
+  - 迁移确保这些字段在数据库中存在，避免 PerformanceService 执行时出现 "Unknown column" 错误
+  - 迁移应在应用启动时自动执行（通过 app.js 调用 runMigrations()），确保服务启动前表结构就绪
+- **使用方式**:
+  ```javascript
+  // 在 app.js 启动时调用
+  import { runMigrations } from './migrations/performanceMigration.js';
+  
+  // 应用启动时自动执行迁移
+  await runMigrations();
+  ```
+- **执行结果**: ✅ 完成
+
+### 任务50: 修复三个游戏组件 await 构建错误
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 修复 ChineseChessBoard.tsx、GomokuBoard.tsx、TicTacToeBoard.tsx 中 `await` 被用在非 async 函数中的构建错误
+  - 在每个组件中添加 async 辅助函数 `processMatchFinish`，使用 useCallback 包裹
+  - 将所有 `try { const finishRes = await gameApi.finish(...) } catch {}` 块替换为调用辅助函数
+- **修改文件**:
+  - `frontend/src/app/components/games/ChineseChessBoard.tsx` — 添加 processMatchFinish + 替换2个await块
+  - `frontend/src/app/components/games/GomokuBoard.tsx` — 添加 processMatchFinish + 替换4个await块
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 添加 processMatchFinish + 替换4个await块
+- **具体修改内容**:
+  1. **ChineseChessBoard.tsx (difficultyCoeff=1.2)**:
+     - 添加 `processMatchFinish(won, defaultScore, defaultGrade, defaultTitle)` 辅助函数
+     - 胜利: `processMatchFinish(true, 80, 'B', '棋坛新秀')`
+     - 失败: `processMatchFinish(false, 35, 'D', '继续努力')`
+  2. **GomokuBoard.tsx (difficultyCoeff=0.85)**:
+     - 添加 `processMatchFinish(won, defaultScore, defaultGrade, defaultTitle)` 辅助函数
+     - 胜利: `processMatchFinish(true, 78, 'B', '连珠新星')`
+     - 失败: `processMatchFinish(false, 32, 'D', '再接再厉')`
+     - 平局: `processMatchFinish(false, 50, 'C', '势均力敌')`
+  3. **TicTacToeBoard.tsx (difficultyCoeff=0.4)**:
+     - 添加 `processMatchFinish(won, defaultScore, defaultGrade, defaultTitle)` 辅助函数
+     - 胜利: `processMatchFinish(true, 75, 'B', '表现出色')`
+     - 失败: `processMatchFinish(false, 30, 'D', '继续加油')`
+     - 平局: `processMatchFinish(false, 50, 'C', '势均力敌')`
+- **技术实现要点**:
+  - 辅助函数放在组件内部、state声明之后
+  - 使用 `useCallback` 包裹，依赖 `[matchId]`
+  - 函数内部处理无 matchId 的离线模式、API成功返回数据、API失败三种情况
+  - 删除所有旧的 try/catch/await 块，只保留一行 `processMatchFinish()` 调用
+  - 保持 `setShowResultModal(true)` 在调用之后
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
@@ -2014,6 +2102,11 @@ CREATE TABLE game_match (
   moves JSON DEFAULT NULL,
   duration_seconds INT DEFAULT NULL,
   score_change INT DEFAULT NULL,
+  performance_score DECIMAL(5,2) DEFAULT NULL COMMENT '表现分(0-100)',
+  performance_grade VARCHAR(2) DEFAULT NULL COMMENT '表现等级(S/A/B/C/D)',
+  performance_title VARCHAR(50) DEFAULT NULL COMMENT '表现称号',
+  highlights JSON DEFAULT NULL COMMENT '高光时刻列表',
+  performance_details JSON DEFAULT NULL COMMENT '表现分详细拆解',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   finished_at TIMESTAMP DEFAULT NULL
 );
@@ -2040,6 +2133,18 @@ CREATE TABLE user_game_profile (
   current_win_streak INT DEFAULT 0,
   best_win_streak INT DEFAULT 0,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### migration_log 数据库迁移日志表
+```sql
+CREATE TABLE migration_log (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  migration_name VARCHAR(255) NOT NULL UNIQUE,
+  version VARCHAR(50) NOT NULL,
+  executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('success','failed') DEFAULT 'success',
+  error_message TEXT DEFAULT NULL
 );
 ```
 
@@ -2529,4 +2634,4 @@ CREATE TABLE user_game_profile (
 ---
 
 **文档更新时间**: 2026-05-25
-**文档版本**: v2.0.4
+**文档版本**: v2.0.5
