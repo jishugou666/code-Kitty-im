@@ -35,10 +35,13 @@ export function GameInviteReceiver() {
       if (!token) return;
 
       const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || '';
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = apiBase
-        ? apiBase.replace(/^https?/, wsProtocol).replace(/\/api\/?$/, '')
-        : `${wsProtocol}//${window.location.host}`;
+      let wsHost: string;
+      if (apiBase) {
+        const apiUrl = new URL(apiBase, window.location.origin);
+        wsHost = `${apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'}//${apiUrl.host}`;
+      } else {
+        wsHost = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+      }
       const wsUrl = `${wsHost}/ws?token=${encodeURIComponent(token)}`;
 
       ws = new WebSocket(wsUrl);
