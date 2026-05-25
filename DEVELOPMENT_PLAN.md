@@ -625,6 +625,35 @@
       - 列表 stagger 入场动画
     - **构建验证**：✓ exit code 0, 2827 modules, built in 12.04s
 
+- ✅ **严重BUG修复：GameInviteReceiver 全局白屏（useNavigate依赖残留）**
+  - **现象**：修改 GameInviteReceiver 后所有页面白屏，控制台报错：
+    ```
+    Error: useNavigate() may be used only in the context of a <Router> component.
+    at Bt (index-CKmPQcZS.js:49:58)
+    ```
+  - **根因分析**：
+    ```
+    App.tsx 将 <GameInviteReceiver /> 挂载在 <RouterProvider> 外部（全局组件）
+    → 组件内部使用了 useNavigate() hook
+    → React Router v7 要求 useNavigate 必须在 <Router> 上下文中调用
+    → Hooks 规则违反 → 整个应用崩溃白屏
+    ```
+  - **修复过程（4步）**：
+    1. **删除 import**：移除 `import { useNavigate } from 'react-router'`
+    2. **删除 hook 调用**：移除 `const navigate = useNavigate()`
+    3. **替换跳转方式**（2处 navigate 调用 → window.location.href）：
+       - 第55行（发起者视角，对方接受后）：`window.location.href = /games?matchId=...`
+       - 第117行（被邀请者视角，自己接受后）：`window.location.href = /games?matchId=...`
+    4. **⚠️ 关键遗漏修复**：依赖数组中残留 `navigate` 变量引用（本次修复核心！）
+       - 第80行 `}, [navigate, toast])` → `}, [toast])`
+       - 第127行 `}, [invite, responding, navigate, toast])` → `}, [invite, responding, toast])`
+  - **技术要点**：
+    - 挂载在 RouterProvider 外部的全局组件**禁止使用** useNavigate/useLocation/useParams 等 React Router hooks
+    - 替代方案：`window.location.href`（完整页面跳转，丢失状态但安全可靠）
+    - 删除变量时必须同步清理所有引用（包括闭包/依赖数组/条件判断），否则 ReferenceError 导致崩溃
+  - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`（4处改动）
+  - **构建验证**：✓ exit code 0, 2828 modules transformed, built in 9.13s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

@@ -77,7 +77,7 @@ export function GameInviteReceiver() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       ws?.close();
     };
-  }, [navigate, toast]);
+  }, [toast]);
 
   useEffect(() => {
     if (!invite) {
