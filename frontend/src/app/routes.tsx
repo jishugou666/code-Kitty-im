@@ -2,6 +2,7 @@ import { createBrowserRouter, redirect } from "react-router";
 import { Suspense, lazy } from "react";
 import { MainLayout } from "./components/MainLayout";
 import { Login } from "./pages/Login";
+import { ClearAuth } from "./pages/ClearAuth";
 import { Chat } from "./pages/Chat";
 import { Profile } from "./pages/Profile";
 import { EmptyState } from "./pages/EmptyState";
@@ -52,6 +53,10 @@ function loginLoader() {
 }
 
 export const router = createBrowserRouter([
+  {
+    path: "/clear-auth",
+    Component: ClearAuth,
+  },
   {
     path: "/login",
     Component: Login,

@@ -39,6 +39,34 @@
     - frontend/src/app/pages/Login.tsx
     - frontend/src/app/routes.tsx
     - frontend/src/store/authStore.ts
+- ✅ **远程一键修复功能：/clear-auth**
+  - **用途**：当用户遇到无限刷新问题时，管理员可发送链接让用户一键清理本地认证数据
+  - **使用方式**：用户访问 `https://你的域名/clear-auth` 即可自动清理并跳转到登录页
+  - **清理内容**：
+    - localStorage: auth-storage, token, user
+    - sessionStorage: 全部清除
+  - **用户体验**：
+    - 清理中：显示加载动画 + "正在清理..."提示
+    - 成功：显示已清除项目清单（带动画）+ 2.5秒后自动跳转登录页
+    - 失败：显示手动操作指南（F12 → Application → Local Storage → Clear）
+  - **新增文件**：
+    - frontend/src/app/pages/ClearAuth.tsx (修复页面组件)
+  - **修改文件**：
+    - frontend/src/app/routes.tsx (注册 /clear-auth 路由)
+- ✅ **游戏创建对局API参数修复**
+  - **问题**：点击游戏进入对局后控制台报错 `API Error: 请选择游戏类型`，创建对局失败，离线模式运行，赢了也不加分
+  - **根因分析**：
+    - 后端 GameController.createMatch 使用 camelCase 解构：`const { gameType, mode, aiDifficulty } = req.body`
+    - 前端三个棋盘组件传的是 snake_case：`{ game_type: 'gomoku', ai_difficulty: 'medium' }`
+    - 参数名不匹配 → `gameType = undefined` → 触发验证错误 → 返回 "请选择游戏类型"
+  - **修复方案**：
+    - 统一前端所有 createMatch 调用使用 camelCase 参数
+    - 更新 game.ts API 接口 TypeScript 定义
+  - **修改文件列表**：
+    - frontend/src/api/game.ts (接口定义)
+    - frontend/src/app/components/games/GomokuBoard.tsx (2处调用)
+    - frontend/src/app/components/games/ChineseChessBoard.tsx (2处调用)
+    - frontend/src/app/components/games/TicTacToeBoard.tsx (1处调用)
 
 ### 2026-05-23
 - ✅ 娱乐游戏功能全栈开发完成（Phase P0-P1）

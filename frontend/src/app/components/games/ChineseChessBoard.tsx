@@ -266,9 +266,9 @@ export function ChineseChessBoard({
     const initMatch = async () => {
       try {
         const res = await gameApi.createMatch({
-          game_type: 'chess',
+          gameType: 'chess',
           mode: 'ai',
-          ai_difficulty: aiDifficulty
+          aiDifficulty
         });
         if (res.code === 200 && res.data) setMatchId(res.data.id);
       } catch { console.log('[Chess] 创建对局失败，离线模式'); }
@@ -289,7 +289,7 @@ export function ChineseChessBoard({
     setTimerSeconds(0);
     setCheckState(null);
     setAiThinkProgress(0);
-    gameApi.createMatch({ game_type: 'chess', mode: 'ai', ai_difficulty: aiDifficulty })
+    gameApi.createMatch({ gameType: 'chess', mode: 'ai', aiDifficulty })
       .then(res => { if (res.code === 200 && res.data) setMatchId(res.data.id); })
       .catch(() => {});
   };

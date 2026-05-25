@@ -547,9 +547,9 @@ export function GomokuBoard({
     const initMatch = async () => {
       try {
         const res = await gameApi.createMatch({
-          game_type: 'gomoku',
+          gameType: 'gomoku',
           mode: 'ai',
-          ai_difficulty: aiDifficulty
+          aiDifficulty
         });
         if (res.code === 200 && res.data) {
           setMatchId(res.data.id);
@@ -731,9 +731,9 @@ export function GomokuBoard({
     const initNewMatch = async () => {
       try {
         const res = await gameApi.createMatch({
-          game_type: 'gomoku',
+          gameType: 'gomoku',
           mode: 'ai',
-          ai_difficulty: aiDifficulty
+          aiDifficulty
         });
         if (res.code === 200 && res.data) {
           setMatchId(res.data.id);

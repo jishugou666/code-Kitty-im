@@ -52,7 +52,7 @@ export interface RankTier {
 }
 
 export const gameApi = {
-  createMatch: (data: { game_type: string; mode?: string; ai_difficulty?: string }) =>
+  createMatch: (data: { gameType: string; mode?: string; aiDifficulty?: string }) =>
     apiClient.post<GameMatch>('/game', data),
 
   move: (matchId: number, data: { position: number[]; symbol: string }) =>

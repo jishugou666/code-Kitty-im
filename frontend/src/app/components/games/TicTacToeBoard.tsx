@@ -238,9 +238,9 @@ export function TicTacToeBoard({
     initializingRef.current = true;
     try {
       const res = await gameApi.createMatch({
-        game_type: 'tictactoe',
+        gameType: 'tictactoe',
         mode: 'ai',
-        ai_difficulty: aiDifficulty
+        aiDifficulty
       });
       if (res.code === 200 && res.data?.id) {
         setMatchId(res.data.id);
