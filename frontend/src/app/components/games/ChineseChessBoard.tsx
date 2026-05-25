@@ -331,10 +331,10 @@ export function ChineseChessBoard({
     draw: { emoji: '🤝', text: '和棋', score: '+5', color: 'text-yellow-600' }
   };
 
-  const cellSizeVar = 'min(42px, calc((100vw - 300px) / 9))';
+  const cellSizeVar = 'min(46px, calc((100vw - 280px) / 9))';
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start relative overflow-hidden">
+    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 p-2 lg:p-4 items-start relative">
       <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
         <div className="w-full max-w-[560px] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-sm border border-gray-200/60 dark:border-gray-700/50">
           <div className="flex items-center justify-between gap-3">
@@ -378,8 +378,8 @@ export function ChineseChessBoard({
 
           <div className="chess-board-container relative" style={{
             '--ccs': cellSizeVar,
-            width: `calc(var(--ccs) * ${COLS - 1} + 1px)`,
-            height: `calc(var(--ccs) * ${ROWS - 1} + 1px)`,
+            width: `calc(var(--ccs) * ${COLS - 1} + var(--ccs) + 4px)`,
+            height: `calc(var(--ccs) * ${ROWS - 1} + var(--ccs) + 4px)`,
             position: 'relative'
           } as React.CSSProperties}>
             {/* SVG Background for perfect alignment */}

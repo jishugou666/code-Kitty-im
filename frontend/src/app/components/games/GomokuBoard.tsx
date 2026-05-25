@@ -49,33 +49,6 @@ const DIRECTIONS: [number, number][] = [
   [1, 0], [0, 1], [1, 1], [1, -1]
 ];
 
-const DIFFICULTY_CONFIG = {
-  easy: {
-    label: '新手模式',
-    desc: '适合初学者',
-    thinkTime: 1200,
-    color: 'text-green-500',
-    bgColor: 'bg-green-500',
-    barColor: 'bg-green-500'
-  },
-  medium: {
-    label: '普通模式',
-    desc: '有一定挑战',
-    thinkTime: 900,
-    color: 'text-yellow-500',
-    bgColor: 'bg-yellow-500',
-    barColor: 'bg-yellow-500'
-  },
-  hard: {
-    label: '专家模式',
-    desc: '极具挑战',
-    thinkTime: 600,
-    color: 'text-red-500',
-    bgColor: 'bg-red-500',
-    barColor: 'bg-red-500'
-  }
-};
-
 const PATTERN_SCORES = {
   FIVE: 10000000,
   LIVE_FOUR: 500000,
@@ -1053,9 +1026,9 @@ export function GomokuBoard({
           </button>
         </div>
 
-        {/* Difficulty Info */}
-        <div className={clsx("text-xs px-3 py-1.5 rounded-lg font-medium", config.color, "bg-opacity-10", `bg-${config.bgColor.replace('bg-', '')}/10`, "dark:bg-opacity-20")}>
-          {config.label} - {config.desc}
+        {/* 对局信息 */}
+        <div className="text-xs px-3 py-1.5 rounded-lg font-medium text-indigo-600 bg-indigo-500/10 dark:text-indigo-400 dark:bg-indigo-500/20">
+          在线对局 · 思考 {dynamicDiff.thinkTime}ms
         </div>
 
         {/* History Panel */}
@@ -1281,7 +1254,7 @@ export function GomokuBoard({
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">平均思考</span>
                   <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                    {stats.totalMoves > 0 ? Math.round(config.thinkTime / 1000) + 's' : '-'}
+                    {stats.totalMoves > 0 ? Math.round(dynamicDiff.thinkTime / 1000) + 's' : '-'}
                   </span>
                 </div>
               </div>

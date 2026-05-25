@@ -340,6 +340,66 @@
     - 每次落子时间都不同（±30%随机波动），模拟真人思考的不确定性
   - **构建验证**：✓ exit code 0, built in 11.36s
 
+- ✅ **五子棋运行时错误修复：config is not defined**
+  - **现象**：进入五子棋对局报错 `ReferenceError: config is not defined`
+  - **根因分析**：
+    - `GomokuBoard.tsx` 残留旧的 `DIFFICULTY_CONFIG` 常量（easy/medium/hard 三级配置）
+    - 但代码中错误地使用未定义的 `config` 变量引用配置属性
+    - 第1057行：`config.color`, `config.label`, `config.desc` → 全部 undefined
+    - 第1284行：`config.thinkTime` → undefined
+  - **修复方案（3处）**：
+    ```typescript
+    // 1. 删除旧常量（第52-77行，26行代码）
+    - const DIFFICULTY_CONFIG = { easy: {...}, medium: {...}, hard: {...} };
+    
+    // 2. 修复难度信息显示（第1057-1058行）
+    - <div className={..., config.color, ...}>{config.label} - {config.desc}</div>
+    + <div className="...text-indigo-600 bg-indigo-500/10...">
+    +   在线对局 · 思考 {dynamicDiff.thinkTime}ms
+    + </div>
+    
+    // 3. 修复统计面板（第1284行）
+    - Math.round(config.thinkTime / 1000)
+    + Math.round(dynamicDiff.thinkTime / 1000)
+    ```
+  - **构建验证**：✓ exit code 0, built in 11.68s
+
+- ✅ **象棋棋子出界 + 游戏区尺寸优化**
+  - **现象**：用户反馈"象棋棋子出界了，游戏区尺寸太小"
+  - **根因分析**：
+    1. **容器尺寸计算错误**：
+       ```
+       棋盘宽度 = calc(cellSize × 8 + 1px)     // 只算到第9列中心点
+       但最右按钮右边缘 = 8×cellSize + cellSize = 9×cellSize  // 超出！
+       
+       同理高度也少算了一个 cellSize，导致底部棋子出界
+       ```
+    2. **外层容器 overflow-hidden**：裁剪了超出的棋子
+    3. **cellSize 太小**：42px 导致整体偏小
+  - **修复方案（4处）**：
+    ```typescript
+    // 1. 增大格子尺寸（第334行）
+    - cellSizeVar = 'min(42px, calc((100vw - 300px) / 9))'
+    + cellSizeVar = 'min(46px, calc((100vw - 280px) / 9))'  // +10% 更大
+    
+    // 2. 修正容器宽度（第381行）
+    - width: calc(var(--ccs) * 8 + 1px)
+    + width: calc(var(--ccs) * 8 + var(--ccs) + 4px)  // +cellSize+4px 边距
+    
+    // 3. 修正容器高度（第382行）
+    - height: calc(var(--ccs) * 9 + 1px)
+    + height: calc(var(--ccs) * 9 + var(--ccs) + 4px)  // +cellSize+4px 边距
+    
+    // 4. 移除外层裁剪（第337行）
+    - <div className="... overflow-hidden">
+    + <div className="...">
+    ```
+  - **修复效果**：
+    - ✅ 棋子不再超出边界（四周各增加 cellSize/2 + 2px 余量）
+    - ✅ 棋盘视觉增大约10%（42px → 46px）
+    - ✅ 外层容器不再裁剪内容
+  - **构建验证**：✓ exit code 0, built in 11.68s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
