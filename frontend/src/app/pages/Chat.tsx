@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info, Gamepad2, ChevronRight } from "lucide-react";
+import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info, Gamepad2, ChevronRight, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
@@ -190,6 +190,24 @@ export function Chat() {
       toast(error.message || '邀请失败', 'error');
     } finally {
       setIsInvitingGame(false);
+    }
+  };
+
+  const handleRespondGameInvite = async (matchId: number, accepted: boolean) => {
+    if (!token) return;
+    try {
+      const { gameApi } = await import('../../api/game');
+      const res = await gameApi.respondGameInvite({ matchId, accepted });
+      if (res.code === 200 && accepted) {
+        toast('接受成功！正在进入对局...', 'success');
+        setTimeout(() => {
+          window.location.href = '/games';
+        }, 600);
+      } else if (res.code === 200) {
+        toast('已拒绝邀请', 'info');
+      }
+    } catch (err: any) {
+      toast(err.message || '操作失败', 'error');
     }
   };
 
@@ -784,6 +802,83 @@ export function Chat() {
                             } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
                           })()
                         )}
+                        {message.type === 'game_invite' && (() => {
+                          try {
+                            const inviteData = JSON.parse(message.content || '{}');
+                            const isPending = inviteData.status === 'pending';
+                            const isAccepted = inviteData.status === 'accepted';
+                            const isRejected = inviteData.status === 'rejected';
+                            const isSelfInvite = Number(inviteData.inviterId) === user?.id;
+                            const canRespond = isPending && !isSelfInvite;
+
+                            return (
+                              <div className="w-[260px] sm:w-[280px]">
+                                <div className={clsx(
+                                  "rounded-lg border overflow-hidden",
+                                  isAccepted ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20" :
+                                  isRejected ? "border-red-300 bg-red-50 dark:bg-red-900/20" :
+                                  "border-indigo-200 bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
+                                )}>
+                                  <div className={clsx(
+                                    "px-3 py-2 flex items-center gap-2",
+                                    isAccepted ? "bg-emerald-100 dark:bg-emerald-800/30" :
+                                    isRejected ? "bg-red-100 dark:bg-red-800/30" :
+                                    "bg-indigo-100 dark:bg-indigo-800/30"
+                                  )}>
+                                    <Gamepad2 size={16} className={clsx(
+                                      isAccepted ? "text-emerald-600" : isRejected ? "text-red-500" : "text-indigo-600"
+                                    )} />
+                                    <span className={clsx("text-xs font-semibold truncate",
+                                      isAccepted ? "text-emerald-700 dark:text-emerald-300" :
+                                      isRejected ? "text-red-700 dark:text-red-300" :
+                                      "text-indigo-700 dark:text-indigo-300"
+                                    )}>
+                                      {isAccepted ? '对局已开始' : isRejected ? '邀请已拒绝' : '游戏邀请'}
+                                    </span>
+                                  </div>
+                                  <div className="px-3 py-2">
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">
+                                      {isSelfInvite
+                                        ? `你邀请对方进行一局 ${inviteData.gameName || inviteData.gameType}`
+                                        : `${inviteData.inviterName || '对方'} 邀请你进行一局 ${inviteData.gameName || inviteData.gameType}`}
+                                    </p>
+                                    {canRespond && (
+                                      <div className="flex gap-2 mt-1">
+                                        <button
+                                          onClick={() => handleRespondGameInvite(inviteData.matchId, true)}
+                                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                                        >
+                                          <CheckCircle2 size={12} /> 同意
+                                        </button>
+                                        <button
+                                          onClick={() => handleRespondGameInvite(inviteData.matchId, false)}
+                                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 transition-colors"
+                                        >
+                                          <XCircle size={12} /> 拒绝
+                                        </button>
+                                      </div>
+                                    )}
+                                    {isAccepted && (
+                                      <button
+                                        onClick={() => window.location.href = `/games?matchId=${inviteData.matchId}&gameType=${inviteData.gameType}`}
+                                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors mt-1"
+                                      >
+                                        <CheckCircle2 size={12} /> 进入对局
+                                      </button>
+                                    )}
+                                    {(isRejected || (!isPending && !isSelfInvite)) && (
+                                      <p className="text-[10px] text-gray-400 text-center mt-1">
+                                        {isRejected ? '已拒绝该邀请' : '对方已响应邀请'}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } catch {
+                            return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>[游戏邀请消息]</p>;
+                          }
+                        })()}
                         <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
                           {message.status === 'pending' && (
                             <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">

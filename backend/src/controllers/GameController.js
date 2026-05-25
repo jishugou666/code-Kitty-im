@@ -1,7 +1,10 @@
 import { query } from '../utils/db.js';
 import { GameService } from '../services/GameService.js';
 import { RankingService } from '../services/RankingService.js';
+import { ConversationService } from '../services/ConversationService.js';
 import { success, error, validationError } from '../utils/response.js';
+
+const conversationService = new ConversationService();
 
 export const GameController = {
   async createMatch(req, res, next) {
@@ -199,22 +202,29 @@ export const GameController = {
 
       const match = await GameService.createInvite(inviterId, opponentId, gameType);
 
-      const inviterProfile = await query('SELECT nickname FROM user WHERE id = ?', [inviterId]);
+      const inviterProfile = await query('SELECT nickname, avatar FROM user WHERE id = ?', [inviterId]);
       const inviterName = inviterProfile.length > 0 ? inviterProfile[0].nickname : '对方';
+      const inviterAvatar = inviterProfile.length > 0 ? (inviterProfile[0].avatar || '') : '';
+
+      const GAME_TYPE_NAMES = { tictactoe: '井字棋', gomoku: '五子棋', chess: '中国象棋' };
+      const inviteContent = JSON.stringify({
+        matchId: match.id,
+        gameType,
+        gameName: GAME_TYPE_NAMES[gameType] || gameType,
+        inviterId,
+        inviterName,
+        inviterAvatar,
+        status: 'pending'
+      });
 
       try {
-        const { sendToUser } = await import('../utils/websocket.js');
-        sendToUser(Number(opponentId), JSON.stringify({
-          type: 'game_invite',
-          data: {
-            matchId: match.id,
-            gameType,
-            inviterId,
-            inviterName
-          }
-        }));
-      } catch (wsErr) {
-        console.log('[Game] WS通知发送失败(用户可能离线):', wsErr.message);
+        const convId = await conversationService.createSingleConversation(inviterId, Number(opponentId));
+        await query(
+          "INSERT INTO message (conversation_id, sender_id, content, type) VALUES (?, ?, ?, 'game_invite')",
+          [convId, inviterId, inviteContent]
+        );
+      } catch (msgErr) {
+        console.log('[Game] 邀请消息插入失败:', msgErr.message);
       }
 
       res.json({ code: 200, data: match, msg: '邀请已发送' });
@@ -241,28 +251,26 @@ export const GameController = {
         return;
       }
 
+      try {
+        const inviteMsg = await query(
+          "SELECT id, content FROM message WHERE type = 'game_invite' AND conversation_id IN (SELECT cm.conversation_id FROM conversation_member cm WHERE cm.user_id IN (?, (SELECT player1_id FROM game_match WHERE id = ?)) GROUP BY conversation_id HAVING COUNT(DISTINCT cm.user_id) = 2) ORDER BY id DESC LIMIT 1",
+          [userId, matchId]
+        );
+        if (inviteMsg.length > 0) {
+          let msgData = {};
+          try { msgData = JSON.parse(inviteMsg[0].content); } catch {}
+          msgData.status = accepted ? 'accepted' : 'rejected';
+          msgData.respondedAt = new Date().toISOString();
+          await query("UPDATE message SET content = ? WHERE id = ?", [JSON.stringify(msgData), inviteMsg[0].id]);
+        }
+      } catch (updateErr) {
+        console.log('[Game] 邀请消息状态更新失败:', updateErr.message);
+      }
+
       if (result.rejected) {
-        try {
-          const matchInfo = await query('SELECT player1_id FROM game_match WHERE id = ?', [matchId]);
-          if (matchInfo.length > 0) {
-            const { sendToUser } = await import('../utils/websocket.js');
-            sendToUser(matchInfo[0].player1_id, JSON.stringify({
-              type: 'game_invite_rejected',
-              data: { matchId }
-            }));
-          }
-        } catch {}
         res.json({ code: 200, data: { rejected: true }, msg: '已拒绝邀请' });
         return;
       }
-
-      try {
-        const { sendToUser } = await import('../utils/websocket.js');
-        sendToUser(result.match.player1_id, JSON.stringify({
-          type: 'game_invite_accepted',
-          data: { matchId: result.match.id, gameType: result.match.game_type }
-        }));
-      } catch {}
 
       res.json({ code: 200, data: result.match, msg: '接受成功，即将开始对局' });
     } catch (error) {

@@ -3,7 +3,6 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { BanOverlay } from './components/BanOverlay';
 import { RateLimitOverlay } from './components/RateLimitOverlay';
-import { GameInviteReceiver } from './components/games/GameInviteReceiver';
 import { apiClient } from '../api/client';
 import { useHeartbeat } from '../hooks/useHeartbeat';
 
@@ -80,7 +79,6 @@ export default function App() {
   return (
     <div className="w-screen h-screen bg-[#F4F5F9] dark:bg-[#0A0C10] text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden flex">
       <RouterProvider router={router} />
-      <GameInviteReceiver />
       <RateLimitOverlay
         isVisible={showRateLimit}
         retryAfter={5}
