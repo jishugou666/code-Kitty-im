@@ -1455,6 +1455,65 @@
   - 同时防止屏幕关闭和系统休眠两种行为
 - **执行结果**: ✅ 完成（已运行验证）
 
+### 任务45: TicTacToeBoard.tsx 动态难度系统与对手信息集成
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 将井字棋组件从静态AI难度（aiDifficulty prop）改造为动态难度系统
+  - 集成 dynamicDifficulty 模块实现自适应难度调节
+  - 添加虚拟对手信息卡片UI，提升游戏沉浸感
+  - 所有游戏结束事件对接动态难度记录系统
+- **修改文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 核心改造
+- **核心变更**:
+  - **新增导入**: `generateOpponent`, `getDynamicDifficulty`, `recordGameResult`(别名`recordDifficultyResult`) from `./dynamicDifficulty`; `Zap` from `lucide-react`
+  - **接口简化**: 移除 `aiDifficulty?: 'easy' | 'medium' | 'hard'` 属性，Props 仅保留 matchId/onGameOver/mode
+  - **状态增强**: 新增 `opponent`(useState+generateOpponent) 和 `dynamicDiff`(getDynamicDifficulty)
+  - **API调用简化**: createMatch 移除 aiDifficulty 参数，仅传 gameType + mode
+  - **动态难度记录**: 5个游戏结束点全部添加 recordDifficultyResult 调用：
+    - 玩家获胜(win): `recordDifficultyResult(true)` → 难度可能提升
+    - AI获胜/平局/认输(loss/draw): `recordDifficultyResult(false)` → 难度可能降低
+  - **AI引用替换**: 全部 `aiDifficulty` 引用替换为 `dynamicDiff`（getAIMove/THINKING_TIME/statusText/DIFFICULTY_DESC/shareResult/aria-label 共7处）
+  - **UI文本替换**: "AI正在思考..." → `${opponent.nickname}正在思考...`
+  - **对手信息卡片**: 在棋盘上方新增对手信息卡片，包含头像、昵称、段位标签、积分、"实时匹配"标签、"动态难度"标识(Zap图标)
+- **架构变化**:
+  ```
+  之前: 外部传入 aiDifficulty prop → 固定难度不变 → 纯AI对战体验
+  之后: getDynamicDifficulty() 自适应计算 → 根据胜负历史动态调整 → 虚拟对手沉浸体验
+  ```
+- **依赖模块**: `dynamicDifficulty.ts`（需已存在于同目录）
+- **执行结果**: ✅ 完成
+
+### 任务46: ChineseChessBoard.tsx 动态难度系统与对手信息集成
+- **执行时间**: 2026-05-25
+- **任务内容**:
+  - 将中国象棋组件从静态AI难度（aiDifficulty prop）改造为动态难度系统
+  - 集成 dynamicDifficulty 模块实现自适应难度调节
+  - 添加虚拟对手信息卡片UI，提升游戏沉浸感
+  - 所有游戏结束事件对接动态难度记录系统
+- **修改文件**:
+  - `frontend/src/app/components/games/ChineseChessBoard.tsx` — 核心改造
+- **核心变更**:
+  - **新增导入**: `generateOpponent`, `getDynamicDifficulty`, `recordGameResult`(别名`recordDifficultyResult`) from `./dynamicDifficulty`; `Zap` from `lucide-react`
+  - **接口简化**: 移除 `aiDifficulty?: string` 属性，Props 仅保留 matchId/onGameOver/mode
+  - **状态增强**: 新增 `opponent`(useState+generateOpponent) 和 `dynamicDiff`(getDynamicDifficulty)
+  - **移除常量**: 删除 `DIFFICULTY_CONFIG` 常量对象（easy/medium/hard 三档配置），不再需要
+  - **API调用简化**: 两处 createMatch 调用均移除 aiDifficulty 参数，仅传 gameType + mode
+  - **动态难度记录**: 3个游戏结束点全部添加 recordDifficultyResult 调用：
+    - 玩家吃将获胜(win): `recordDifficultyResult(true)` → 难度可能提升
+    - AI将死玩家/认输(loss): `recordDifficultyResult(false)` → 难度可能降低
+  - **AI引用替换**: getAIMove 的 aiDifficulty 参数硬编码为 `'medium'`；config.thinkTime 全部替换为 dynamicDiff.thinkTime（3处：interval/setTimeout/transition）；config.barColor 替换为固定 `bg-blue-500`
+  - **UI文本替换**: "AI 思考中..." → `${opponent.nickname} 思考中...`；"黑方(AI)" → `黑方(${opponent.nickname})`
+  - **底部状态栏**: 原 `{config.label} - {config.desc}` 改为 `动态难度 Lv.XX% · 思考 XXXms`
+  - **对手信息卡片**: 在侧边栏统计区域最前面新增对手信息卡片，包含头像、昵称、段位标签、积分、"实时匹配"标签、"动态难度"标识(Zap图标)
+  - **依赖数组清理**: useEffect 和 useCallback 移除 aiDifficulty/config.thinkTime 引用
+- **架构变化**:
+  ```
+  之前: 外部传入 aiDifficulty prop → DIFFICULTY_CONFIG 查表 → 固定难度不变 → 纯AI对战体验
+  之后: getDynamicDifficulty() 自适应计算 → thinkTime/errorRate 动态调整 → 虚拟对手沉浸体验
+  ```
+- **依赖模块**: `dynamicDifficulty.ts`（已存在于同目录）
+- **执行结果**: ✅ 完成
+
 ---
 
 ## 重要问题修复记录
@@ -2405,5 +2464,5 @@ CREATE TABLE user_game_profile (
 
 ---
 
-**文档更新时间**: 2026-05-24
-**文档版本**: v2.0.2
+**文档更新时间**: 2026-05-25
+**文档版本**: v2.0.3

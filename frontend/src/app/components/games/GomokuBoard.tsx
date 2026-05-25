@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
+import { Zap } from 'lucide-react';
 import { gameApi } from '../../../api/game';
+import { generateOpponent, getDynamicDifficulty, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 
 interface GomokuBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  aiDifficulty?: string;
   mode?: 'ai';
 }
 
@@ -521,7 +522,6 @@ if (typeof document !== 'undefined') {
 export function GomokuBoard({
   matchId: _matchId,
   onGameOver,
-  aiDifficulty = 'medium',
   mode = 'ai'
 }: GomokuBoardProps) {
   const [board, setBoard] = useState<Board>(createEmptyBoard);
@@ -540,8 +540,9 @@ export function GomokuBoard({
   const [aiThinkProgress, setAiThinkProgress] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [matchId, setMatchId] = useState<number | null>(null);
+  const [opponent] = useState(() => generateOpponent());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const config = DIFFICULTY_CONFIG[aiDifficulty as keyof typeof DIFFICULTY_CONFIG] || DIFFICULTY_CONFIG.medium;
+  const dynamicDiff = getDynamicDifficulty();
 
   useEffect(() => {
     const initMatch = async () => {
@@ -549,7 +550,6 @@ export function GomokuBoard({
         const res = await gameApi.createMatch({
           gameType: 'gomoku',
           mode: 'ai',
-          aiDifficulty
         });
         if (res.code === 200 && res.data) {
           setMatchId(res.data.id);
@@ -573,17 +573,18 @@ export function GomokuBoard({
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
+    const thinkTime = dynamicDiff.thinkTime;
     let progress = 0;
     const interval = setInterval(() => {
       progress += Math.random() * 25 + 10;
       if (progress > 95) progress = 90 + Math.random() * 8;
       setAiThinkProgress(progress);
-    }, config.thinkTime / 8);
+    }, thinkTime / 8);
     const timer = setTimeout(() => {
       clearInterval(interval);
       setAiThinkProgress(100);
       const currentBoard = board.map(r => [...r]);
-      const [aiRow, aiCol] = getAIPosition(currentBoard, aiDifficulty, history.filter(h => h.player === WHITE).length);
+      const [aiRow, aiCol] = getAIPosition(currentBoard, 'medium', history.filter(h => h.player === WHITE).length);
       const newBoard = board.map(r => [...r]);
       newBoard[aiRow][aiCol] = WHITE;
       setBoard(newBoard);
@@ -600,6 +601,7 @@ export function GomokuBoard({
         setWinningCells(winCells);
         setGameStatus('lost');
         saveGameResult('loss');
+        recordDifficultyResult(false);
         
         if (matchId) {
         try {
@@ -614,6 +616,7 @@ export function GomokuBoard({
       if (newBoard.every(r => r.every(c => c !== EMPTY))) {
         setGameStatus('draw');
         saveGameResult('draw');
+        recordDifficultyResult(false);
         
         if (matchId) {
         try {
@@ -624,9 +627,9 @@ export function GomokuBoard({
         
         onGameOver?.('draw');
       }
-    }, config.thinkTime);
+    }, dynamicDiff.thinkTime);
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); };
-  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver, config.thinkTime, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, dynamicDiff.thinkTime, history, matchId]);
 
   const stats: GameStats = useMemo(() => ({
     totalMoves: history.length,
@@ -658,6 +661,7 @@ export function GomokuBoard({
       setWinningCells(winCells);
       setGameStatus('won');
       saveGameResult('win');
+      recordDifficultyResult(true);
       
       if (matchId) {
         try {
@@ -672,6 +676,7 @@ export function GomokuBoard({
     if (newBoard.every(r => r.every(c => c !== EMPTY))) {
       setGameStatus('draw');
       saveGameResult('draw');
+      recordDifficultyResult(false);
       
       if (matchId) {
         try {
@@ -733,7 +738,6 @@ export function GomokuBoard({
         const res = await gameApi.createMatch({
           gameType: 'gomoku',
           mode: 'ai',
-          aiDifficulty
         });
         if (res.code === 200 && res.data) {
           setMatchId(res.data.id);
@@ -750,6 +754,7 @@ export function GomokuBoard({
       }
       setGameStatus('lost');
       saveGameResult('loss');
+      recordDifficultyResult(false);
       onGameOver?.('loss');
     }
   };
@@ -767,7 +772,7 @@ export function GomokuBoard({
     } catch {}
   };
 
-  const statusText = gameStatus !== 'playing' ? '' : isAIThinking ? '\u26AA AI \u601d\u8003\u4e2d... (\u767d\u65b9)' : '\u26AB \u4f60\u7684\u56de\u5408 (\u9ed1\u65b9)';
+  const statusText = gameStatus !== 'playing' ? '' : isAIThinking ? `\u26AA ${opponent.nickname} 思考中... (白方)` : '\u26AB 你的回合 (黑方)';
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
     lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
@@ -801,7 +806,7 @@ export function GomokuBoard({
                 <div className="flex items-center gap-0.5">
                   {[0, 1, 2].map(i => (
                     <motion.span key={i}
-                      className={clsx("w-1.5 h-1.5 rounded-full", config.bgColor)}
+                      className="w-1.5 h-1.5 rounded-full bg-amber-500"
                       animate={{ opacity: [1, 0.3, 1], scale: [1, 0.8, 1] }}
                       transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }}
                     />
@@ -823,10 +828,10 @@ export function GomokuBoard({
             {isAIThinking && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 6, opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                 <motion.div
-                  className={clsx("h-full rounded-full transition-all", config.barColor)}
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
                   initial={{ width: '0%' }}
                   animate={{ width: `${aiThinkProgress}%` }}
-                  transition={{ ease: 'linear', duration: config.thinkTime / 800 }}
+                  transition={{ ease: 'linear', duration: dynamicDiff.thinkTime / 800 }}
                 />
               </motion.div>
             )}
@@ -1089,6 +1094,28 @@ export function GomokuBoard({
 
       {/* Sidebar Stats */}
       <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
+        {/* Opponent Info Card */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <img
+              src={opponent.avatar}
+              alt={opponent.nickname}
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
+              <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+            <span className="flex items-center gap-1">
+              <Zap size={12} className="text-amber-500" />
+              动态难度
+            </span>
+          </div>
+        </div>
+
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
           <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">游戏统计</h3>
           <div className="space-y-3">

@@ -67,6 +67,27 @@
     - frontend/src/app/components/games/GomokuBoard.tsx (2处调用)
     - frontend/src/app/components/games/ChineseChessBoard.tsx (2处调用)
     - frontend/src/app/components/games/TicTacToeBoard.tsx (1处调用)
+- ✅ **动态难度系统 + 随机对手功能**
+  - **需求**：取消固定难度选项，使用动态难度（遇强则强遇弱放水），用随机挂名替代AI显示
+  - **新增文件**：
+    - `frontend/src/app/components/games/dynamicDifficulty.ts` - 动态难度引擎
+      - `generateOpponent(playerRating)`: 生成随机对手（中文姓名+头像+段位+积分）
+      - `getDynamicDifficulty()`: 获取当前动态难度（level 0-1, thinkTime, errorRate）
+      - `recordGameResult(won)`: 记录胜负结果，自动调整难度
+        - 连胜加速提升（每连胜+8%bonus，上限25%）
+        - 连败加速降低（每连败+6%penalty，上限20%）
+        - 基础调整速度15%
+      - 难度影响：思考时间400-1400ms，错误率2%-35%
+  - **修改内容**：
+    - Games.tsx: 移除所有难度选择按钮，显示"⚡动态匹配"标签
+    - GomokuBoard.tsx: 移除aiDifficulty prop，使用dynamicDiff，添加对手信息卡片
+    - ChineseChessBoard.tsx: 同上
+    - TicTacToeBoard.tsx: 同上
+  - **用户体验**：
+    - 进入游戏自动匹配"真人"对手（随机生成中文姓名）
+    - 对手信息卡片：头像 + 昵称 + 段位 + 积分 + "实时匹配"标签
+    - 状态栏显示对手昵称而非"AI"
+    - 难度根据玩家表现实时调整，无需手动选择
 
 ### 2026-05-23
 - ✅ 娱乐游戏功能全栈开发完成（Phase P0-P1）

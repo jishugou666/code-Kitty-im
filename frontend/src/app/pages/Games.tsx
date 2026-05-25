@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2 } from 'lucide-react';
+import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Zap } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
@@ -24,9 +24,6 @@ export function Games() {
 
   const [activeGame, setActiveGame] = useState<ActiveGame>(null);
   const [activeTab, setActiveTab] = useState<TabType>('leaderboard');
-  const [tictactoeDifficulty, setTictactoeDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [gomokuDifficulty, setGomokuDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [chessDifficulty, setChessDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
 
   useEffect(() => {
     fetchProfile();
@@ -46,36 +43,27 @@ export function Games() {
     }, 500);
   };
 
+  const handleBackToLobby = () => {
+    setActiveGame(null);
+  };
+
   if (activeGame === 'tictactoe') {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10] p-4">
         <div className="w-full max-w-2xl flex items-center justify-between mb-4">
           <button
-            onClick={() => setActiveGame(null)}
+            onClick={handleBackToLobby}
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
-            ← 返回大厅
+            <ArrowLeft size={16} />
+            返回大厅
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">难度:</span>
-            {(['easy', 'medium', 'hard'] as const).map((diff) => (
-              <button
-                key={diff}
-                onClick={() => setTictactoeDifficulty(diff)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  tictactoeDifficulty === diff
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                )}
-              >
-                {diff === 'easy' ? '简单' : diff === 'medium' ? '中等' : '困难'}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Zap size={14} className="text-amber-500" />
+            动态匹配
           </div>
         </div>
         <TicTacToeBoard
-          aiDifficulty={tictactoeDifficulty}
           mode="ai"
           onGameOver={handleGameOver}
         />
@@ -88,31 +76,18 @@ export function Games() {
       <div className="h-full flex flex-col items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10] p-4 overflow-auto">
         <div className="w-full max-w-2xl flex items-center justify-between mb-4">
           <button
-            onClick={() => setActiveGame(null)}
+            onClick={handleBackToLobby}
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
-            ← 返回大厅
+            <ArrowLeft size={16} />
+            返回大厅
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">难度:</span>
-            {(['easy', 'medium', 'hard'] as const).map((diff) => (
-              <button
-                key={diff}
-                onClick={() => setGomokuDifficulty(diff)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  gomokuDifficulty === diff
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                )}
-              >
-                {diff === 'easy' ? '简单' : diff === 'medium' ? '中等' : '困难'}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Zap size={14} className="text-amber-500" />
+            动态匹配
           </div>
         </div>
         <GomokuBoard
-          aiDifficulty={gomokuDifficulty}
           mode="ai"
           onGameOver={handleGameOver}
         />
@@ -125,31 +100,18 @@ export function Games() {
       <div className="h-full flex flex-col items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10] p-4 overflow-auto">
         <div className="w-full max-w-2xl flex items-center justify-between mb-4">
           <button
-            onClick={() => setActiveGame(null)}
+            onClick={handleBackToLobby}
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
-            ← 返回大厅
+            <ArrowLeft size={16} />
+            返回大厅
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">难度:</span>
-            {(['easy', 'medium', 'hard'] as const).map((diff) => (
-              <button
-                key={diff}
-                onClick={() => setChessDifficulty(diff)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                  chessDifficulty === diff
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                )}
-              >
-                {diff === 'easy' ? '简单' : diff === 'medium' ? '中等' : '困难'}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Zap size={14} className="text-amber-500" />
+            动态匹配
           </div>
         </div>
         <ChineseChessBoard
-          aiDifficulty={chessDifficulty}
           mode="ai"
           onGameOver={handleGameOver}
         />
@@ -214,8 +176,8 @@ export function Games() {
               </div>
 
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Gamepad2 size={14} />
-                <span>AI 对战</span>
+                <User size={14} />
+                <span>实时匹配</span>
                 <span className="mx-1">·</span>
                 <Clock size={14} />
                 <span>约 2 分钟</span>
@@ -242,8 +204,8 @@ export function Games() {
               </div>
 
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Gamepad2 size={14} />
-                <span>AI 对战</span>
+                <User size={14} />
+                <span>实时匹配</span>
                 <span className="mx-1">·</span>
                 <Clock size={14} />
                 <span>约 5-15 分钟</span>
@@ -270,8 +232,8 @@ export function Games() {
               </div>
 
               <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Gamepad2 size={14} />
-                <span>AI 对战</span>
+                <User size={14} />
+                <span>实时匹配</span>
                 <span className="mx-1">·</span>
                 <Clock size={14} />
                 <span>约 10-30 分钟</span>

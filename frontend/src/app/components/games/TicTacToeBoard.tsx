@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft } from 'lucide-react';
+import { Trophy, RotateCcw, HelpCircle, Clock, Target, Share2, History, ChevronLeft, Zap } from 'lucide-react';
 import { gameApi } from '../../../api/game';
+import { generateOpponent, getDynamicDifficulty, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 
 interface TicTacToeBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  aiDifficulty?: 'easy' | 'medium' | 'hard';
   mode?: 'ai';
 }
 
@@ -202,9 +202,10 @@ function saveStatsToStorage(stats: { wins: number; losses: number; draws: number
 export function TicTacToeBoard({
   matchId: _matchId,
   onGameOver,
-  aiDifficulty = 'medium',
   mode = 'ai'
 }: TicTacToeBoardProps) {
+  const [opponent] = useState(() => generateOpponent());
+  const dynamicDiff = getDynamicDifficulty();
   const [board, setBoard] = useState<Board>(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState<boolean>(true);
   const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
@@ -239,8 +240,7 @@ export function TicTacToeBoard({
     try {
       const res = await gameApi.createMatch({
         gameType: 'tictactoe',
-        mode: 'ai',
-        aiDifficulty
+        mode: 'ai'
       });
       if (res.code === 200 && res.data?.id) {
         setMatchId(res.data.id);
@@ -250,7 +250,7 @@ export function TicTacToeBoard({
     } finally {
       initializingRef.current = false;
     }
-  }, [aiDifficulty]);
+  }, []);
 
   useEffect(() => {
     if (gameStatus === 'playing' && !matchId && !isAIThinking) {
@@ -318,6 +318,7 @@ export function TicTacToeBoard({
       }
       
       onGameOver?.('win');
+      recordDifficultyResult(true);
       return;
     }
 
@@ -336,6 +337,7 @@ export function TicTacToeBoard({
       }
       
       onGameOver?.('draw');
+      recordDifficultyResult(false);
       return;
     }
 
@@ -345,7 +347,7 @@ export function TicTacToeBoard({
   const aiMove = useCallback(() => {
     setTimeout(() => {
       const currentBoard = [...board];
-      const aiIdx = getAIMove(currentBoard, aiDifficulty);
+      const aiIdx = getAIMove(currentBoard, dynamicDiff);
 
       setHistory(h => [...h, { board: currentBoard, isXNext: false, lastMove: lastMoveIndex }].slice(-20));
 
@@ -376,12 +378,13 @@ export function TicTacToeBoard({
         
         if (matchId) {
         try {
-          // AI赢，玩家输
+          // 对手获胜，玩家输
           gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
         
         onGameOver?.('loss');
+        recordDifficultyResult(false);
         return;
       }
 
@@ -400,9 +403,10 @@ export function TicTacToeBoard({
       }
         
         onGameOver?.('draw');
+        recordDifficultyResult(false);
       }
-    }, THINKING_TIME[aiDifficulty]);
-  }, [board, aiDifficulty, lastMoveIndex, stats, onGameOver, matchId]);
+    }, THINKING_TIME[dynamicDiff]);
+  }, [board, dynamicDiff, lastMoveIndex, stats, onGameOver, matchId]);
 
   useEffect(() => {
     if (isAIThinking && gameStatus === 'playing') aiMove();
@@ -450,12 +454,13 @@ export function TicTacToeBoard({
     saveStatsToStorage(newStats);
     setScoreChange('-5');
     onGameOver?.('loss');
+    recordDifficultyResult(false);
   };
 
   const shareResult = async () => {
     const total = stats.wins + stats.losses + stats.draws;
     const winRate = total > 0 ? ((stats.wins / total) * 100).toFixed(1) : '0.0';
-    const diffLabel = aiDifficulty === 'easy' ? '简单' : aiDifficulty === 'medium' ? '中等' : '困难';
+    const diffLabel = dynamicDiff === 'easy' ? '简单' : dynamicDiff === 'medium' ? '中等' : '困难';
     const text = `🎮 井字棋对局报告\n` +
       `难度: ${diffLabel}\n` +
       `结果: ${gameStatus === 'won' ? '✅ 胜利' : gameStatus === 'lost' ? '❌ 失败' : '🤝 平局'}\n` +
@@ -473,7 +478,7 @@ export function TicTacToeBoard({
   const statusText = gameStatus !== 'playing'
     ? ''
     : isAIThinking
-    ? AI_THINKING_TEXT[aiDifficulty]
+    ? `${opponent.nickname}正在思考...`
     : '你的回合';
 
   const resultConfig = {
@@ -488,6 +493,21 @@ export function TicTacToeBoard({
 
   return (
     <div className="max-w-[90vw] sm:max-w-sm mx-auto flex flex-col items-center gap-3 sm:gap-4 relative overflow-hidden">
+      {/* Opponent Info Card */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
+            <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+          <span className="flex items-center gap-1"><Zap size={12} className="text-amber-500" />动态难度</span>
+        </div>
+      </div>
+
       <div className="w-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl p-[1px] shadow-lg">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-5 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
@@ -518,7 +538,7 @@ export function TicTacToeBoard({
                 <button
                   onClick={() => setShowDifficultyTip(v => !v)}
                   className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  aria-label={`难度说明：${DIFFICULTY_DESC[aiDifficulty]}`}
+                  aria-label={`难度说明：${DIFFICULTY_DESC[dynamicDiff]}`}
                 >
                   <HelpCircle size={16} className="text-gray-400" />
                 </button>
@@ -530,10 +550,10 @@ export function TicTacToeBoard({
                       exit={{ opacity: 0, scale: 0.9, y: -5 }}
                       className="absolute right-0 top-full mt-2 w-56 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
                     >
-                      <p>{DIFFICULTY_DESC[aiDifficulty]}</p>
+                      <p>{DIFFICULTY_DESC[dynamicDiff]}</p>
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between">
                         <span className="text-gray-400">思考时间</span>
-                        <span className="font-medium">{THINKING_TIME[aiDifficulty]}ms</span>
+                        <span className="font-medium">{THINKING_TIME[dynamicDiff]}ms</span>
                       </div>
                     </motion.div>
                   )}

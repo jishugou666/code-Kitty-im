@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { gameApi } from '../../../api/game';
+import { generateOpponent, getDynamicDifficulty, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
+import { Zap } from 'lucide-react';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
   isCheckmate, isInCheck, MoveRecord
@@ -12,37 +14,12 @@ import { ROWS, COLS } from './chessEngine';
 interface ChineseChessBoardProps {
   matchId?: number;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
-  aiDifficulty?: string;
   mode?: 'ai';
 }
 
 type GameStatus = 'playing' | 'won' | 'lost' | 'draw';
 
 const COL_LABELS = 'abcdefghi';
-
-const DIFFICULTY_CONFIG = {
-  easy: {
-    label: '初出茅庐',
-    desc: 'AI随机+贪婪策略',
-    thinkTime: 1400,
-    color: 'text-green-500',
-    barColor: 'bg-green-500'
-  },
-  medium: {
-    label: '棋逢对手',
-    desc: 'Alpha-Beta深度3',
-    thinkTime: 1100,
-    color: 'text-yellow-500',
-    barColor: 'bg-yellow-500'
-  },
-  hard: {
-    label: '深谋远虑',
-    desc: 'Alpha-Beta深度4+开局库',
-    thinkTime: 900,
-    color: 'text-red-500',
-    barColor: 'bg-red-500'
-  }
-};
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -115,7 +92,6 @@ ChessPiece.displayName = 'ChessPiece';
 export function ChineseChessBoard({
   matchId: _matchId,
   onGameOver,
-  aiDifficulty = 'medium',
   mode = 'ai'
 }: ChineseChessBoardProps) {
   const [board, setBoard] = useState<Board>(createInitialBoard);
@@ -132,7 +108,8 @@ export function ChineseChessBoard({
   const [checkState, setCheckState] = useState<Color | null>(null);
   const [matchId, setMatchId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const config = DIFFICULTY_CONFIG[aiDifficulty as keyof typeof DIFFICULTY_CONFIG] || DIFFICULTY_CONFIG.medium;
+  const [opponent] = useState(() => generateOpponent());
+  const dynamicDiff = getDynamicDifficulty();
 
   const handleClick = useCallback((row: number, col: number) => {
     if (gameStatus !== 'playing' || currentTurn !== 'red' || isAIThinking) return;
@@ -165,6 +142,7 @@ export function ChineseChessBoard({
         if (captured?.type === 'king') {
           setGameStatus('won');
           saveGameResult('win');
+          recordDifficultyResult(true);
           
           if (matchId) {
         try {
@@ -212,7 +190,7 @@ export function ChineseChessBoard({
       progress += Math.random() * 25 + 10;
       if (progress > 95) progress = 90 + Math.random() * 8;
       setAiThinkProgress(progress);
-    }, config.thinkTime / 8);
+    }, dynamicDiff.thinkTime / 8);
 
     const timer = setTimeout(() => {
       clearInterval(interval);
@@ -220,7 +198,7 @@ export function ChineseChessBoard({
 
       const currentBoard = board.map(r => [...r]);
       const moveCount = history.filter(h => h.piece.color === 'black').length;
-      const aiMove = getAIMove(currentBoard, aiDifficulty as 'easy'|'medium'|'hard', 'black', moveCount);
+      const aiMove = getAIMove(currentBoard, 'medium', 'black', moveCount);
       const { newBoard, captured } = makeMove(currentBoard, aiMove.from, aiMove.to);
 
       setBoard(newBoard);
@@ -243,6 +221,7 @@ export function ChineseChessBoard({
       if (captured?.type === 'king') {
         setGameStatus('lost');
         saveGameResult('loss');
+        recordDifficultyResult(false);
         
         if (matchId) {
         try {
@@ -257,18 +236,17 @@ export function ChineseChessBoard({
 
       if (isInCheck(newBoard, 'red')) setCheckState('red');
       else setCheckState(null);
-    }, config.thinkTime);
+    }, dynamicDiff.thinkTime);
 
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); };
-  }, [isAIThinking, gameStatus, board, aiDifficulty, onGameOver, config.thinkTime, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, dynamicDiff.thinkTime, history, matchId]);
 
   useEffect(() => {
     const initMatch = async () => {
       try {
         const res = await gameApi.createMatch({
           gameType: 'chess',
-          mode: 'ai',
-          aiDifficulty
+          mode: 'ai'
         });
         if (res.code === 200 && res.data) setMatchId(res.data.id);
       } catch { console.log('[Chess] 创建对局失败，离线模式'); }
@@ -289,7 +267,7 @@ export function ChineseChessBoard({
     setTimerSeconds(0);
     setCheckState(null);
     setAiThinkProgress(0);
-    gameApi.createMatch({ gameType: 'chess', mode: 'ai', aiDifficulty })
+    gameApi.createMatch({ gameType: 'chess', mode: 'ai' })
       .then(res => { if (res.code === 200 && res.data) setMatchId(res.data.id); })
       .catch(() => {});
   };
@@ -299,6 +277,7 @@ export function ChineseChessBoard({
     if (matchId) { try { await gameApi.surrender(matchId); } catch {} }
     setGameStatus('lost');
     saveGameResult('loss');
+    recordDifficultyResult(false);
     onGameOver?.('loss');
   };
 
@@ -322,7 +301,7 @@ export function ChineseChessBoard({
 
   const statusText = gameStatus !== 'playing'
     ? ''
-    : isAIThinking ? '⚫ AI 思考中... (黑方)' : '🔴 你的回合 (红方)';
+    : isAIThinking ? `⚫ ${opponent.nickname} 思考中... (黑方)` : '🔴 你的回合 (红方)';
 
   const resultConfig = {
     won: { emoji: '🏆', text: '将军! 绝杀!', score: '+30', color: 'text-green-600' },
@@ -357,10 +336,10 @@ export function ChineseChessBoard({
           {isAIThinking && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 6, opacity: 1 }} className="mt-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
               <motion.div
-                className={clsx("h-full rounded-full transition-all", config.barColor)}
+                className={clsx("h-full rounded-full transition-all", "bg-blue-500")}
                 initial={{ width: '0%' }}
                 animate={{ width: `${aiThinkProgress}%` }}
-                transition={{ ease: 'linear', duration: config.thinkTime / 800 }}
+                transition={{ ease: 'linear', duration: dynamicDiff.thinkTime / 800 }}
               />
             </motion.div>
           )}
@@ -580,12 +559,27 @@ export function ChineseChessBoard({
           >新局</button>
         </div>
 
-        <div className={clsx("text-xs px-3 py-1.5 rounded-lg font-medium", config.color, "dark:bg-opacity-20")}>
-          {config.label} - {config.desc}
+        <div className={clsx("text-xs px-3 py-1.5 rounded-lg font-medium", "text-blue-500", "dark:bg-opacity-20")}>
+          动态难度 Lv.{Math.round(dynamicDiff.level * 100)}% · 思考 {dynamicDiff.thinkTime}ms
         </div>
       </div>
 
       <div className="w-full lg:w-[240px] flex flex-col gap-3 shrink-0">
+        {/* Opponent Info Card */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <img src={opponent.avatar} alt={opponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{opponent.nickname}</p>
+              <p className="text-xs text-gray-500">{opponent.rankLabel} · {opponent.rating}分</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">实时匹配</span>
+            <span className="flex items-center gap-1"><Zap size={12} className="text-amber-500" />动态难度</span>
+          </div>
+        </div>
+
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-200/60 dark:border-gray-700/50 p-4 shadow-sm">
           <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">对局信息</h3>
           <div className="space-y-3">
@@ -605,7 +599,7 @@ export function ChineseChessBoard({
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-br from-gray-400 to-gray-800" />
-                <span className="text-xs text-gray-500">黑方(AI)</span>
+                <span className="text-xs text-gray-500">黑方({opponent.nickname})</span>
               </div>
               <span className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
                 {history.filter(h => h.piece.color === 'black').length}
