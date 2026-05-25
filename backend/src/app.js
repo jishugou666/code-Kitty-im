@@ -238,7 +238,7 @@ async function startServer() {
       player1_id INT NOT NULL,
       player2_id INT DEFAULT NULL,
       winner_id INT DEFAULT NULL,
-      status ENUM('playing','finished','abandoned') NOT NULL DEFAULT 'playing',
+      status ENUM('pending','playing','finished','abandoned') NOT NULL DEFAULT 'pending',
       ai_difficulty ENUM('easy','medium','hard') DEFAULT 'medium',
       moves JSON DEFAULT NULL,
       duration_seconds INT DEFAULT NULL,
@@ -317,6 +317,13 @@ async function startServer() {
     console.log('[Migration] game_match.last_heartbeat column added');
   } catch (err) {
     console.log('[Migration] game_match.last_heartbeat may already exist:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query("ALTER TABLE game_match MODIFY COLUMN status ENUM('pending','playing','finished','abandoned') NOT NULL DEFAULT 'pending'");
+    console.log('[Migration] game_match.status ENUM updated (added pending)');
+  } catch (err) {
+    console.log('[Migration] game_match.status ENUM update may not be needed:', err.message?.substring(0, 80));
   }
 
   const { GameService: GameMonitorService } = await import('./services/GameService.js');

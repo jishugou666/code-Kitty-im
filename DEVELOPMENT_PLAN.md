@@ -654,6 +654,38 @@
   - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`（4处改动）
   - **构建验证**：✓ exit code 0, 2828 modules transformed, built in 9.13s
 
+- ✅ **BUG修复：邀请下棋 Data truncated for column 'status'（ENUM缺少pending值）**
+  - **现象**：邀请对方下棋时后端报错 `Data truncated for column 'status' at row 1`，无论对方是否在线都失败
+  - **根因分析**：
+    ```
+    数据库 game_match 表 status 列定义为：
+    ENUM('playing','finished','abandoned')  ← 只有3个值！
+    
+    GameService.createInvite() 插入：
+    status = 'pending'  ← 不在 ENUM 列表中 → MySQL 截断数据报错
+    ```
+  - **修复方案（2处修改）**：
+    1. **建表语句**（app.js 第241行）：
+       ```sql
+       -- 修复前
+       ENUM('playing','finished','abandoned') DEFAULT 'playing'
+       
+       -- 修复后
+       ENUM('pending','playing','finished','abandoned') DEFAULT 'pending'
+       ```
+    2. **迁移逻辑**（app.js 新增）：
+       ```sql
+       ALTER TABLE game_match MODIFY COLUMN status 
+       ENUM('pending','playing','finished','abandoned') NOT NULL DEFAULT 'pending'
+       ```
+       用 try/catch 包裹，已更新的数据库静默跳过
+  - **技术要点**：
+    - MySQL ENUM 类型是强约束，插入未定义值直接报错（非警告）
+    - `CREATE TABLE IF NOT EXISTS` 对已存在的表不生效，必须用 `ALTER TABLE ... MODIFY COLUMN` 迁移
+    - PVP 邀请流程需要4种状态：`pending`(等待接受) → `playing`(对局中) → `finished/abandoned`(结束)
+  - **修改文件**：`backend/src/app.js`
+  - **影响范围**：PVP 邀请下棋功能完全恢复
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
