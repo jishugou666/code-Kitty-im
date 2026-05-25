@@ -1000,12 +1000,20 @@ export function Chat() {
             className="absolute inset-0 z-50 flex items-center justify-center p-4"
           >
             <motion.div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setShowGameInviteModal(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className={isMobile ? "w-full bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden" : "w-full max-w-sm bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden"}
+              className={isMobile ? "relative z-10 w-full bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden" : "relative z-10 w-full max-w-sm bg-white dark:bg-[#1A1D21] rounded-2xl shadow-2xl overflow-hidden"}
             >
               <div className="px-5 py-4 border-b border-gray-100 dark:border-white/10">
                 <div className="flex items-center justify-between">
@@ -1048,11 +1056,6 @@ export function Chat() {
                 <p className="text-xs text-gray-400">选择一个游戏模式开始对战</p>
               </div>
             </motion.div>
-
-            <motion.div
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={() => setShowGameInviteModal(false)}
-            />
           </motion.div>
         )}
       </AnimatePresence>
