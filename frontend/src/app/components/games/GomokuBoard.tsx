@@ -5,7 +5,7 @@ import { Zap, Brain, Search, Target } from 'lucide-react';
 import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent } from './dynamicDifficulty';
-import { useGameHeartbeat } from '../../hooks/useGameHeartbeat';
+import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 
 interface GomokuBoardProps {
   matchId?: number;

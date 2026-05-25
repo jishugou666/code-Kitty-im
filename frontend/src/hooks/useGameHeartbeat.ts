@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { gameApi } from '../../api/game';
+import { gameApi } from '../api/game';
 
 const HEARTBEAT_INTERVAL = 10000;
 

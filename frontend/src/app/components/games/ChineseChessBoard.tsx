@@ -5,7 +5,7 @@ import { gameApi } from '../../../api/game';
 import { Zap, Brain, Search, Target } from 'lucide-react';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent } from './dynamicDifficulty';
-import { useGameHeartbeat } from '../../hooks/useGameHeartbeat';
+import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
   isCheckmate, isInCheck, MoveRecord

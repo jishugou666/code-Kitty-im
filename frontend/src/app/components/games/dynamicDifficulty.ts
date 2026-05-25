@@ -1,4 +1,4 @@
-import { gameApi } from '../../api/game';
+import { gameApi } from '../../../api/game';
 
 const RANK_NAMES: Record<string, string> = {
   iron: '铁器', bronze: '青铜', silver: '白银',

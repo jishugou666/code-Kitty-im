@@ -513,7 +513,7 @@ function easyAI(board: Board, color: Color): Move {
   let bestMove = ordered[0]
   for (const move of ordered) {
     const { newBoard } = makeMove(board, move.from, move.to)
-    const score = evaluateBoard(newBoard)
+    let score = evaluateBoard(newBoard)
     if (color === 'black') score = -score
 
     const capPiece = board[move.to.row][move.to.col]
