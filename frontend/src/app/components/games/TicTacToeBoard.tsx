@@ -208,7 +208,6 @@ export function TicTacToeBoard({
   const [winningLine, setWinningLine] = useState<number[] | null>(null);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [moveCount, setMoveCount] = useState(0);
-  const dynamicDiff = getDynamicDifficulty('tictactoe' as GameType, moveCount);
   const [lastMoveIndex, setLastMoveIndex] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -223,6 +222,7 @@ export function TicTacToeBoard({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const initializingRef = useRef(false);
+  const thinkTimeRef = useRef<number>(3000);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -345,11 +345,13 @@ export function TicTacToeBoard({
     }
 
     setIsAIThinking(true);
+    thinkTimeRef.current = getDynamicDifficulty('tictactoe' as GameType, moveCount).thinkTime;
   }, [board, gameStatus, isXNext, isAIThinking, lastMoveIndex, stats, onGameOver, matchId]);
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
-    const phases = getThinkingPhases(dynamicDiff.thinkTime);
+    const tt = thinkTimeRef.current;
+    const phases = getThinkingPhases(tt);
     let progress = 0;
     let phaseIndex = 0;
     const phaseLabels: Record<string, string> = {
@@ -366,7 +368,7 @@ export function TicTacToeBoard({
         phaseIndex++;
         setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
       }
-    }, dynamicDiff.thinkTime / 10);
+    }, tt / 10);
     const timer = setTimeout(() => {
       clearInterval(interval);
       const currentBoard = [...board];
@@ -427,9 +429,9 @@ export function TicTacToeBoard({
         onGameOver?.('draw');
         recordDifficultyResult(false);
       }
-    }, dynamicDiff.thinkTime);
+    }, tt);
     return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, dynamicDiff.thinkTime, lastMoveIndex, stats, onGameOver, matchId]);
+  }, [isAIThinking, gameStatus, board, lastMoveIndex, stats, onGameOver, matchId]);
 
   const handleUndo = useCallback(() => {
     if (history.length < 2 || gameStatus !== 'playing' || isAIThinking) return;
@@ -479,9 +481,9 @@ export function TicTacToeBoard({
   const shareResult = async () => {
     const total = stats.wins + stats.losses + stats.draws;
     const winRate = total > 0 ? ((stats.wins / total) * 100).toFixed(1) : '0.0';
-    const diffLabel = dynamicDiff === 'easy' ? '简单' : dynamicDiff === 'medium' ? '中等' : '困难';
+    const diffLabel = '在线对局';
     const text = `🎮 井字棋对局报告\n` +
-      `难度: ${diffLabel}\n` +
+      `模式: ${diffLabel}\n` +
       `结果: ${gameStatus === 'won' ? '✅ 胜利' : gameStatus === 'lost' ? '❌ 失败' : '🤝 平局'}\n` +
       `步数: ${moveCount} | 用时: ${formatTime(elapsedTime)}\n` +
       `历史战绩: ${stats.wins}胜/${stats.losses}负/${stats.draws}平 (胜率${winRate}%)\n` +
@@ -583,7 +585,7 @@ export function TicTacToeBoard({
                       <p>在线对局模式</p>
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between">
                         <span className="text-gray-400">思考时间</span>
-                        <span className="font-medium">{dynamicDiff.thinkTime}ms</span>
+                        <span className="font-medium">{thinkTimeRef.current}ms</span>
                       </div>
                     </motion.div>
                   )}

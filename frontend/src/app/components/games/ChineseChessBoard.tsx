@@ -110,9 +110,9 @@ export function ChineseChessBoard({
   const [checkState, setCheckState] = useState<Color | null>(null);
   const [matchId, setMatchId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const thinkTimeRef = useRef<number>(3500);
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
-  const dynamicDiff = getDynamicDifficulty('chinese_chess' as GameType, history.length);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);
@@ -167,6 +167,7 @@ export function ChineseChessBoard({
         else setCheckState(null);
 
         setIsAIThinking(true);
+        thinkTimeRef.current = getDynamicDifficulty('chinese_chess' as GameType, history.length).thinkTime;
         return;
       }
     }
@@ -193,7 +194,8 @@ export function ChineseChessBoard({
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
 
-    const phases = getThinkingPhases(dynamicDiff.thinkTime);
+    const tt = thinkTimeRef.current;
+    const phases = getThinkingPhases(tt);
     let progress = 0;
     let phaseIndex = 0;
     const phaseLabels: Record<string, string> = {
@@ -211,7 +213,7 @@ export function ChineseChessBoard({
         phaseIndex++;
         setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
       }
-    }, dynamicDiff.thinkTime / 10);
+    }, tt / 10);
 
     const timer = setTimeout(() => {
       clearInterval(interval);
@@ -244,24 +246,23 @@ export function ChineseChessBoard({
         setGameStatus('lost');
         saveGameResult('loss');
         recordDifficultyResult(false);
-        
+
         if (matchId) {
         try {
-          // 对手获胜，玩家输
           gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
-        
+
         onGameOver?.('loss');
         return;
       }
 
       if (isInCheck(newBoard, 'red')) setCheckState('red');
       else setCheckState(null);
-    }, dynamicDiff.thinkTime);
+    }, tt);
 
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, onGameOver, dynamicDiff.thinkTime, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId]);
 
   useEffect(() => {
     const initMatch = async () => {
@@ -361,7 +362,7 @@ export function ChineseChessBoard({
                 className={clsx("h-full rounded-full transition-all", "bg-blue-500")}
                 initial={{ width: '0%' }}
                 animate={{ width: `${aiThinkProgress}%` }}
-                transition={{ ease: 'linear', duration: dynamicDiff.thinkTime / 800 }}
+                transition={{ ease: 'linear', duration: thinkTimeRef.current / 800 }}
               />
             </motion.div>
           )}

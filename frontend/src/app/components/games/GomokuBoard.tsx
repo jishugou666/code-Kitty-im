@@ -518,7 +518,7 @@ export function GomokuBoard({
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dynamicDiff = getDynamicDifficulty('gomoku' as GameType, history.length);
+  const thinkTimeRef = useRef<number>(4000);
 
   useEffect(() => {
     generateOpponent().then(setOpponent);
@@ -555,7 +555,8 @@ export function GomokuBoard({
 
   useEffect(() => {
     if (!isAIThinking || gameStatus !== 'playing') return;
-    const phases = getThinkingPhases(dynamicDiff.thinkTime);
+    const tt = thinkTimeRef.current;
+    const phases = getThinkingPhases(tt);
     let progress = 0;
     let phaseIndex = 0;
     const phaseLabels: Record<string, string> = {
@@ -573,7 +574,7 @@ export function GomokuBoard({
         phaseIndex++;
         setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
       }
-    }, dynamicDiff.thinkTime / 10);
+    }, tt / 10);
     const timer = setTimeout(() => {
       clearInterval(interval);
       setAiThinkProgress(100);
@@ -597,14 +598,13 @@ export function GomokuBoard({
         setGameStatus('lost');
         saveGameResult('loss');
         recordDifficultyResult(false);
-        
+
         if (matchId) {
         try {
-          // 对手获胜，玩家输
           gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
-        
+
         onGameOver?.('loss');
         return;
       }
@@ -612,19 +612,18 @@ export function GomokuBoard({
         setGameStatus('draw');
         saveGameResult('draw');
         recordDifficultyResult(false);
-        
+
         if (matchId) {
         try {
-          // 平局
           gameApi.finish(matchId, { won: false }).catch(() => {});
         } catch {}
       }
-        
+
         onGameOver?.('draw');
       }
-    }, dynamicDiff.thinkTime);
+    }, tt);
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
-  }, [isAIThinking, gameStatus, board, onGameOver, dynamicDiff.thinkTime, history, matchId]);
+  }, [isAIThinking, gameStatus, board, onGameOver, history, matchId]);
 
   const stats: GameStats = useMemo(() => ({
     totalMoves: history.length,
@@ -684,6 +683,7 @@ export function GomokuBoard({
       return;
     }
     setIsAIThinking(true);
+    thinkTimeRef.current = getDynamicDifficulty('gomoku' as GameType, history.length).thinkTime;
   }, [board, gameStatus, currentPlayer, isAIThinking, onGameOver, matchId]);
 
   const handleUndo = useCallback(() => {
@@ -828,7 +828,7 @@ export function GomokuBoard({
                   className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
                   initial={{ width: '0%' }}
                   animate={{ width: `${aiThinkProgress}%` }}
-                  transition={{ ease: 'linear', duration: dynamicDiff.thinkTime / 800 }}
+                  transition={{ ease: 'linear', duration: thinkTimeRef.current / 800 }}
                 />
               </motion.div>
             )}
@@ -1028,7 +1028,7 @@ export function GomokuBoard({
 
         {/* 对局信息 */}
         <div className="text-xs px-3 py-1.5 rounded-lg font-medium text-indigo-600 bg-indigo-500/10 dark:text-indigo-400 dark:bg-indigo-500/20">
-          在线对局 · 思考 {dynamicDiff.thinkTime}ms
+          在线对局 · 思考 {thinkTimeRef.current}ms
         </div>
 
         {/* History Panel */}
@@ -1254,7 +1254,7 @@ export function GomokuBoard({
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">平均思考</span>
                   <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                    {stats.totalMoves > 0 ? Math.round(dynamicDiff.thinkTime / 1000) + 's' : '-'}
+                    {stats.totalMoves > 0 ? Math.round(thinkTimeRef.current / 1000) + 's' : '-'}
                   </span>
                 </div>
               </div>

@@ -429,6 +429,46 @@
   - **效果**：开局快节奏(2-5s)，残局慢思考(5-7s)，模拟真人越下越谨慎
   - **构建验证**：✓ exit code 0, built in 10.76s
 
+- ✅ **思考延时死循环BUG修复：useRef锁定时间**
+  - **现象**：用户反馈"棋局陷入死循环，对手永远不会下棋"
+  - **根因分析**：
+    ```
+    组件顶层：const dynamicDiff = getDynamicDifficulty(gameType, moveCount)
+               ↑ 每次渲染都调用！每次产生新的随机thinkTime！
+    
+    useEffect依赖：[..., dynamicDiff.thinkTime, ...]
+                    ↑ thinkTime每次都变！
+    
+    死循环链路：
+    渲染 → dynamicDiff重算(新随机值) → 依赖变化
+    → useEffect重新执行 → 清除旧setTimeout → 设置新setTimeout
+    → setThinkingPhase()触发重渲染 → 回到开头 ♻️♻️♻️
+    ```
+  - **修复方案（useRef锁存模式）**：
+    ```typescript
+    // 1. 添加ref（默认值）
+    const thinkTimeRef = useRef<number>(3000);
+    
+    // 2. 在触发思考时一次性锁定时间（只执行一次！）
+    setIsAIThinking(true);
+    thinkTimeRef.current = getDynamicDifficulty('tictactoe', moveCount).thinkTime;
+                           ↑ 这次随机值被"锁住"了
+    
+    // 3. useEffect中读取ref（不作为依赖）
+    useEffect(() => {
+      if (!isAIThinking) return;
+      const tt = thinkTimeRef.current;  // 始终同一个值
+      setTimeout(callback, tt);         // 稳定的等待时间
+      return () => clearTimeout(timer);
+    }, [isAIThinking, ...]);  // 不再包含thinkTime！
+    ```
+  - **修改文件**：
+    - `TicTacToeBoard.tsx`：+thinkTimeRef, 移除渲染时dynamicDiff, 5处引用替换
+    - `GomokuBoard.tsx`：+thinkTimeRef, 同上, 4处引用替换
+    - `ChineseChessBoard.tsx`：+thinkTimeRef, 同上, 2处引用替换
+  - **效果**：每步棋在开始时随机确定一个固定思考时间→倒计时→落子，不再死循环
+  - **构建验证**：✓ exit code 0, built in 9.58s
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
