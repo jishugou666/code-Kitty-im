@@ -4,7 +4,7 @@ import { RankingService } from '../services/RankingService.js';
 import { ConversationService } from '../services/ConversationService.js';
 import { success, error, validationError } from '../utils/response.js';
 
-const conversationService = new ConversationService();
+const conversationService = ConversationService;
 
 export const GameController = {
   async createMatch(req, res, next) {
