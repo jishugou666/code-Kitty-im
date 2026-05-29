@@ -781,7 +781,7 @@ export function ChineseChessBoard({
               />
             )}
 
-            <div className="absolute pointer-events-none z-[5]" style={{
+            <div className="absolute pointer-events-none z-[1]" style={{
               left: '50%',
               top: '45%',
               transform: 'translate(-50%, -50%)',
@@ -789,7 +789,7 @@ export function ChineseChessBoard({
               fontSize: 'min(1.2em, calc(var(--ccs) * 0.4))',
               fontWeight: 700,
               color: '#3D1F00',
-              opacity: 0.5,
+              opacity: 0.35,
               letterSpacing: '1.5em',
               lineHeight: '2'
             }}>
