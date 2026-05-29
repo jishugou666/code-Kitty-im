@@ -511,8 +511,17 @@ export const GoBoard = React.memo(function GoBoard({
       const newStats = { ...stats, wins: stats.wins + 1 };
       setStats(newStats);
       saveStatsToStorage(newStats);
-      setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
-      processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '对方认输');
+      const winScore = 10 + Math.floor(Math.random() * 3);
+      setScoreChange(`+${winScore}`);
+      setPerformanceResult({
+        score: winScore, grade: 'B', gradeLabel: '对方认输',
+        gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+        title: '对方认输', ratingChange: winScore,
+        rawRatingChange: winScore,
+        difficultyCoeff: 0.4, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      processMatchFinish(true, winScore, 'B', '对方认输');
       setShowResultModal(true);
       onGameOver?.('win');
     },
@@ -526,8 +535,17 @@ export const GoBoard = React.memo(function GoBoard({
         setTimeout(() => setBoardGlow(false), 1500);
         const newStats = { ...stats, wins: stats.wins + 1 };
         setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
+        const winScore = 10 + Math.floor(Math.random() * 3);
+        setScoreChange(`+${winScore}`);
+        setPerformanceResult({
+          score: winScore, grade: 'B', gradeLabel: '表现出色',
+          gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+          title: '表现出色', ratingChange: winScore,
+          rawRatingChange: winScore,
+          difficultyCoeff: 0.4, strengthCoeff: 1.0,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+        processMatchFinish(true, winScore, 'B', '表现出色');
         setShowResultModal(true);
         onGameOver?.('win');
       } else if (data.status === 'finished' && data.winnerId) {
@@ -536,16 +554,34 @@ export const GoBoard = React.memo(function GoBoard({
         setTimeout(() => setBoardShake(false), 500);
         const newStats = { ...stats, losses: stats.losses + 1 };
         setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
+        const loseScore = -(3 + Math.floor(Math.random() * 3));
+        setScoreChange(`${loseScore}`);
+        setPerformanceResult({
+          score: Math.abs(loseScore), grade: 'D', gradeLabel: '继续加油',
+          gradeColor: '#EF4444', bgGradient: 'from-red-500 to-orange-500',
+          title: '继续加油', ratingChange: loseScore,
+          rawRatingChange: loseScore,
+          difficultyCoeff: 0.2, strengthCoeff: 0.6,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+        processMatchFinish(false, Math.abs(loseScore), 'D', '继续加油');
         setShowResultModal(true);
         onGameOver?.('loss');
       } else {
         setGameStatus('draw');
         const newStats = { ...stats, draws: stats.draws + 1 };
         setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+        const drawScore = 1 + Math.floor(Math.random() * 3);
+        setScoreChange(`+${drawScore}`);
+        setPerformanceResult({
+          score: drawScore, grade: 'C', gradeLabel: '势均力敌',
+          gradeColor: '#F59E0B', bgGradient: 'from-amber-500 to-yellow-500',
+          title: '势均力敌', ratingChange: drawScore,
+          rawRatingChange: drawScore,
+          difficultyCoeff: 0.3, strengthCoeff: 0.8,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+        processMatchFinish(false, drawScore + 5, 'C', '势均力敌');
         setShowResultModal(true);
         onGameOver?.('draw');
       }
@@ -649,8 +685,17 @@ export const GoBoard = React.memo(function GoBoard({
       setTimeout(() => setBoardGlow(false), 1500);
       const newStats = { ...stats, wins: stats.wins + 1 };
       setStats(newStats); saveStatsToStorage(newStats);
-      setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
-      processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
+      const winScore = 10 + Math.floor(Math.random() * 3);
+      setScoreChange(`+${winScore}`);
+      setPerformanceResult({
+        score: winScore, grade: 'B', gradeLabel: '表现出色',
+        gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+        title: '表现出色', ratingChange: winScore,
+        rawRatingChange: winScore,
+        difficultyCoeff: 0.4, strengthCoeff: 1.0,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      processMatchFinish(true, winScore, 'B', '表现出色');
       setShowResultModal(true);
       onGameOver?.('win');
       recordDifficultyResult(true);
@@ -660,8 +705,17 @@ export const GoBoard = React.memo(function GoBoard({
       setTimeout(() => setBoardShake(false), 500);
       const newStats = { ...stats, losses: stats.losses + 1 };
       setStats(newStats); saveStatsToStorage(newStats);
-      setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
-      processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
+      const loseScore = -(3 + Math.floor(Math.random() * 3));
+      setScoreChange(`${loseScore}`);
+      setPerformanceResult({
+        score: Math.abs(loseScore), grade: 'D', gradeLabel: '继续加油',
+        gradeColor: '#EF4444', bgGradient: 'from-red-500 to-orange-500',
+        title: '继续加油', ratingChange: loseScore,
+        rawRatingChange: loseScore,
+        difficultyCoeff: 0.2, strengthCoeff: 0.6,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      processMatchFinish(false, Math.abs(loseScore), 'D', '继续加油');
       setShowResultModal(true);
       onGameOver?.('loss');
       recordDifficultyResult(false);
@@ -669,8 +723,17 @@ export const GoBoard = React.memo(function GoBoard({
       setGameStatus('draw');
       const newStats = { ...stats, draws: stats.draws + 1 };
       setStats(newStats); saveStatsToStorage(newStats);
-      setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
-      processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+      const drawScore = 1 + Math.floor(Math.random() * 3);
+      setScoreChange(`+${drawScore}`);
+      setPerformanceResult({
+        score: drawScore, grade: 'C', gradeLabel: '势均力敌',
+        gradeColor: '#F59E0B', bgGradient: 'from-amber-500 to-yellow-500',
+        title: '势均力敌', ratingChange: drawScore,
+        rawRatingChange: drawScore,
+        difficultyCoeff: 0.3, strengthCoeff: 0.8,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
+      processMatchFinish(false, drawScore + 5, 'C', '势均力敌');
       setShowResultModal(true);
       onGameOver?.('draw');
       recordDifficultyResult(false);

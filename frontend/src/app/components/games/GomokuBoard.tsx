@@ -536,6 +536,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
     moveCount,
     setMoveCount,
     scoreChange,
+    setScoreChange,
     simulateAIThink,
     finishMatch
   } = useGameMatch({

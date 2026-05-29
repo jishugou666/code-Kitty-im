@@ -241,6 +241,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     moveCount,
     setMoveCount,
     scoreChange,
+    setScoreChange,
     initializingRef,
     simulateAIThink,
     finishMatch
