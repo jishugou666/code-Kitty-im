@@ -283,6 +283,28 @@ async function startServer() {
     console.log('[Migration] user_game_profile table check failed:', err.message?.substring(0, 80));
   }
 
+  // 围棋模式支持迁移
+  try {
+    await query(`ALTER TABLE game_match MODIFY COLUMN game_type ENUM('gomoku','tictactoe','chess','go') NOT NULL`);
+    console.log('[Migration] game_match.game_type ENUM updated with go');
+  } catch (err) {
+    console.log('[Migration] game_match game_type migration:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query(`ALTER TABLE user_game_profile ADD COLUMN go_wins INT DEFAULT 0`);
+    console.log('[Migration] user_game_profile.go_wins added');
+  } catch (err) {
+    console.log('[Migration] user_game_profile.go_wins already exists or error:', err.message?.substring(0, 80));
+  }
+
+  try {
+    await query(`ALTER TABLE user_game_profile ADD COLUMN go_losses INT DEFAULT 0`);
+    console.log('[Migration] user_game_profile.go_losses added');
+  } catch (err) {
+    console.log('[Migration] user_game_profile.go_losses already exists or error:', err.message?.substring(0, 80));
+  }
+
   try {
     const { runMigrations } = await import('./migrations/performanceMigration.js');
     await runMigrations();

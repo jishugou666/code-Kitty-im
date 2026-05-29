@@ -902,12 +902,13 @@ export function GoBoard({
     ? { nickname: pvpOpponent.nickname, avatar: pvpOpponent.avatar || '', rankLabel: 'PVP对手', rating: 0 }
     : opponent;
 
-  const resultConfig = {
+  const resultConfig: Record<string, { emoji: string; text: string; score: string; color: string }> = {
     won: { emoji: '🎉', text: '胜利!', score: scoreChange || '+10', color: 'text-green-500' },
     lost: { emoji: '😔', text: '失败', score: scoreChange || '-4', color: 'text-red-500' },
     draw: { emoji: '🤝', text: '平局', score: scoreChange || '+2', color: 'text-yellow-500' }
   };
-  const rc = resultConfig[gameStatus];
+  const rc = resultConfig[gameStatus as keyof typeof resultConfig];
+  if (!rc) return null;
 
   const totalGames = stats.wins + stats.losses + stats.draws;
   const winRate = totalGames > 0 ? ((stats.wins / totalGames) * 100).toFixed(1) : '0.0';

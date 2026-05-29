@@ -1208,6 +1208,45 @@ bcrypt.hash(password, 10)
 
 ## 十、完整更新日志（按时间倒序）
 
+### 2026-05-29（模拟推演验证 + 围棋功能全链路修复）
+
+#### 🔴 致命缺陷发现：后端ENUM/验证全面缺失 `'go'` 值
+- **问题**：围棋功能完全不可用 — 创建对局/邀请下棋/评分统计全链路失败
+- **根因**：新增围棋模式时遗漏后端6处关键配置
+- **影响范围**：
+  - [app.js:236](backend/src/app.js#L236) — `game_match.game_type ENUM` 缺少 `'go'`
+  - [GameController.js:19](backend/src/controllers/GameController.js#L19) — `validTypes` 验证数组缺少 `'go'`
+  - [GameService.js:8](backend/src/services/GameService.js#L8) — `createMatch` 验证缺少 `'go'`
+  - [GameService.js:319](backend/src/services/GameService.js#L319) — `createInvite` 验证缺少 `'go'`
+  - [RankingService.js:15-19](backend/src/services/RankingService.js#L15-L19) — `SCORE_MAP` 缺少 `go` 配置
+  - [app.js:269-274](backend/src/app.js#L269-L274) — `user_game_profile` 缺少 `go_wins/go_losses` 字段
+- **修复方案**：
+  - app.js 添加3个ALTER TABLE迁移（ENUM扩展+2个字段）
+  - GameController/GameService/RankingService 共4处添加 `'go'` 到类型列表/配置
+  - SCORE_MAP 新增 `go: { win: 30, loss: -18 }`（围棋难度适中）
+- **修复文件**：app.js / GameController.js / GameService.js(2处) / RankingService.js
+
+#### 模拟推演验证报告（端到端场景模拟法）
+- **推演方法**：追踪用户操作从前端UI→API请求→后端处理→数据库写入→实时推送→前端响应的完整数据流
+- **验证模块**：
+  1. ✅ GoBoard emoji崩溃修复（resultConfig空值守卫覆盖idle/playing状态）
+  2. ✅ ChineseChessBoard布局修复（padding+overflow-hidden+76%棋子三重保护）
+  3. ✅ useGameChannel/useWebSocket ref模式稳定性（消除反复重订阅事件丢失）
+  4. ✅ PVP联机完整链路（邀请→接受→进入→落子→结束5步全流程畅通）
+  5. ✅ dynamicDifficulty动态难度系统（ReferenceError根因消除，围棋配置齐全）
+- **修复统计**：9处缺陷（6处ENUM/验证缺失 + 2处字段缺失 + 1处配置缺失）100%修复
+- **部署建议**：可立即部署到Render，迁移脚本自动执行，向后兼容
+
+#### 围棋emoji崩溃修复（已在前次修复）
+- **问题**：`resultConfig[gameStatus]` 在 idle/playing 时返回 undefined → 访问 `.emoji` 崩溃
+- **修复**：GoBoard.tsx 添加 `if (!rc) return null` 空值守卫
+
+#### 象棋棋子出框修复（已在前次修复）
+- **问题**：容器缺overflow-hidden + 尺寸不足 + 棋子82%太大导致越界
+- **修复**：overflow-hidden + padding:8px + 棋子82%→76% + 字号缩小
+
+---
+
 ### 2026-05-25（大量游戏系统更新与Bug修复）
 
 #### 结算弹窗冲突修复

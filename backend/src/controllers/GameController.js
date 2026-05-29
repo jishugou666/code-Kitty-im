@@ -16,7 +16,7 @@ export const GameController = {
         return res.status(400).json(validationError('请选择游戏类型'));
       }
 
-      const validTypes = ['gomoku', 'tictactoe', 'chess'];
+      const validTypes = ['gomoku', 'tictactoe', 'chess', 'go'];
       if (!validTypes.includes(gameType)) {
         return res.status(400).json(validationError('无效的游戏类型'));
       }

@@ -15,7 +15,8 @@ export const RankingService = {
   SCORE_MAP: {
     gomoku: { win: 25, loss: -15 },
     tictactoe: { win: 10, loss: -5 },
-    chess: { win: 40, loss: -20 }
+    chess: { win: 40, loss: -20 },
+    go: { win: 30, loss: -18 }
   },
 
   AI_MULTIPLIER: {

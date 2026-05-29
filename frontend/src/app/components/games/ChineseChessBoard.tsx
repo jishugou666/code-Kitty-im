@@ -75,14 +75,14 @@ const ChessPiece = React.memo(({ piece, isSelected, isCheck, isLastMove, isAnima
         isLastMove && 'ring-2 ring-blue-400 ring-offset-1 ring-offset-transparent'
       )}
       style={{
-        width: '82%',
-        height: '82%',
+        width: '76%',
+        height: '76%',
         flexShrink: 0,
         background: isRed
           ? 'radial-gradient(circle at 35% 30%, #fff5e6, #f0d9a0 40%, #e8c870 70%, #d4a030)'
           : 'radial-gradient(circle at 35% 30%, #666, #3a3a3a 45%, #1a1a1a 80%, #0a0a0a)',
         border: isRed ? '1.5px solid #c89830' : '1.5px solid #333',
-        fontSize: 'min(1.3em, calc(var(--ccs) * 0.55))',
+        fontSize: 'min(1.2em, calc(var(--ccs) * 0.5))',
         fontWeight: 700,
         color: isRed ? '#8B0000' : '#e0e0e0',
         textShadow: isRed ? '0 1px 1px rgba(0,0,0,0.15)' : '0 1px 1px rgba(0,0,0,0.5)',
@@ -609,11 +609,12 @@ export function ChineseChessBoard({
             backgroundSize: '180px 180px'
           }} />
 
-          <div className="chess-board-container relative" style={{
+          <div className="chess-board-container relative overflow-hidden" style={{
             '--ccs': cellSizeVar,
-            width: `calc(var(--ccs) * ${COLS - 1} + var(--ccs) + 4px)`,
-            height: `calc(var(--ccs) * ${ROWS - 1} + var(--ccs) + 4px)`,
-            position: 'relative'
+            width: `calc(var(--ccs) * ${COLS} + 16px)`,
+            height: `calc(var(--ccs) * ${ROWS} + 16px)`,
+            position: 'relative',
+            padding: '8px'
           } as React.CSSProperties}>
             {/* SVG Background for perfect alignment */}
             <svg

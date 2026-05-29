@@ -5,7 +5,7 @@ import { PerformanceService } from './PerformanceService.js';
 export const GameService = {
   async createMatch(playerId, gameType, mode = 'ai', aiDifficulty = 'medium') {
     try {
-      const validGameTypes = ['gomoku', 'tictactoe', 'chess'];
+      const validGameTypes = ['gomoku', 'tictactoe', 'chess', 'go'];
       const validModes = ['ai', 'pvp'];
       const validDifficulties = ['easy', 'medium', 'hard'];
 
@@ -316,7 +316,7 @@ export const GameService = {
   },
 
   async createInvite(inviterId, opponentId, gameType) {
-    const validGameTypes = ['gomoku', 'tictactoe', 'chess'];
+    const validGameTypes = ['gomoku', 'tictactoe', 'chess', 'go'];
     if (!validGameTypes.includes(gameType)) {
       throw new Error('Invalid game type');
     }
