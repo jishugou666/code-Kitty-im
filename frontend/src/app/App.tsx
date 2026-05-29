@@ -3,8 +3,10 @@ import { RouterProvider } from "react-router";
 import { router } from "./routes";
 import { BanOverlay } from './components/BanOverlay';
 import { RateLimitOverlay } from './components/RateLimitOverlay';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { apiClient } from '../api/client';
 import { useHeartbeat } from '../hooks/useHeartbeat';
+import { useToast } from '../hooks/useToast';
 
 export default function App() {
   const [showBanOverlay, setShowBanOverlay] = useState(false);
@@ -12,6 +14,7 @@ export default function App() {
   const [rateLimitReason, setRateLimitReason] = useState('');
   const pendingRetryRef = useRef<(() => void) | null>(null);
   const [isStudio, setIsStudio] = useState(false);
+  const { toast } = useToast();
 
   useHeartbeat();
 
@@ -58,6 +61,16 @@ export default function App() {
     return () => window.removeEventListener('showRateLimit' as any, handleShowRateLimit);
   }, []);
 
+  useEffect(() => {
+    const handleApiError = (event: CustomEvent) => {
+      const { message = '操作失败，请稍后重试' } = event.detail || {};
+      toast(message, 'error');
+    };
+
+    window.addEventListener('api-error' as any, handleApiError);
+    return () => window.removeEventListener('api-error' as any, handleApiError);
+  }, [toast]);
+
   if (showBanOverlay) {
     return <BanOverlay />;
   }
@@ -65,7 +78,9 @@ export default function App() {
   if (isStudio) {
     return (
       <div className="w-screen h-screen">
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
         <RateLimitOverlay
           isVisible={showRateLimit}
           retryAfter={5}
@@ -78,7 +93,9 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen bg-[#F4F5F9] dark:bg-[#0A0C10] text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden flex">
-      <RouterProvider router={router} />
+      <ErrorBoundary>
+        <RouterProvider router={router} />
+      </ErrorBoundary>
       <RateLimitOverlay
         isVisible={showRateLimit}
         retryAfter={5}

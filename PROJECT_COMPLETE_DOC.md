@@ -1237,11 +1237,27 @@ bcrypt.hash(password, 10)
 - **修复统计**：9处缺陷（6处ENUM/验证缺失 + 2处字段缺失 + 1处配置缺失）100%修复
 - **部署建议**：可立即部署到Render，迁移脚本自动执行，向后兼容
 
-#### 围棋emoji崩溃修复（已在前次修复）
-- **问题**：`resultConfig[gameStatus]` 在 idle/playing 时返回 undefined → 访问 `.emoji` 崩溃
-- **修复**：GoBoard.tsx 添加 `if (!rc) return null` 空值守卫
+#### 围棋emoji崩溃+空白界面完美修复（**完整功能实现**）
+- **问题1（前次）**：`resultConfig[gameStatus]` 在 idle/playing 时返回 undefined → 访问 `.emoji` 崩溃
+- **问题2（本次）**：用户反馈围棋界面完全空白（截图显示只有"返回大厅"按钮）
+- **根因分析（3个致命Bug链）**：
 
-#### 象棋棋子出框修复（已在前次修复）
+| # | Bug | 位置 | 影响 |
+|---|-----|------|------|
+| 1 | `if (!rc) return null` 空值守卫过于激进 | GoBoard.tsx:911 | gameStatus='playing'\|'idle'时返回null→**界面空白** |
+| 2 | gameStatus初始值='idle'无自动初始化 | GoBoard.tsx:384 | initMatch依赖gameStatus==='playing'→**死锁** |
+| 3 | Result Overlay未检查rc为null | GoBoard.tsx:1237 | rc=null时访问rc.emoji→**崩溃** |
+
+- **修复方案**：
+  - Fix1: 空值守卫优化 - 仅终态(won/lost/draw)才查resultConfig
+  - Fix2: 添加自动初始化useEffect - idle时调用resetBoard()
+  - Fix3: Result Overlay增加rc && 空值守卫
+
+- **新增功能**：AI思考进度条（参照象棋成功案例，amber色主题）
+
+- **全功能验证（18项全部通过）**：引擎规则✅ AI三档难度✅ PVP联机✅ UI交互✅ 构建通过✅
+
+---
 - **问题**：容器缺overflow-hidden + 尺寸不足 + 棋子82%太大导致越界
 - **修复**：overflow-hidden + padding:8px + 棋子82%→76% + 字号缩小
 

@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, Plus, Send, Image, File, X, AlertTriangle, ShieldAlert, Megaphone, CheckCircle, Info, Gamepad2, ChevronRight, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
+import React from "react";
 import { clsx } from "clsx";
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
@@ -15,6 +16,7 @@ import { conversationApi } from '../../api/conversation';
 import { gameApi } from '../../api/game';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { getAvatarUrl } from '../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../components/ui/ImageWithLazyLoad';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -23,6 +25,191 @@ const GAME_TYPE_NAMES: Record<string, string> = {
   gomoku: '五子棋',
   chess: '中国象棋'
 };
+
+interface MessageItemProps {
+  message: any;
+  isOwnMessage: boolean;
+  isRecalled: boolean;
+  isMobile: boolean;
+  userId?: number | null;
+  onShowMenu: (message: any) => void;
+  onRespondGameInvite: (matchId: number, accepted: boolean, gameType?: string) => void;
+}
+
+const MessageItem = React.memo(({
+  message,
+  isOwnMessage,
+  isRecalled,
+  isMobile,
+  userId,
+  onShowMenu,
+  onRespondGameInvite
+}: MessageItemProps) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isOwnMessage && !isRecalled) {
+      onShowMenu(message);
+    }
+  }, [isOwnMessage, isRecalled, message, onShowMenu]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isMobile && isOwnMessage && !isRecalled) {
+      const start = Date.now();
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      const check = setTimeout(() => {
+        if (Date.now() - start > 500) {
+          onShowMenu(message);
+        }
+      }, 500);
+      const up = () => {
+        clearTimeout(check);
+        document.removeEventListener('touchend', up);
+        document.removeEventListener('touchmove', move);
+      };
+      const move = (me: TouchEvent) => {
+        const dx = Math.abs(me.touches[0].clientX - touchX);
+        const dy = Math.abs(me.touches[0].clientY - touchY);
+        if (dx > 10 || dy > 10) {
+          clearTimeout(check);
+        }
+      };
+      document.addEventListener('touchend', up);
+      document.addEventListener('touchmove', move);
+    }
+  }, [isMobile, isOwnMessage, isRecalled, message, onShowMenu]);
+
+  return (
+    <div className={clsx("flex mb-3 gap-0", isOwnMessage ? "justify-end" : "justify-start")}>
+      {!isOwnMessage && !isRecalled && (
+        <div className={clsx(isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0 overflow-hidden" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0 overflow-hidden")}>
+          {message.sender_avatar ? (
+            <ImageWithLazyLoad src={getAvatarUrl(message.sender_avatar)} alt={message.sender_nickname || 'U'} className="w-full h-full object-cover" />
+          ) : (
+            (message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'
+          )}
+        </div>
+      )}
+      <motion.div
+        className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 relative" : "max-w-[70%] rounded-2xl px-4 py-2 relative",
+          isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
+          isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
+        )}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+      >
+        {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>}
+        {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
+        {message.type === 'recalled' && (
+          <p className={clsx(isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60")}>{message.content}</p>
+        )}
+        {message.type === 'file' && !isRecalled && (
+          (() => {
+            try {
+              const fileData = JSON.parse(message.content || '{}');
+              return (
+                <div className="flex items-center gap-2">
+                  <File size={isMobile ? 14 : 16} />
+                  <span className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{fileData.name || '未知文件'}</span>
+                </div>
+              );
+            } catch { return <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>; }
+          })()
+        )}
+        {message.type === 'game_invite' && (() => {
+          try {
+            const inviteData = JSON.parse(message.content || '{}');
+            const isPending = inviteData.status === 'pending';
+            const isAccepted = inviteData.status === 'accepted';
+            const isRejected = inviteData.status === 'rejected';
+            const isSelfInvite = Number(inviteData.inviterId) === userId;
+            const canRespond = isPending && !isSelfInvite;
+
+            return (
+              <div className="w-[260px] sm:w-[280px]">
+                <div className={clsx(
+                  "rounded-lg border overflow-hidden",
+                  isAccepted ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20" :
+                  isRejected ? "border-red-300 bg-red-50 dark:bg-red-900/20" :
+                  "border-indigo-200 bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
+                )}>
+                  <div className={clsx(
+                    "px-3 py-2 flex items-center gap-2",
+                    isAccepted ? "bg-emerald-100 dark:bg-emerald-800/30" :
+                    isRejected ? "bg-red-100 dark:bg-red-800/30" :
+                    "bg-indigo-100 dark:bg-indigo-800/30"
+                  )}>
+                    <Gamepad2 size={16} className={clsx(
+                      isAccepted ? "text-emerald-600" : isRejected ? "text-red-500" : "text-indigo-600"
+                    )} />
+                    <span className={clsx("text-xs font-semibold truncate",
+                      isAccepted ? "text-emerald-700 dark:text-emerald-300" :
+                      isRejected ? "text-red-700 dark:text-red-300" :
+                      "text-indigo-700 dark:text-indigo-300"
+                    )}>
+                      {isAccepted ? '对局已开始' : isRejected ? '邀请已拒绝' : '游戏邀请'}
+                    </span>
+                  </div>
+                  <div className="px-3 py-2">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">
+                      {isSelfInvite
+                        ? `你邀请对方进行一局 ${inviteData.gameName || inviteData.gameType}`
+                        : `${inviteData.inviterName || '对方'} 邀请你进行一局 ${inviteData.gameName || inviteData.gameType}`}
+                    </p>
+                    {canRespond && (
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          onClick={() => onRespondGameInvite(inviteData.matchId, true)}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                        >
+                          <CheckCircle2 size={12} /> 同意
+                        </button>
+                        <button
+                          onClick={() => onRespondGameInvite(inviteData.matchId, false, inviteData.gameType)}
+                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 transition-colors"
+                        >
+                          <XCircle size={12} /> 拒绝
+                        </button>
+                      </div>
+                    )}
+                    {isAccepted && (
+                      <button
+                        onClick={() => window.location.href = `/games?matchId=${inviteData.matchId}&gameType=${inviteData.gameType}`}
+                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors mt-1"
+                      >
+                        <CheckCircle2 size={12} /> 进入对局
+                      </button>
+                    )}
+                    {(isRejected || (!isPending && !isSelfInvite)) && (
+                      <p className="text-[10px] text-gray-400 text-center mt-1">
+                        {isRejected ? '已拒绝该邀请' : '对方已响应邀请'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          } catch {
+            return <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>[游戏邀请消息]</p>;
+          }
+        })()}
+        <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
+          {message.status === 'pending' && (
+            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          )}
+          {formatTime(message.created_at)}
+        </p>
+      </motion.div>
+    </div>
+  );
+});
+
+MessageItem.displayName = 'MessageItem';
 
 function formatLastSeen(lastSeen: string | null | undefined): string {
   if (!lastSeen) return '离线';
@@ -227,37 +414,18 @@ export function Chat() {
     }
     setIsLoading(true);
     try {
-      const timestamp = Date.now();
-      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&limit=50&t=${timestamp}`;
+      const res = await messageApi.getMessageList(conversationId, 30);
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-
-      if (!response.ok) {
-        console.error('消息加载失败，状态码:', response.status);
-        setMessages([]);
-        setHasMore(false);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.code === 200 && Array.isArray(data.data)) {
-        setMessages(data.data || []);
-        setHasMore(data.hasMore || false);
-        if (data.data.length > 0) {
-          setFirstMessageId(data.data[0].id);
+      if (res.code === 200 && Array.isArray(res.data)) {
+        setMessages(res.data || []);
+        setHasMore(res.hasMore || false);
+        if (res.data.length > 0) {
+          setFirstMessageId(res.data[0].id);
         } else {
           setFirstMessageId(null);
         }
       } else {
-        console.error('消息加载失败:', data.msg);
+        console.error('消息加载失败:', res.msg);
         setMessages([]);
         setHasMore(false);
       }
@@ -284,29 +452,13 @@ export function Chat() {
 
     setIsLoadingHistory(true);
     try {
-      const url = `${API_BASE_URL}/message/list?conversationId=${conversationId}&limit=50&beforeId=${firstMessageId}`;
+      const res = await messageApi.getMessageList(conversationId, 30, firstMessageId);
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-
-      if (!response.ok) {
-        setHasMore(false);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.code === 200 && Array.isArray(data.data)) {
-        setMessages(prev => [...data.data, ...prev]);
-        setHasMore(data.hasMore || false);
-        if (data.data.length > 0) {
-          setFirstMessageId(data.data[0].id);
+      if (res.code === 200 && Array.isArray(res.data)) {
+        setMessages(prev => [...res.data, ...prev]);
+        setHasMore(res.hasMore || false);
+        if (res.data.length > 0) {
+          setFirstMessageId(res.data[0].id);
         }
       } else {
         setHasMore(false);
@@ -739,167 +891,19 @@ export function Chat() {
                 const isOwnMessage = message.sender_id === user?.id;
                 const isRecalled = message.type === 'recalled';
                 return (
-                  <div
+                  <MessageItem
                     key={message.id || Math.random()}
-                    className={clsx("flex mb-3 gap-0", isOwnMessage ? "justify-end" : "justify-start")}
-                  >
-                    {!isOwnMessage && !isRecalled && (
-                      <div className={clsx(isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0 overflow-hidden" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0 overflow-hidden")}>
-                        {message.sender_avatar ? (
-                          <img src={getAvatarUrl(message.sender_avatar)} alt={message.sender_nickname || 'U'} className="w-full h-full object-cover" />
-                        ) : (
-                          (message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'
-                        )}
-                      </div>
-                    )}
-                    <motion.div
-                      className={clsx(isMobile ? "max-w-[75%] sm:max-w-[70%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2 relative" : "max-w-[70%] rounded-2xl px-4 py-2 relative",
-                        isRecalled ? "bg-gray-200 dark:bg-gray-800 text-gray-500" :
-                        isOwnMessage ? "bg-[#007AFF] text-white" : "bg-white dark:bg-[#1A1D21] text-gray-900 dark:text-white"
-                      )}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        if (isOwnMessage && !isRecalled) {
-                          setSelectedMessage(message);
-                          setShowMessageMenu(true);
-                        }
-                      }}
-                      onTouchStart={(e) => {
-                        if (isMobile && isOwnMessage && !isRecalled) {
-                          const start = Date.now();
-                          const touchX = e.touches[0].clientX;
-                          const touchY = e.touches[0].clientY;
-                          const check = setTimeout(() => {
-                            if (Date.now() - start > 500) {
-                              setSelectedMessage(message);
-                              setShowMessageMenu(true);
-                            }
-                          }, 500);
-                          const up = () => {
-                            clearTimeout(check);
-                            document.removeEventListener('touchend', up);
-                            document.removeEventListener('touchmove', move);
-                          };
-                          const move = (me: TouchEvent) => {
-                            const dx = Math.abs(me.touches[0].clientX - touchX);
-                            const dy = Math.abs(me.touches[0].clientY - touchY);
-                            if (dx > 10 || dy > 10) {
-                              clearTimeout(check);
-                            }
-                          };
-                          document.addEventListener('touchend', up);
-                          document.addEventListener('touchmove', move);
-                        }
-                      }}
-                    >
-                        {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>}
-                        {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
-                        {message.type === 'recalled' && (
-                          <p className={isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60"}>{message.content}</p>
-                        )}
-                        {message.type === 'file' && !isRecalled && (
-                          (() => {
-                            try {
-                              const fileData = JSON.parse(message.content || '{}');
-                              return (
-                                <div className="flex items-center gap-2">
-                                  <File size={isMobile ? 14 : 16} />
-                                  <span className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{fileData.name || '未知文件'}</span>
-                                </div>
-                              );
-                            } catch { return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>{message.content}</p>; }
-                          })()
-                        )}
-                        {message.type === 'game_invite' && (() => {
-                          try {
-                            const inviteData = JSON.parse(message.content || '{}');
-                            const isPending = inviteData.status === 'pending';
-                            const isAccepted = inviteData.status === 'accepted';
-                            const isRejected = inviteData.status === 'rejected';
-                            const isSelfInvite = Number(inviteData.inviterId) === user?.id;
-                            const canRespond = isPending && !isSelfInvite;
-
-                            return (
-                              <div className="w-[260px] sm:w-[280px]">
-                                <div className={clsx(
-                                  "rounded-lg border overflow-hidden",
-                                  isAccepted ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20" :
-                                  isRejected ? "border-red-300 bg-red-50 dark:bg-red-900/20" :
-                                  "border-indigo-200 bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
-                                )}>
-                                  <div className={clsx(
-                                    "px-3 py-2 flex items-center gap-2",
-                                    isAccepted ? "bg-emerald-100 dark:bg-emerald-800/30" :
-                                    isRejected ? "bg-red-100 dark:bg-red-800/30" :
-                                    "bg-indigo-100 dark:bg-indigo-800/30"
-                                  )}>
-                                    <Gamepad2 size={16} className={clsx(
-                                      isAccepted ? "text-emerald-600" : isRejected ? "text-red-500" : "text-indigo-600"
-                                    )} />
-                                    <span className={clsx("text-xs font-semibold truncate",
-                                      isAccepted ? "text-emerald-700 dark:text-emerald-300" :
-                                      isRejected ? "text-red-700 dark:text-red-300" :
-                                      "text-indigo-700 dark:text-indigo-300"
-                                    )}>
-                                      {isAccepted ? '对局已开始' : isRejected ? '邀请已拒绝' : '游戏邀请'}
-                                    </span>
-                                  </div>
-                                  <div className="px-3 py-2">
-                                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">
-                                      {isSelfInvite
-                                        ? `你邀请对方进行一局 ${inviteData.gameName || inviteData.gameType}`
-                                        : `${inviteData.inviterName || '对方'} 邀请你进行一局 ${inviteData.gameName || inviteData.gameType}`}
-                                    </p>
-                                    {canRespond && (
-                                      <div className="flex gap-2 mt-1">
-                                        <button
-                                          onClick={() => handleRespondGameInvite(inviteData.matchId, true)}
-                                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-                                        >
-                                          <CheckCircle2 size={12} /> 同意
-                                        </button>
-                                        <button
-                                          onClick={() => handleRespondGameInvite(inviteData.matchId, false, inviteData.gameType)}
-                                          className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 transition-colors"
-                                        >
-                                          <XCircle size={12} /> 拒绝
-                                        </button>
-                                      </div>
-                                    )}
-                                    {isAccepted && (
-                                      <button
-                                        onClick={() => window.location.href = `/games?matchId=${inviteData.matchId}&gameType=${inviteData.gameType}`}
-                                        className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors mt-1"
-                                      >
-                                        <CheckCircle2 size={12} /> 进入对局
-                                      </button>
-                                    )}
-                                    {(isRejected || (!isPending && !isSelfInvite)) && (
-                                      <p className="text-[10px] text-gray-400 text-center mt-1">
-                                        {isRejected ? '已拒绝该邀请' : '对方已响应邀请'}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          } catch {
-                            return <p className={isMobile ? "text-[13px] sm:text-sm" : "text-sm"}>[游戏邀请消息]</p>;
-                          }
-                        })()}
-                        <p className={clsx(isMobile ? "text-[9px] sm:text-[10px] mt-0.5" : "text-[10px] mt-1", isOwnMessage ? "text-white/60" : "text-gray-400", message.status === 'pending' && "flex items-center gap-1")}>
-                          {message.status === 'pending' && (
-                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                          )}
-                          {formatTime(message.created_at)}
-                        </p>
-                      </motion.div>
-                  </div>
+                    message={message}
+                    isOwnMessage={isOwnMessage}
+                    isRecalled={isRecalled}
+                    isMobile={isMobile}
+                    userId={user?.id}
+                    onShowMenu={(msg) => {
+                      setSelectedMessage(msg);
+                      setShowMessageMenu(true);
+                    }}
+                    onRespondGameInvite={handleRespondGameInvite}
+                  />
                 );
               })}
             </div>

@@ -9,6 +9,8 @@ import { useAuthStore } from '../../store/authStore';
 import { messageApi, SearchMessageResult } from '../../api/message';
 import { conversationApi } from '../../api/conversation';
 import { useIsMobile } from './ui/use-mobile';
+import { getAvatarUrl } from '../../lib/avatarCache';
+import { ImageWithLazyLoad } from './ui/ImageWithLazyLoad';
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -150,7 +152,7 @@ export function ChatsSidebar() {
       >
         <div className="relative flex-shrink-0">
           {displayAvatar ? (
-            <img src={displayAvatar} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
+            <ImageWithLazyLoad src={getAvatarUrl(displayAvatar)} alt={displayName} className={isMobile ? "w-10 h-10 rounded-full object-cover shadow-sm" : "w-[46px] h-[46px] rounded-full object-cover shadow-sm"} />
           ) : (
             <div className={isMobile ? "w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-sm" : "w-[46px] h-[46px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold"}>
               {displayName.charAt(0).toUpperCase()}

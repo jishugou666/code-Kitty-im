@@ -6,10 +6,11 @@ import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
-import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
+import { useGameMatch } from '../../../hooks/useGameMatch';
 
 interface GomokuBoardProps {
   matchId?: number;
@@ -498,17 +499,15 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(style);
 }
 
-export function GomokuBoard({
+export const GomokuBoard = React.memo(function GomokuBoard({
   matchId: _matchId,
   onGameOver,
   mode = 'ai'
 }: GomokuBoardProps) {
   const [board, setBoard] = useState<Board>(createEmptyBoard);
   const [currentPlayer, setCurrentPlayer] = useState<number>(BLACK);
-  const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [lastMove, setLastMove] = useState<Position | null>(null);
   const [winningCells, setWinningCells] = useState<Position[] | null>(null);
-  const [isAIThinking, setIsAIThinking] = useState(false);
   const [history, setHistory] = useState<MoveRecord[]>([]);
   const [hoverPos, setHoverPos] = useState<Position | null>(null);
   const [undoCount, setUndoCount] = useState(0);
@@ -516,9 +515,7 @@ export function GomokuBoard({
   const [showHistory, setShowHistory] = useState(false);
   const [previewStep, setPreviewStep] = useState<number | null>(null);
   const [previewBoard, setPreviewBoard] = useState<Board | null>(null);
-  const [aiThinkProgress, setAiThinkProgress] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [matchId, setMatchId] = useState<number | null>(null);
   const [opponent, setOpponent] = useState<Opponent | null>(null);
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
@@ -528,6 +525,109 @@ export function GomokuBoard({
   const [pvpLoaded, setPvpLoaded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thinkTimeRef = useRef<number>(4000);
+
+  const {
+    matchId,
+    gameStatus,
+    setGameStatus,
+    isAIThinking,
+    aiThinkProgress,
+    moveCount,
+    setMoveCount,
+    scoreChange,
+    initMatch,
+    simulateAIThink,
+    surrender,
+    finishMatch
+  } = useGameMatch({
+    gameType: 'gomoku',
+    mode,
+    matchId: _matchId,
+    onGameOver,
+    channelCallbacks: {
+      onRemoteMove: (data) => {
+        const [row, col] = data.position;
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+        const symbol = data.symbol === 'B' || data.symbol === BLACK ? BLACK : WHITE;
+        setBoard(prev => {
+          const newBoard = prev.map(r => [...r]);
+          newBoard[row][col] = symbol;
+          const winCells = checkFive(row, col, symbol, newBoard);
+          if (winCells.length > 0) {
+            setTimeout(() => {
+              setWinningCells(winCells);
+              if (symbol === (myColor === 'black' ? BLACK : WHITE)) {
+                setGameStatus('won');
+                saveGameResult('win');
+                recordDifficultyResult(true);
+                processMatchFinish(true, 78, 'B', '连珠新星');
+                setShowResultModal(true);
+                onGameOver?.('win');
+              } else {
+                setGameStatus('lost');
+                saveGameResult('loss');
+                recordDifficultyResult(false);
+                processMatchFinish(false, 32, 'D', '再接再厉');
+                setShowResultModal(true);
+                onGameOver?.('loss');
+              }
+            }, 0);
+            return newBoard;
+          }
+          if (newBoard.every(r => r.every(c => c !== EMPTY))) {
+            setTimeout(() => {
+              setGameStatus('draw');
+              saveGameResult('draw');
+              recordDifficultyResult(false);
+              processMatchFinish(false, 50, 'C', '势均力敌');
+              setShowResultModal(true);
+              onGameOver?.('draw');
+            }, 0);
+          }
+          return newBoard;
+        });
+        setCurrentPlayer(symbol === BLACK ? WHITE : BLACK);
+        setLastMove([row, col]);
+        setHistory(h => [...h, { row, col, player: symbol, timestamp: Date.now() }]);
+      },
+      onRemoteSurrender: () => {
+        if (gameStatus !== 'playing') return;
+        setGameStatus('won');
+        saveGameResult('win');
+        recordDifficultyResult(true);
+        processMatchFinish(true, 78, 'B', '对方认输');
+        setShowResultModal(true);
+        onGameOver?.('win');
+      },
+      onRemoteFinished: (data) => {
+        if (gameStatus !== 'playing') return;
+        const myId = useAuthStore.getState().user?.id;
+        const iWon = data.winnerId === myId;
+        if (iWon) {
+          setGameStatus('won');
+          saveGameResult('win');
+          recordDifficultyResult(true);
+          processMatchFinish(true, 78, 'B', '表现出色');
+          setShowResultModal(true);
+          onGameOver?.('win');
+        } else if (data.status === 'finished' && data.winnerId) {
+          setGameStatus('lost');
+          saveGameResult('loss');
+          recordDifficultyResult(false);
+          processMatchFinish(false, 32, 'D', '继续加油');
+          setShowResultModal(true);
+          onGameOver?.('loss');
+        } else {
+          setGameStatus('draw');
+          saveGameResult('draw');
+          recordDifficultyResult(false);
+          processMatchFinish(false, 50, 'C', '势均力敌');
+          setShowResultModal(true);
+          onGameOver?.('draw');
+        }
+      }
+    }
+  });
 
   const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
     if (!matchId) {
@@ -589,90 +689,6 @@ export function GomokuBoard({
   }, [mode]);
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
-
-  useGameChannel(matchId, {
-    onRemoteMove: (data) => {
-      const [row, col] = data.position;
-      if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
-      const symbol = data.symbol === 'B' || data.symbol === BLACK ? BLACK : WHITE;
-      setBoard(prev => {
-        const newBoard = prev.map(r => [...r]);
-        newBoard[row][col] = symbol;
-        const winCells = checkFive(row, col, symbol, newBoard);
-        if (winCells.length > 0) {
-          setTimeout(() => {
-            setWinningCells(winCells);
-            if (symbol === (myColor === 'black' ? BLACK : WHITE)) {
-              setGameStatus('won');
-              saveGameResult('win');
-              recordDifficultyResult(true);
-              processMatchFinish(true, 78, 'B', '连珠新星');
-              setShowResultModal(true);
-              onGameOver?.('win');
-            } else {
-              setGameStatus('lost');
-              saveGameResult('loss');
-              recordDifficultyResult(false);
-              processMatchFinish(false, 32, 'D', '再接再厉');
-              setShowResultModal(true);
-              onGameOver?.('loss');
-            }
-          }, 0);
-          return newBoard;
-        }
-        if (newBoard.every(r => r.every(c => c !== EMPTY))) {
-          setTimeout(() => {
-            setGameStatus('draw');
-            saveGameResult('draw');
-            recordDifficultyResult(false);
-            processMatchFinish(false, 50, 'C', '势均力敌');
-            setShowResultModal(true);
-            onGameOver?.('draw');
-          }, 0);
-        }
-        return newBoard;
-      });
-      setCurrentPlayer(symbol === BLACK ? WHITE : BLACK);
-      setLastMove([row, col]);
-      setHistory(h => [...h, { row, col, player: symbol, timestamp: Date.now() }]);
-    },
-    onRemoteSurrender: () => {
-      if (gameStatus !== 'playing') return;
-      setGameStatus('won');
-      saveGameResult('win');
-      recordDifficultyResult(true);
-      processMatchFinish(true, 78, 'B', '对方认输');
-      setShowResultModal(true);
-      onGameOver?.('win');
-    },
-    onRemoteFinished: (data) => {
-      if (gameStatus !== 'playing') return;
-      const myId = useAuthStore.getState().user?.id;
-      const iWon = data.winnerId === myId;
-      if (iWon) {
-        setGameStatus('won');
-        saveGameResult('win');
-        recordDifficultyResult(true);
-        processMatchFinish(true, 78, 'B', '表现出色');
-        setShowResultModal(true);
-        onGameOver?.('win');
-      } else if (data.status === 'finished' && data.winnerId) {
-        setGameStatus('lost');
-        saveGameResult('loss');
-        recordDifficultyResult(false);
-        processMatchFinish(false, 32, 'D', '继续加油');
-        setShowResultModal(true);
-        onGameOver?.('loss');
-      } else {
-        setGameStatus('draw');
-        saveGameResult('draw');
-        recordDifficultyResult(false);
-        processMatchFinish(false, 50, 'C', '势均力敌');
-        setShowResultModal(true);
-        onGameOver?.('draw');
-      }
-    }
-  });
 
   const initMatch = useCallback(async () => {
     try {
@@ -1340,9 +1356,9 @@ export function GomokuBoard({
             <>
               <div className="flex items-center gap-3 mb-3">
                 {mode === 'pvp' && pvpOpponent?.avatar ? (
-                  <img src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                  <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
                 ) : (
-                  <img
+                  <ImageWithLazyLoad
                     src={getAvatarUrl(displayOpponent.avatar)}
                     alt={displayOpponent.nickname}
                     className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
@@ -1584,4 +1600,8 @@ export function GomokuBoard({
       </AnimatePresence>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+});

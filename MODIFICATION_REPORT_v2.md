@@ -293,6 +293,99 @@ UPDATE conversation SET name = '系统通知' WHERE type = 'notification';
 
 ---
 
+## 📅 2026-05-29 更新记录
+
+### 围棋（GoBoard）完美实现 - Bug修复与体验优化
+
+**修改原因**: GoBoard.tsx 存在导致界面空白/崩溃的关键Bug，以及与象棋组件相比缺失的AI思考进度条功能，需要进行全面审查和修复。
+
+#### 修复1（关键）：Result Overlay 空指针崩溃 Bug
+
+**问题分析**:
+- **位置**: [GoBoard.tsx#L1261](frontend/src/app/components/games/GoBoard.tsx#L1261) (原L1243)
+- **现象**: 组件首次挂载时白屏/崩溃 `TypeError: Cannot read properties of null (reading 'emoji')`
+- **根因链**:
+  1. `gameStatus` 初始值为 `'idle'`
+  2. Fix 1 正确地将 `resultConfig` 访问守卫为：`gameStatus !== 'playing' && gameStatus !== 'idle' ? resultConfig[gameStatus] : null` → 当 idle 时 `rc = null` ✅
+  3. 但 Result Overlay 的渲染条件仅为 `gameStatus !== 'playing' && !showResultModal`，**未排除 `'idle'` 状态**
+  4. 当 `gameStatus === 'idle'` 时：overlay 渲染 → `rc` 为 null → 访问 `rc.emoji` → **崩溃**
+  5. 虽然 useEffect(L621) 会立即将 idle→playing，但 React 的首次渲染发生在 useEffect 之前
+
+**修复方案**:
+```typescript
+// 修改前（崩溃）:
+{gameStatus !== 'playing' && !showResultModal && (
+
+// 修改后（安全）:
+{rc && gameStatus !== 'playing' && !showResultModal && (
+```
+
+**验证**: 在 useEffect 执行前的初始渲染帧，`rc=null` 导致条件短路，overlay 不渲染，避免空指针访问。
+
+#### 验证通过的已有修复
+
+| 修复项 | 行号 | 说明 | 状态 |
+|--------|------|------|------|
+| resultConfig空值守卫 | L923 | 排除 playing/idle 时返回null | ✅ 已正确应用 |
+| 初始化useEffect | L621-625 | idle状态自动调用resetBoard() | ✅ 已正确应用 |
+
+#### 新增功能：AI思考进度条
+
+**参照**: [ChineseChessBoard.tsx#L591-L600](frontend/src/app/components/games/ChineseChessBoard.tsx#L591) 的成功实现
+
+**变更内容**:
+1. 新增 state: `aiThinkProgress` (number) - 追踪AI思考进度百分比
+2. AI思考effect中: interval每帧更新 `setAiThinkProgress(progress)`，完成时设为100
+3. AI思考结束/取消/cleanup时: 重置 `setAiThinkProgress(0)`
+4. resetBoard中: 重置 `setAiThinkProgress(0)` + `setThinkingPhase('')`
+5. UI层: 状态栏下方新增 amber色圆角进度条，带入场动画（height 0→6px）
+
+**视觉设计**:
+- 颜色: `bg-amber-500`（与围棋主题的琥珀/橙色系一致）
+- 高度: 6px（与象棋一致）
+- 动画: motion.div 入场 + width过渡
+- 暗色模式: `dark:bg-gray-700` 轨道
+
+#### 完整审查结果
+
+| 检查项 | 结果 | 备注 |
+|--------|------|------|
+| 围棋引擎（落子/吃子/提子/打劫） | ✅ 完整 | placeStone/getGroup/getLiberties/isValidMove |
+| 双Pass终局/计分 | ✅ 完整 | calculateScore含7.5目贴目 |
+| AI算法（三档难度） | ✅ 完整 | easy/medium/hard, getAIMove函数 |
+| 动态难度集成 | ✅ 正常 | getDynamicDifficulty('go', moveCount) |
+| PVP联机 | ✅ 完整 | useGameChannel + onRemoteMove/Surrender/Finished |
+| 最后落子标记（红点） | ✅ 正常 | isLast → 红色圆点 |
+| 闪烁效果(flashCell) | ✅ 正常 | ring-2 ring-blue-400 |
+| hover预览 | ✅ 正常 | whileHover scale动画 |
+| Pass双击终局 | ✅ 正常 | passCount >= 2 触发计分 |
+| 认输确认对话框 | ✅ 正常 | window.confirm |
+| 键盘快捷键(P/R/Esc) | ✅ 正常 | keyDown event listener |
+| 分享结果功能 | ✅ 正常 | clipboard API + fallback |
+| GameResultModal集成 | ✅ 正正常 | showResultModal/performanceResult |
+| 棋盘尺寸/定位 | ✅ 合理 | cellSize动态计算, 1格边距 |
+| 暗色模式支持 | ✅ 完整 | dark: 前缀全覆盖 |
+
+**修改文件清单**:
+
+| 文件 | 修改类型 | 说明 |
+|------|----------|------|
+| [GoBoard.tsx](frontend/src/app/components/games/GoBoard.tsx) | Bug修复+功能增强 | 修复空指针崩溃 + AI进度条 + 状态重置完善 |
+
+**代码改动统计**:
+- 修改行数: ~15行
+- 新增行数: ~15行
+- 净增长: ~15行
+
+**构建验证**: ✅ `npm run build` 通过 (exit code 0, 11.70s)
+
+**向后兼容性**: ✅ 完全兼容
+- 不改变任何现有数据流或API调用
+- 所有新增代码均为防御性修复和UI增强
+- PVP/AI/所有游戏模式均不受影响
+
+---
+
 ## 📅 2026-05-25 更新记录
 
 ### Games.tsx 主页视觉增强 - 段位显示区域升级

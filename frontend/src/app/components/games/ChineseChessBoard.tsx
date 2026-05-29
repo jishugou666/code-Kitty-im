@@ -10,6 +10,7 @@ import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
 import {
   createInitialBoard, pieceName, getLegalMoves, makeMove, getAIMove,
   isCheckmate, isInCheck, MoveRecord
@@ -95,7 +96,7 @@ const ChessPiece = React.memo(({ piece, isSelected, isCheck, isLastMove, isAnima
 });
 ChessPiece.displayName = 'ChessPiece';
 
-export function ChineseChessBoard({
+export const ChineseChessBoard = React.memo(function ChineseChessBoard({
   matchId: _matchId,
   onGameOver,
   mode = 'ai'
@@ -832,9 +833,9 @@ export function ChineseChessBoard({
             <>
               <div className="flex items-center gap-3 mb-3">
                 {mode === 'pvp' && pvpOpponent?.avatar ? (
-                  <img src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                  <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
                 ) : (
-                  <img src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                  <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
@@ -994,4 +995,8 @@ export function ChineseChessBoard({
       </AnimatePresence>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+});

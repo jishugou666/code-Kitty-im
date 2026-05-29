@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2, User, CircleDot } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
 
 interface GoBoardProps {
   mode?: 'ai' | 'pvp';
@@ -375,7 +376,7 @@ function saveStatsToStorage(stats: { wins: number; losses: number; draws: number
   } catch {}
 }
 
-export function GoBoard({
+export const GoBoard = React.memo(function GoBoard({
   matchId: _matchId,
   onGameOver,
   mode = 'ai'
@@ -407,6 +408,7 @@ export function GoBoard({
   const [flashCell, setFlashCell] = useState<[number, number] | null>(null);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [showDifficultyTip, setShowDifficultyTip] = useState(false);
+  const [aiThinkProgress, setAiThinkProgress] = useState(0);
   const [matchId, setMatchId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initializingRef = useRef(false);
@@ -618,6 +620,12 @@ export function GoBoard({
   }, [gameStatus, matchId, isAIThinking, initMatch, mode, _matchId]);
 
   useEffect(() => {
+    if (gameStatus === 'idle') {
+      resetBoard();
+    }
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showReplay || gameStatus !== 'playing') {
         if (e.key === 'Escape' && gameStatus !== 'playing') return;
@@ -748,6 +756,7 @@ export function GoBoard({
     const interval = setInterval(() => {
       progress += Math.random() * 20 + 8;
       if (progress > 95) progress = 90 + Math.random() * 6;
+      setAiThinkProgress(progress);
       if (phaseIndex < phases.length - 1 && progress >= phases[phaseIndex + 1].progress) {
         phaseIndex++;
         setThinkingPhase(phaseLabels[phases[phaseIndex]?.phase] || '');
@@ -755,6 +764,7 @@ export function GoBoard({
     }, tt / 10);
     const timer = setTimeout(() => {
       clearInterval(interval);
+      setAiThinkProgress(100);
       const aiColor = currentPlayer === BLACK ? WHITE : BLACK;
       const aiMove = getAIMove(board, difficulty, aiColor, koPoint, moveCount);
 
@@ -769,6 +779,7 @@ export function GoBoard({
         });
         setIsAIThinking(false);
         setThinkingPhase('');
+        setAiThinkProgress(0);
         setCurrentPlayer(BLACK);
         setKoPoint(null);
         setLastMove(null);
@@ -794,6 +805,7 @@ export function GoBoard({
       setTimeout(() => setFlashCell(null), 300);
       setIsAIThinking(false);
       setThinkingPhase('');
+      setAiThinkProgress(0);
 
       if (matchId) {
         gameApi.move(matchId, {
@@ -811,7 +823,7 @@ export function GoBoard({
         }
       }
     }, tt);
-    return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); };
+    return () => { clearTimeout(timer); clearInterval(interval); setThinkingPhase(''); setAiThinkProgress(0); };
   }, [isAIThinking, gameStatus, board, currentPlayer, koPoint, moveCount, matchId, mode, difficulty, endGame]);
 
   const resetBoard = () => {
@@ -819,6 +831,8 @@ export function GoBoard({
     setGameStatus('playing');
     setCurrentPlayer(BLACK);
     setIsAIThinking(false);
+    setThinkingPhase('');
+    setAiThinkProgress(0);
     setLastMove(null);
     setKoPoint(null);
     setMoveCount(0);
@@ -907,8 +921,7 @@ export function GoBoard({
     lost: { emoji: '😔', text: '失败', score: scoreChange || '-4', color: 'text-red-500' },
     draw: { emoji: '🤝', text: '平局', score: scoreChange || '+2', color: 'text-yellow-500' }
   };
-  const rc = resultConfig[gameStatus as keyof typeof resultConfig];
-  if (!rc) return null;
+  const rc = gameStatus !== 'playing' && gameStatus !== 'idle' ? resultConfig[gameStatus] : null;
 
   const totalGames = stats.wins + stats.losses + stats.draws;
   const winRate = totalGames > 0 ? ((stats.wins / totalGames) * 100).toFixed(1) : '0.0';
@@ -944,9 +957,9 @@ export function GoBoard({
           <>
             <div className="flex items-center gap-3 mb-3">
               {mode === 'pvp' && pvpOpponent?.avatar ? (
-                <img src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
               ) : (
-                <img src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
@@ -1000,6 +1013,17 @@ export function GoBoard({
                 </>
               )}
             </span>
+
+            {isAIThinking && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 6, opacity: 1 }} className="mt-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <motion.div
+                  className={clsx("h-full rounded-full transition-all", "bg-amber-500")}
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${aiThinkProgress}%` }}
+                  transition={{ ease: 'linear', duration: thinkTimeRef.current / 800 }}
+                />
+              </motion.div>
+            )}
 
             <div className="flex items-center gap-1.5">
               <div className="relative">
@@ -1235,7 +1259,7 @@ export function GoBoard({
 
       {/* Result Overlay */}
       <AnimatePresence>
-        {gameStatus !== 'playing' && !showResultModal && (
+        {rc && gameStatus !== 'playing' && !showResultModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1349,4 +1373,8 @@ export function GoBoard({
       `}</style>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+});

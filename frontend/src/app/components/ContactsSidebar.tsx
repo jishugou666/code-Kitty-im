@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { SearchModal } from './SearchModal';
 import { useTranslation } from 'react-i18next';
 import { getAvatarUrl } from '../../lib/avatarCache';
+import { ImageWithLazyLoad } from './ui/ImageWithLazyLoad';
 
 function formatLastSeen(lastSeen: string | null | undefined): string {
   if (!lastSeen) return '离线';
@@ -119,7 +120,7 @@ export function ContactsSidebar() {
                 >
                   <div className="relative">
                     {contact.avatar ? (
-                      <img src={getAvatarUrl(contact.avatar)} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm" />
+                      <ImageWithLazyLoad src={getAvatarUrl(contact.avatar)} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm" />
                     ) : (
                       <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold">
                         {(contact.nickname || contact.username || 'U')[0].toUpperCase()}
@@ -175,7 +176,7 @@ export function ContactsSidebar() {
                 >
                   <div className="relative">
                     {contact.avatar ? (
-                      <img src={getAvatarUrl(contact.avatar)} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm transition-transform group-hover:scale-105" />
+                      <ImageWithLazyLoad src={getAvatarUrl(contact.avatar)} alt={contact.nickname} className="w-[42px] h-[42px] rounded-full object-cover shadow-sm transition-transform group-hover:scale-105" />
                     ) : (
                       <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold transition-transform group-hover:scale-105">
                         {(contact.nickname || contact.username || 'U')[0].toUpperCase()}

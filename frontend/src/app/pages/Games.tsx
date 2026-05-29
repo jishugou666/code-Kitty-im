@@ -9,7 +9,9 @@ import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
 import { GomokuBoard } from '../components/games/GomokuBoard';
 import { ChineseChessBoard } from '../components/games/ChineseChessBoard';
 import { GoBoard } from '../components/games/GoBoard';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { getAvatarUrl } from '../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../components/ui/ImageWithLazyLoad';
 
 type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess' | 'go';
 type TabType = 'leaderboard' | 'history';
@@ -107,11 +109,13 @@ export function Games() {
             {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
-        <TicTacToeBoard
-          mode={pvpMatchId ? 'pvp' : 'ai'}
-          matchId={pvpMatchId || undefined}
-          onGameOver={handleGameOver}
-        />
+        <ErrorBoundary>
+          <TicTacToeBoard
+            mode={pvpMatchId ? 'pvp' : 'ai'}
+            matchId={pvpMatchId || undefined}
+            onGameOver={handleGameOver}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -132,11 +136,13 @@ export function Games() {
             {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
-        <GomokuBoard
-          mode={pvpMatchId ? 'pvp' : 'ai'}
-          matchId={pvpMatchId || undefined}
-          onGameOver={handleGameOver}
-        />
+        <ErrorBoundary>
+          <GomokuBoard
+            mode={pvpMatchId ? 'pvp' : 'ai'}
+            matchId={pvpMatchId || undefined}
+            onGameOver={handleGameOver}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -157,11 +163,13 @@ export function Games() {
             {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
-        <ChineseChessBoard
-          mode={pvpMatchId ? 'pvp' : 'ai'}
-          matchId={pvpMatchId || undefined}
-          onGameOver={handleGameOver}
-        />
+        <ErrorBoundary>
+          <ChineseChessBoard
+            mode={pvpMatchId ? 'pvp' : 'ai'}
+            matchId={pvpMatchId || undefined}
+            onGameOver={handleGameOver}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -182,11 +190,13 @@ export function Games() {
             {pvpMatchId ? 'PVP 对战' : '在线对局'}
           </div>
         </div>
-        <GoBoard
-          mode={pvpMatchId ? 'pvp' : 'ai'}
-          matchId={pvpMatchId || undefined}
-          onGameOver={handleGameOver}
-        />
+        <ErrorBoundary>
+          <GoBoard
+            mode={pvpMatchId ? 'pvp' : 'ai'}
+            matchId={pvpMatchId || undefined}
+            onGameOver={handleGameOver}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -614,7 +624,7 @@ export function Games() {
                           }}
                         >
                           {entry.avatar ? (
-                            <img src={getAvatarUrl(entry.avatar)} alt={entry.nickname} className="w-full h-full object-cover" />
+                            <ImageWithLazyLoad src={getAvatarUrl(entry.avatar)} alt={entry.nickname} className="w-full h-full object-cover" />
                           ) : (
                             entry.nickname[0]?.toUpperCase() || '?'
                           )}

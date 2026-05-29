@@ -909,6 +909,325 @@ mode === 'pvp'
 
 ---
 
+# 四个游戏棋盘组件 React.memo 性能优化记录
+
+**修改日期**: 2026-05-29
+**修改范围**: 前端四个游戏棋盘组件
+**优化类型**: 性能优化/React.memo包裹
+
+---
+
+## 一、优化目标
+
+### 1.1 核心问题
+四个游戏棋盘组件（TicTacToeBoard、GomokuBoard、ChineseChessBoard、GoBoard）使用普通函数导出，每次父组件重渲染时都会导致棋盘组件不必要的重新渲染，影响性能。
+
+### 1.2 优化方案
+为所有四个棋盘组件添加 `React.memo()` 高阶组件包裹，并配置自定义比较函数，仅在关键 props 变化时才触发重渲染。
+
+---
+
+## 二、修改内容
+
+### 2.1 统一修改模式
+
+每个文件的修改遵循相同模式：
+
+#### 修改1：添加 React 导入（TicTacToeBoard 和 GoBoard 需要）
+
+**TicTacToeBoard.tsx 第1行**:
+```typescript
+// 修改前
+import { useState, useCallback, useEffect, useRef } from 'react';
+
+// 修改后
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+```
+
+**GoBoard.tsx 第1行**:
+```typescript
+// 修改前
+import { useState, useCallback, useEffect, useRef } from 'react';
+
+// 修改后
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+```
+
+> **说明**: GomokuBoard.tsx 和 ChineseChessBoard.tsx 已有 React 导入，无需修改。
+
+#### 修改2：导出方式改造
+
+**统一修改模式** (4个文件):
+```typescript
+// 修改前
+export function ComponentName({ ... }: Props) {
+
+// 修改后
+export const ComponentName = React.memo(function ComponentName({ ... }: Props) {
+```
+
+| 文件 | 修改位置 | 原导出名 | 新导出名 |
+|------|---------|---------|---------|
+| TicTacToeBoard.tsx | L205 | `export function TicTacToeBoard` | `export const TicTacToeBoard = React.memo(function TicTacToeBoard` |
+| GomokuBoard.tsx | L501 | `export function GomokuBoard` | `export const GomokuBoard = React.memo(function GomokuBoard` |
+| ChineseChessBoard.tsx | L98 | `export function ChineseChessBoard` | `export const ChineseChessBoard = React.memo(function ChineseChessBoard` |
+| GoBoard.tsx | L378 | `export function GoBoard` | `export const GoBoard = React.memo(function GoBoard` |
+
+#### 修改3：添加比较函数
+
+**文件末尾统一追加** (4个文件):
+```typescript
+// 修改前
+    </div>
+  );
+}
+
+// 修改后
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+});
+```
+
+### 2.2 各文件具体改动
+
+#### 文件1: TicTacToeBoard.tsx
+| 改动位置 | 改动内容 |
+|---------|---------|
+| 第1行 | 添加 `React,` 到导入语句 |
+| 第205行 | `export function` → `export const TicTacToeBoard = React.memo(function TicTacToeBoard` |
+| 第1065-1069行 | 添加比较函数，闭合 memo 调用 |
+
+#### 文件2: GomokuBoard.tsx
+| 改动位置 | 改动内容 |
+|---------|---------|
+| 第501行 | `export function` → `export const GomokuBoard = React.memo(function GomokuBoard` |
+| 第1587-1591行 | 添加比较函数，闭合 memo 调用 |
+
+#### 文件3: ChineseChessBoard.tsx
+| 改动位置 | 改动内容 |
+|---------|---------|
+| 第98行 | `export function` → `export const ChineseChessBoard = React.memo(function ChineseChessBoard` |
+| 第997-1001行 | 添加比较函数，闭合 memo 调用 |
+
+#### 文件4: GoBoard.tsx
+| 改动位置 | 改动内容 |
+|---------|---------|
+| 第1行 | 添加 `React,` 到导入语句 |
+| 第378行 | `export function` → `export const GoBoard = React.memo(function GoBoard` |
+| 第1375-1379行 | 添加比较函数，闭合 memo 调用 |
+
+---
+
+## 三、技术细节
+
+### 3.1 比较函数设计原理
+
+```typescript
+(prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+}
+```
+
+**比较的 props 说明**:
+
+| Prop | 类型 | 为什么比较 |
+|------|------|-----------|
+| `matchId` | `number \| undefined` | 对局ID变化意味着新对局，必须重渲染 |
+| `mode` | `'ai' \| 'pvp'` | 游戏模式变化影响整个组件行为 |
+| `onGameOver` | `function \| undefined` | 回调函数引用变化需更新事件绑定 |
+
+**不比较的 props**:
+- 其他 props 由组件内部 state 管理，不受外部影响
+- 父组件重渲染但未传递新 prop 时跳过渲染
+
+### 3.2 子组件 Memo 状态确认
+
+| 组件 | 内部子组件 | Memo 状态 |
+|------|----------|----------|
+| TicTacToeBoard | 无独立子组件 | N/A |
+| GomokuBoard | Stone (L443) | ✅ 已有 `React.memo` + `displayName` |
+| ChineseChessBoard | ChessPiece (L51) | ✅ 已有 `React.memo` + `displayName` |
+| GoBoard | 无独立子组件 | N/A |
+
+### 3.3 useCallback/useMemo 使用现状
+
+各组件已广泛使用性能优化 Hook：
+
+| 组件 | useCallback 使用 | useMemo 使用 |
+|------|----------------|-------------|
+| TicTacToeBoard | processMatchFinish, initMatch, handleClick, handleUndo (4个) | 无 |
+| GomokuBoard | processMatchFinish, initMatch, handleClick, handleUndo, handlePreview (5个) | stats, evaluation, storedStats (3个) |
+| ChineseChessBoard | processMatchFinish, handleClick (2个) | storedStats (1个) |
+| GoBoard | processMatchFinish, initMatch, endGame, handleClick, handlePass (5个) | 无 |
+
+> **结论**: 所有组件的事件处理函数已正确使用 useCallback 缓存，配合 React.memo 可实现最优渲染性能。
+
+---
+
+## 四、性能提升预期
+
+### 4.1 渲染优化效果
+
+| 场景 | 优化前 | 优化后 |
+|------|-------|-------|
+| 父组件状态变化（无关props） | 4个棋盘全部重渲染 | ✅ 跳过渲染（props未变） |
+| 切换游戏标签页 | 4个棋盘全部重渲染 | ✅ 仅当前显示的棋盘渲染 |
+| 对话框/弹窗开关 | 4个棋盘全部重渲染 | ✅ 跳过渲染（props未变） |
+| 新对局开始（matchId变化） | 正常重渲染 | ✅ 正常重渲染（符合预期） |
+| 模式切换（AI↔PVP） | 正常重渲染 | ✅ 正常重渲染（符合预期） |
+
+### 4.2 计算节省估算
+
+假设父组件每秒重渲染 2 次（聊天消息更新等），每次棋盘组件重渲染耗时约 8-15ms：
+
+- **优化前**: 4组件 × 2次/秒 × 12ms = **96ms/秒**
+- **优化后**: 大部分情况 **0ms**（props未变时跳过）
+- **节省**: 约 **90%+** 的无效渲染时间
+
+---
+
+## 五、兼容性保证
+
+### 5.1 导入路径兼容性
+
+所有通过以下方式导入这些组件的地方**无需任何修改**：
+
+```typescript
+import { TicTacToeBoard } from './games/TicTacToeBoard';
+import { GomokuBoard } from './games/GomokuBoard';
+import { ChineseChessBoard } from './games/ChineseChessBoard';
+import { GoBoard } from './games/GoBoard';
+```
+
+> **原因**: `export const` 与 `export function` 在导入方看来完全一致。
+
+### 5.2 类型定义兼容性
+
+Props 接口类型定义完全不变：
+- `TicTacToeBoardProps`
+- `GomokuBoardProps`
+- `ChineseChessBoardProps`
+- `GoBoardProps`
+
+### 5.3 功能行为兼容性
+
+✅ 所有游戏逻辑完全不变
+✅ UI 渲染结果完全不变
+✅ 事件处理完全不变
+✅ AI/PVP 模式切换完全不变
+✅ WebSocket 通信完全不变
+
+---
+
+## 六、验证结果
+
+### 6.1 代码结构验证
+- ✅ 4个文件语法结构正确（括号匹配、闭包完整）
+- ✅ React 导入正确添加（2个文件）
+- ✅ 比较函数逻辑一致（4个文件相同模式）
+- ✅ displayName 不受影响（子组件 Stone/ChessPiece 保持独立 memo）
+
+### 6.2 功能回归测试建议
+- [ ] 井字棋 AI 模式正常对弈
+- [ ] 井字棋 PVP 模式正常对弈
+- [ ] 五子棋 AI 模式正常对弈
+- [ ] 五子棋 PVP 模式正常对弈
+- [ ] 中国象棋 AI 模式正常对弈
+- [ ] 中国象棋 PVP 模式正常对弈
+- [ ] 围棋 AI 模式正常对弈
+- [ ] 围棋 PVP 模式正常对弈
+- [ ] 所有游戏结算弹窗正常显示
+- [ ] 游戏切换时不闪退或卡顿
+
+---
+
+## 七、相关文件
+
+### 7.1 修改的文件
+- [TicTacToeBoard.tsx](frontend/src/app/components/games/TicTacToeBoard.tsx)
+  - L1: React 导入
+  - L205: memo 包裹导出
+  - L1065-1069: 比较函数
+
+- [GomokuBoard.tsx](frontend/src/app/components/games/GomokuBoard.tsx)
+  - L501: memo 包裹导出
+  - L1587-1591: 比较函数
+
+- [ChineseChessBoard.tsx](frontend/src/app/components/games/ChineseChessBoard.tsx)
+  - L98: memo 包裹导出
+  - L997-1001: 比较函数
+
+- [GoBoard.tsx](frontend/src/app/components/games/GoBoard.tsx)
+  - L1: React 导入
+  - L378: memo 包裹导出
+  - L1375-1379: 比较函数
+
+### 7.2 相关文档（已更新）
+- [MODIFICATION_RECORD_20260525.md](MODIFICATION_RECORD_20260525.md) - 本文档
+
+---
+
+## 八、回滚方案
+
+如需恢复到优化前的版本：
+
+### 方法1: Git 回滚
+```bash
+git checkout HEAD~1 -- frontend/src/app/components/games/TicTacToeBoard.tsx
+git checkout HEAD~1 -- frontend/src/app/components/games/GomokuBoard.tsx
+git checkout HEAD~1 -- frontend/src/app/components/games/ChineseChessBoard.tsx
+git checkout HEAD~1 -- frontend/src/app/components/games/GoBoard.tsx
+```
+
+### 方法2: 手动还原（以 TicTacToeBoard 为例）
+
+**还原第1行**:
+```typescript
+import { useState, useCallback, useEffect, useRef } from 'react';
+```
+
+**还原第205行**:
+```typescript
+export function TicTacToeBoard({
+```
+
+**还原第1065-1069行** (删除比较函数):
+```typescript
+    </div>
+  );
+}
+```
+
+---
+
+## 九、未来优化方向
+
+### 9.1 进一步优化可能
+- [ ] 为 `resetBoard` 和 `surrender` 函数添加 `useCallback` 包装
+- [ ] 考虑将棋盘渲染逻辑拆分为更细粒度的子组件并分别 memo
+- [ ] 使用 `ReactProfiler` 测量实际渲染性能提升数据
+
+### 9.2 监控指标
+- 建议在开发环境启用 React DevTools Profiler
+- 监控各组件渲染次数和耗时
+- 对比优化前后数据验证效果
+
+---
+
+**修改执行人**: AI Assistant
+**审核状态**: 待审核
+**文档版本**: v1.0
+**修改完成时间**: 2026-05-29
+**优化优先级**: 🟢 中优先级（性能改进，无功能变更）
+
+---
+
 # 中国象棋棋盘布局彻底修复（第二次修复）
 
 **修复日期**: 2026-05-29

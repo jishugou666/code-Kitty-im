@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Target, HelpCircle, Trophy, Clock, RotateCcw, History, Share2, User } from 'lucide-react';
@@ -6,10 +6,11 @@ import { gameApi } from '../../../api/game';
 import { generateOpponent, getDynamicDifficulty, getThinkingPhases, recordGameResult as recordDifficultyResult } from './dynamicDifficulty';
 import type { Opponent, GameType } from './dynamicDifficulty';
 import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
-import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
+import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
+import { useGameMatch } from '../../../hooks/useGameMatch';
 
 interface TicTacToeBoardProps {
   matchId?: number;
@@ -202,7 +203,7 @@ function saveStatsToStorage(stats: { wins: number; losses: number; draws: number
   } catch {}
 }
 
-export function TicTacToeBoard({
+export const TicTacToeBoard = React.memo(function TicTacToeBoard({
   matchId: _matchId,
   onGameOver,
   mode = 'ai'
@@ -211,10 +212,7 @@ export function TicTacToeBoard({
   const [thinkingPhase, setThinkingPhase] = useState<string>('');
   const [board, setBoard] = useState<Board>(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState<boolean>(true);
-  const [gameStatus, setGameStatus] = useState<GameStatus>('playing');
   const [winningLine, setWinningLine] = useState<number[] | null>(null);
-  const [isAIThinking, setIsAIThinking] = useState(false);
-  const [moveCount, setMoveCount] = useState(0);
   const [lastMoveIndex, setLastMoveIndex] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -224,8 +222,6 @@ export function TicTacToeBoard({
   const [boardShake, setBoardShake] = useState(false);
   const [boardGlow, setBoardGlow] = useState(false);
   const [stats, setStats] = useState(() => getStatsFromStorage());
-  const [matchId, setMatchId] = useState<number | null>(null);
-  const [scoreChange, setScoreChange] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
   const [performanceResult, setPerformanceResult] = useState<any>(null);
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(null);
@@ -233,8 +229,86 @@ export function TicTacToeBoard({
   const [pvpLoaded, setPvpLoaded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
-  const initializingRef = useRef(false);
   const thinkTimeRef = useRef<number>(3000);
+
+  const {
+    matchId,
+    gameStatus,
+    setGameStatus,
+    isAIThinking,
+    aiThinkProgress,
+    moveCount,
+    setMoveCount,
+    scoreChange,
+    initMatch,
+    simulateAIThink,
+    surrender,
+    finishMatch
+  } = useGameMatch({
+    gameType: 'tictactoe',
+    mode,
+    matchId: _matchId,
+    onGameOver,
+    channelCallbacks: {
+      onRemoteMove: (data) => {
+        const idx = (data.position[0] || 0) * 3 + (data.position[1] || 0);
+        if (idx < 0 || idx > 8) return;
+        setBoard(prev => { const b = [...prev]; b[idx] = data.symbol; return b; });
+        setIsXNext(prev => !prev);
+        setLastMoveIndex(idx);
+        setMoveCount(c => c + 1);
+        setFlashCell(idx);
+        setTimeout(() => setFlashCell(null), 300);
+      },
+      onRemoteSurrender: () => {
+        if (gameStatus !== 'playing') return;
+        setGameStatus('won');
+        setBoardGlow(true);
+        setTimeout(() => setBoardGlow(false), 1500);
+        const newStats = { ...stats, wins: stats.wins + 1 };
+        setStats(newStats);
+        saveStatsToStorage(newStats);
+        setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
+        processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '对方认输');
+        setShowResultModal(true);
+        onGameOver?.('win');
+      },
+      onRemoteFinished: (data) => {
+        if (gameStatus !== 'playing') return;
+        const myId = useAuthStore.getState().user?.id;
+        const iWon = data.winnerId === myId;
+        if (iWon) {
+          setGameStatus('won');
+          setBoardGlow(true);
+          setTimeout(() => setBoardGlow(false), 1500);
+          const newStats = { ...stats, wins: stats.wins + 1 };
+          setStats(newStats); saveStatsToStorage(newStats);
+          setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
+          processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
+          setShowResultModal(true);
+          onGameOver?.('win');
+        } else if (data.status === 'finished' && data.winnerId) {
+          setGameStatus('lost');
+          setBoardShake(true);
+          setTimeout(() => setBoardShake(false), 500);
+          const newStats = { ...stats, losses: stats.losses + 1 };
+          setStats(newStats); saveStatsToStorage(newStats);
+          setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
+          processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
+          setShowResultModal(true);
+          onGameOver?.('loss');
+        } else {
+          setGameStatus('draw');
+          const newStats = { ...stats, draws: stats.draws + 1 };
+          setStats(newStats); saveStatsToStorage(newStats);
+          setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
+          processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+          setShowResultModal(true);
+          onGameOver?.('draw');
+        }
+      }
+    }
+  });
 
   const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
     if (!matchId) {
@@ -303,66 +377,6 @@ export function TicTacToeBoard({
   }, [mode]);
 
   useGameHeartbeat(matchId, gameStatus === 'playing');
-
-  useGameChannel(matchId, {
-    onRemoteMove: (data) => {
-      const idx = (data.position[0] || 0) * 3 + (data.position[1] || 0);
-      if (idx < 0 || idx > 8) return;
-      setBoard(prev => { const b = [...prev]; b[idx] = data.symbol; return b; });
-      setIsXNext(prev => !prev);
-      setLastMoveIndex(idx);
-      setMoveCount(c => c + 1);
-      setFlashCell(idx);
-      setTimeout(() => setFlashCell(null), 300);
-    },
-    onRemoteSurrender: () => {
-      if (gameStatus !== 'playing') return;
-      setGameStatus('won');
-      setBoardGlow(true);
-      setTimeout(() => setBoardGlow(false), 1500);
-      const newStats = { ...stats, wins: stats.wins + 1 };
-      setStats(newStats);
-      saveStatsToStorage(newStats);
-      setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
-      processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '对方认输');
-      setShowResultModal(true);
-      onGameOver?.('win');
-    },
-    onRemoteFinished: (data) => {
-      if (gameStatus !== 'playing') return;
-      const myId = useAuthStore.getState().user?.id;
-      const iWon = data.winnerId === myId;
-      if (iWon) {
-        setGameStatus('won');
-        setBoardGlow(true);
-        setTimeout(() => setBoardGlow(false), 1500);
-        const newStats = { ...stats, wins: stats.wins + 1 };
-        setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
-        setShowResultModal(true);
-        onGameOver?.('win');
-      } else if (data.status === 'finished' && data.winnerId) {
-        setGameStatus('lost');
-        setBoardShake(true);
-        setTimeout(() => setBoardShake(false), 500);
-        const newStats = { ...stats, losses: stats.losses + 1 };
-        setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
-        setShowResultModal(true);
-        onGameOver?.('loss');
-      } else {
-        setGameStatus('draw');
-        const newStats = { ...stats, draws: stats.draws + 1 };
-        setStats(newStats); saveStatsToStorage(newStats);
-        setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
-        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
-        setShowResultModal(true);
-        onGameOver?.('draw');
-      }
-    }
-  });
 
   const initMatch = useCallback(async () => {
     if (initializingRef.current) return;
@@ -735,9 +749,9 @@ export function TicTacToeBoard({
           <>
             <div className="flex items-center gap-3 mb-3">
               {mode === 'pvp' && pvpOpponent?.avatar ? (
-                <img src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
               ) : (
-                <img src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
@@ -1062,4 +1076,8 @@ export function TicTacToeBoard({
       `}</style>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.matchId === nextProps.matchId &&
+         prevProps.mode === nextProps.mode &&
+         prevProps.onGameOver === nextProps.onGameOver;
+});
