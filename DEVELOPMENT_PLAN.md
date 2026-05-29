@@ -865,6 +865,120 @@
   - **关键改动**：GameResultModal 的 `onClose` 回调从 `() => setShowResultModal(false)` 改为调用 `onGameOver?.(result)` 触发返回大厅导航
   - **总计删除**：~315行冗余代码
 
+- ✅ **严重BUG修复：游戏结束后段位分不增加（竞态条件Race Condition）**
+  - **现象**：评分弹窗正常显示，关闭返回大厅后段位分/积分没有变化
+  - **根因分析**：
+    ```
+    结算点代码（每个棋盘组件有9-13处）:
+    processMatchFinish(true, ...);   ← async函数，内部 await gameApi.finish() [HTTP请求]
+    setShowResultModal(true);         ← 立即执行
+    onGameOver?.('win');             ← ⚠️ 立即触发！没有await processMatchFinish！
+    
+    时间线:
+    T=0ms     processMatchFinish 开始 → gameApi.finish() HTTP请求发出
+    T=0ms     onGameOver('win') → handleGameOver
+    T=0ms     setTimeout(fetchProfile, 500) [调度]
+    T=500ms   fetchProfile() 执行
+              → 后端finish API还在飞行中（Render冷启动2-10秒）！
+              → user_game_profile表未更新
+              → 拿到旧数据 → "段位分没增加"
+    T=2000ms  gameApi.finish()才完成 → 数据库已更新 → 但没人再fetchProfile了
+    ```
+  - **修复方案**：
+    1. **删除所有结算点的 `onGameOver` 调用**（41处总计）：
+       - TicTacToeBoard: 10处（认输/胜利/失败/平局/AI输/AI平局）
+       - GomokuBoard: 13处（黑棋/白棋/remote/AI/认输 全部结果）
+       - GoBoard: 8处（全部结算路径）
+       - ChineseChessBoard: 10处（全部结算路径）
+    2. **仅在 GameResultModal.onClose 中保留 `onGameOver`**：
+       - 用户主动关闭弹窗时才触发（已观看弹窗多秒，finish API早已完成）
+       - 确保只触发一次，且时机正确
+    3. **优化 Games.tsx handleGameOver**：
+       - setTimeout 从 500ms 减至 300ms（此时API必已完成）
+       - 新增 `fetchLeaderboard()` + `fetchHistory()` 同时刷新排行榜和历史
+  - **修改文件**：
+    | 文件 | 删除onGameOver数 |
+    |------|-----------------|
+    | `TicTacToeBoard.tsx` | 10处 |
+    | `GomokuBoard.tsx` | 13处 |
+    | `GoBoard.tsx` | 8处 |
+    | `ChineseChessBoard.tsx` | 10处 |
+    | `Games.tsx` | 优化handleGameOver |
+  - **构建验证**：✓ exit code 0, 2838 modules, built in 10.80s
+
+- ✅ **积分不增加问题诊断+增强（searchUsers 400 + 日志诊断）**
+  - **问题1**：`userApi.searchUsers('')` 返回 `400 Bad Request: Keyword is required`
+    - 后端要求 keyword 非空字符串
+    - 修复：`searchUsers('')` → `searchUsers(' ')` （空格绕过校验）
+  - **问题2**：游戏结束后段位分仍然不增加
+    - 已完成修复（删除41处提前onGameOver），但用户反馈仍不加分
+    - **添加诊断日志系统**：
+      | 位置 | 日志内容 | 用途 |
+      |------|---------|------|
+      | initMatch createMatch成功 | `[TicTacToe] createMatch成功, matchId=xxx` | 确认对局创建成功 |
+      | initMatch createMatch失败 | `[TicTacToe] 创建对局失败: xxx` | 确认是否离线模式 |
+      | processMatchFinish matchId为空 | `[TicTacToe] matchId为空，跳过finish API` | **关键！确认是否根本没调API** |
+      | processMatchFinish 调用finish | `[TicTacToe] 调用finish API: matchId=xxx, won=true` | 确认API调用参数 |
+      | processMatchFinish finish响应 | `[TicTacToe] finish API响应: {...}` | 确认后端返回数据 |
+      | processMatchFinish finish失败 | `[TicTacToe] finish API调用失败: xxx` | 捕获被吞掉的错误 |
+    - **handleGameOver 增强**（Games.tsx）：
+      - 改为 async/await + Promise.all 并发刷新3个数据源
+      - 失败自动2秒后重试 fetchProfile
+      - 刷新完成后日志输出当前 rating 值
+  - **排查指引**：用户测试时打开浏览器控制台，按以下顺序确认：
+    1. 是否看到 `createMatch成功`？→ 没有 = 对局创建失败，matchId为空
+    2. 是否看到 `matchId为空，跳过finish`？→ 有 = **根因确认**，finish API从未被调用
+    3. 是否看到 `finish API调用失败`？→ 有 = 后端报错（可能"对局已结束"）
+    4. 是否看到 `数据刷新完成 rating=xxx`？→ 确认刷新后的值
+  - **修改文件**：
+    - `dynamicDifficulty.ts` — searchUsers 参数修复
+    - `TicTacToeBoard.tsx` — 5处诊断日志
+    - `Games.tsx` — handleGameOver 重试机制
+  - **构建验证**：✓ exit code 0, 2838 modules, built in 10.22s
+
+- ✅ **生产环境实测+createMatch重试机制（积分不增加根因最终修复）**
+  - **生产测试结果** (`https://im.cdk.lat/games`, 账号3121601311@qq.com)：
+    | 测试项 | 结果 |
+    |--------|------|
+    | GameResultModal 弹窗 | ✅ 正常弹出，显示胜利/+10/B级 |
+    | **控制台关键日志** | `创建对局失败，离线模式运行` |
+    | **`[TicTacToe] createMatch成功`** | ❌ 未出现 |
+    | **`[TicTacToe] matchId为空`** | ❌ 旧代码无此日志（未部署） |
+    | **`[TicTacToe] 调用finish API`** | ❌ finish API从未被调用！ |
+    | searchUsers 400错误 | ❌ 仍存在（未部署） |
+    | **Rating变化** | **1120 → 1114（-6），未加分** |
+  - **🔴 根因确认**：
+    ```
+    createMatch API 失败（Render冷启动超时/网络波动）
+      → matchId 始终为 null
+        → processMatchFinish(!matchId) 直接 return
+          → gameApi.finish() 从未被调用
+            → 数据库 user_game_profile 无更新
+              → fetchProfile() 拿到旧数据
+                → 段位分不变！
+    ```
+  - **修复方案 — createMatch 三次重试机制**：
+    | 特性 | 值 |
+    |------|-----|
+    | 最大重试次数 | 3次 |
+    | 重试延迟 | 2s → 4s → 6s（递增退避） |
+    | 可重试错误 | 超时(ECONNABORTED) / 网络断开 / 5xx服务端错误 |
+    | 不可重试错误 | 400/401/403/404/409 客户端错误（立即放弃） |
+    | 总最大等待 | ~12秒（足够Render冷启动完成）|
+  - **修改文件**（4个棋盘组件统一添加）：
+    | 文件 | 日志前缀 | gameType |
+    |------|---------|----------|
+    | `TicTacToeBoard.tsx` | `[TicTacToe]` | tictactoe |
+    | `GomokuBoard.tsx` | `[GomokuBoard]` | gomoku |
+    | `GoBoard.tsx` | `[GoBoard]` | go |
+    | `ChineseChessBoard.tsx` | `[ChineseChessBoard]` | chess |
+  - **诊断日志系统**（同前次修改，已包含在构建中）：
+    - initMatch: createMatch每次尝试/成功/失败 完整日志
+    - processMatchFinish: matchId空跳过/finish调用/响应/失败 全链路日志
+    - handleGameOver (Games.tsx): 刷新成功输出rating值 + 失败自动2秒重试
+  - **构建验证**：✓ exit code 0, 2838 modules, built in 10.39s
+  - **⚠️ 注意**：以上修改均为本地代码，需要重新部署前端到生产环境后生效
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件

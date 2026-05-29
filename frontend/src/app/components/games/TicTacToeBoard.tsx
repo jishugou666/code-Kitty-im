@@ -309,6 +309,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
 
   const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
     if (!matchId) {
+      console.warn('[TicTacToe] processMatchFinish: matchId为空，跳过finish API调用，使用默认分数显示');
       setPerformanceResult({
         score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
@@ -321,7 +322,9 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       return;
     }
     try {
+      console.log(`[TicTacToe] 调用finish API: matchId=${matchId}, won=${won}`);
       const finishRes = await gameApi.finish(matchId, { won });
+      console.log('[TicTacToe] finish API响应:', finishRes.data);
       if (finishRes.data?.performance_score !== undefined) {
         setPerformanceResult({
           score: finishRes.data.performance_score,
@@ -348,7 +351,8 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           highlights: [], performanceBonuses: [], breakdown: {}
         });
       }
-    } catch {
+    } catch (err: any) {
+      console.error('[TicTacToe] finish API调用失败:', err?.message || err);
       setPerformanceResult({
         score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
@@ -384,6 +388,8 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
   const initMatch = useCallback(async () => {
     if (initializingRef.current) return;
     initializingRef.current = true;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [2000, 4000, 6000];
     try {
       if (mode === 'pvp' && _matchId) {
         setMatchId(_matchId);
@@ -423,15 +429,34 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         setPvpLoaded(true);
         return;
       }
-      const res = await gameApi.createMatch({
-        gameType: 'tictactoe',
-        mode: 'ai'
-      });
-      if (res.code === 200 && res.data?.id) {
-        setMatchId(res.data.id);
+      let lastError: any = null;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          console.log(`[TicTacToe] createMatch 尝试 ${attempt + 1}/${MAX_RETRIES}...`);
+          const res = await gameApi.createMatch({
+            gameType: 'tictactoe',
+            mode: 'ai'
+          });
+          if (res.code === 200 && res.data?.id) {
+            console.log('[TicTacToe] createMatch成功, matchId=', res.data.id);
+            setMatchId(res.data.id);
+            return;
+          } else {
+            console.warn(`[TicTacToe] createMatch返回异常(尝试${attempt + 1}):`, res);
+            lastError = new Error('Invalid response: ' + JSON.stringify(res));
+          }
+        } catch (err: any) {
+          lastError = err;
+          const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+          const isNetwork = !err?.response && err?.request;
+          const isRetryable = isTimeout || isNetwork || (err?.response?.status >= 500);
+          console.warn(`[TicTacToe] createMatch失败(尝试${attempt + 1}):`, err?.message || err, isRetryable ? '将重试' : '不可重试');
+          if (!isRetryable || attempt >= MAX_RETRIES - 1) break;
+          console.log(`[TicTacToe] ${RETRY_DELAYS[attempt]}ms 后重试...`);
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        }
       }
-    } catch {
-      console.log('创建对局失败，离线模式运行');
+      console.error('[TicTacToe] createMatch最终失败，离线模式运行:', lastError?.message || lastError);
     } finally {
       initializingRef.current = false;
     }

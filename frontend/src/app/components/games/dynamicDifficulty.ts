@@ -57,7 +57,7 @@ async function fetchRealOpponents(): Promise<Opponent[]> {
 
   try {
     const { userApi } = await import('../../../api/user');
-    const res = await userApi.searchUsers('');
+    const res = await userApi.searchUsers(' ');
     if (res.data && Array.isArray(res.data) && res.data.length > 0) {
       const others = res.data.filter((u: any) => u.id !== myId);
       const shuffled = others.sort(() => Math.random() - 0.5);

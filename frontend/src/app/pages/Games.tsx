@@ -61,12 +61,19 @@ export function Games() {
   }, [error, clearError]);
 
   const handleGameOver = (result: 'win' | 'loss' | 'draw') => {
-    console.log(`Game over: ${result}`);
-    setTimeout(() => {
-      fetchProfile();
-      fetchLeaderboard();
-      fetchHistory();
-    }, 300);
+    console.log(`[Games] 游戏结束: ${result}, 准备刷新数据...`);
+    const doRefresh = async () => {
+      try {
+        await Promise.all([fetchProfile(), fetchLeaderboard(), fetchHistory()]);
+        console.log('[Games] 数据刷新完成, rating=', profile?.rating);
+      } catch (e) {
+        console.error('[Games] 刷新失败，2秒后重试:', e);
+        setTimeout(() => {
+          fetchProfile().catch(err => console.error('[Games] 重试也失败:', err));
+        }, 2000);
+      }
+    };
+    setTimeout(doRefresh, 500);
   };
 
   const handleBackToLobby = () => {

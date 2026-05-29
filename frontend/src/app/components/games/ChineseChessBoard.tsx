@@ -447,11 +447,33 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         setPvpLoaded(true);
         return;
       }
-      const res = await gameApi.createMatch({
-        gameType: 'chess',
-        mode: 'ai'
-      });
-      if (res.code === 200 && res.data) setMatchId(res.data.id);
+      const MAX_RETRIES = 3;
+      const RETRY_DELAYS = [2000, 4000, 6000];
+      let lastError: any = null;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          console.log(`[ChineseChessBoard] createMatch 尝试 ${attempt + 1}/${MAX_RETRIES}...`);
+          const res = await gameApi.createMatch({
+            gameType: 'chess',
+            mode: 'ai'
+          });
+          if (res.code === 200 && res.data?.id) {
+            console.log('[ChineseChessBoard] createMatch成功, matchId=', res.data.id);
+            setMatchId(res.data.id);
+            return;
+          } else {
+            lastError = new Error('Invalid response');
+          }
+        } catch (err: any) {
+          lastError = err;
+          const isTimeout = err?.code === 'ECONNABORTED' || err?.message?.includes('timeout');
+          const isNetwork = !err?.response && err?.request;
+          const isRetryable = isTimeout || isNetwork || (err?.response?.status >= 500);
+          if (!isRetryable || attempt >= MAX_RETRIES - 1) break;
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        }
+      }
+      console.error('[ChineseChessBoard] createMatch最终失败，离线模式运行:', lastError?.message || lastError);
     } catch { console.log('[Chess] 创建对局失败，离线模式'); }
   }, [mode, _matchId]);
 
