@@ -64,7 +64,9 @@ export function Games() {
     console.log(`Game over: ${result}`);
     setTimeout(() => {
       fetchProfile();
-    }, 500);
+      fetchLeaderboard();
+      fetchHistory();
+    }, 300);
   };
 
   const handleBackToLobby = () => {
