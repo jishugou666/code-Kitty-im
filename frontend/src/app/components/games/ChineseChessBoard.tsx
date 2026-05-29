@@ -544,6 +544,7 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
     lost: { emoji: '😔', text: '将死! 再接再厉', score: '-15', color: 'text-red-600' },
     draw: { emoji: '🤝', text: '和棋', score: '+5', color: 'text-yellow-600' }
   };
+  const rc = gameStatus !== 'playing' && gameStatus !== 'idle' ? resultConfig[gameStatus as keyof typeof resultConfig] : null;
 
   const cellSizeVar = 'min(46px, calc((100vw - 280px) / 9))';
 
@@ -976,10 +977,10 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', delay: 0.1, stiffness: 250 }}
                 className="text-5xl"
-              >{resultConfig[gameStatus].emoji}</motion.p>
-              <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{resultConfig[gameStatus].text}</p>
-              <p className={clsx("text-base font-bold", resultConfig[gameStatus].color)}>
-                积分 {resultConfig[gameStatus].score}
+              >{rc?.emoji}</motion.p>
+              <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{rc?.text}</p>
+              <p className={clsx("text-base font-bold", rc?.color)}>
+                积分 {rc?.score}
               </p>
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 space-y-1.5 text-left text-xs">
                 <div className="flex justify-between"><span className="text-gray-500">总步数</span><span className="font-mono font-semibold">{history.length}</span></div>

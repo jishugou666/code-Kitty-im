@@ -714,7 +714,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     lost: { emoji: '😔', text: '失败', score: scoreChange || '-4', color: 'text-red-500' },
     draw: { emoji: '🤝', text: '平局', score: scoreChange || '+2', color: 'text-yellow-500' }
   };
-  const rc = resultConfig[gameStatus];
+  const rc = gameStatus !== 'playing' && gameStatus !== 'idle' ? resultConfig[gameStatus as keyof typeof resultConfig] : null;
 
   const totalGames = stats.wins + stats.losses + stats.draws;
   const winRate = totalGames > 0 ? ((stats.wins / totalGames) * 100).toFixed(1) : '0.0';
@@ -983,13 +983,13 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
                 transition={{ type: 'spring', delay: 0.1, stiffness: 300 }}
                 className="text-6xl"
               >
-                {rc.emoji}
+                {rc?.emoji}
               </motion.p>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {rc.text}
+                {rc?.text}
               </p>
-              <p className={clsx('text-lg font-semibold', rc.color)}>
-                {rc.score}
+              <p className={clsx('text-lg font-semibold', rc?.color)}>
+                {rc?.score}
               </p>
 
               <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 space-y-1.5 text-sm">

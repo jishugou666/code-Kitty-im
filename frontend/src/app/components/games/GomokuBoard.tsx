@@ -1009,8 +1009,9 @@ export const GomokuBoard = React.memo(function GomokuBoard({
   const resultConfig = {
     won: { emoji: '\u2728', text: '\u4e94\u5b50\u8fde\u73e0!', score: '+25', color: 'text-green-600' },
     lost: { emoji: '😔', text: '\u518d\u63a5\u518e\u5389', score: '-12', color: 'text-red-600' },
-    draw: { emoji: '🤝', text: '\u52bf\u5747\u529b\u654c', score: '+5', color: 'text-yellow-600' }
+    draw: { emoji: '🤝', text: '势均力敌', score: '+5', color: 'text-yellow-600' }
   };
+  const rc = gameStatus !== 'playing' && gameStatus !== 'idle' ? resultConfig[gameStatus as keyof typeof resultConfig] : null;
   const storedStats = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('gomoku_stats') || '{"wins":0,"losses":0,"draws":0,"games":0}'); }
     catch { return { wins: 0, losses: 0, draws: 0, games: 0 }; }
@@ -1502,14 +1503,14 @@ export const GomokuBoard = React.memo(function GomokuBoard({
                 transition={{ type: 'spring', delay: 0.1, stiffness: 250 }}
                 className="text-5xl"
               >
-                {resultConfig[gameStatus].emoji}
+                {rc?.emoji}
               </motion.p>
               <div>
                 <p className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                  {resultConfig[gameStatus].text}
+                  {rc?.text}
                 </p>
-                <p className={clsx("text-base font-bold mt-1", resultConfig[gameStatus].color)}>
-                  积分 {resultConfig[gameStatus].score}
+                <p className={clsx("text-base font-bold mt-1", rc?.color)}>
+                  积分 {rc?.score}
                 </p>
               </div>
 

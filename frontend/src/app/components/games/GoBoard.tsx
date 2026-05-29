@@ -963,7 +963,7 @@ export const GoBoard = React.memo(function GoBoard({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
-                <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'black' ? '黑' : myColor === 'white' ? '白' : '?'}` : `AI对战 · ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}难度`}</p>
+                <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'black' ? '黑' : myColor === 'white' ? '白' : '?'}` : `围棋对局 · 你执${myColor === 'black' ? '黑棋' : '白棋'}`}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -975,7 +975,7 @@ export const GoBoard = React.memo(function GoBoard({
                   <span className="flex items-center gap-1"><User size={12} />{myColor === 'black' ? '先手' : '后手'}</span>
                 </>
               ) :
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />在线</span>}
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />{myColor === 'black' ? '先手' : '后手'}</span>}
             </div>
           </>
         ) : (
@@ -1042,18 +1042,14 @@ export const GoBoard = React.memo(function GoBoard({
                       exit={{ opacity: 0, scale: 0.9, y: -5 }}
                       className="absolute right-0 top-full mt-2 w-56 z-50 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
                     >
-                      <p>{mode === 'pvp' ? 'PVP联机围棋' : 'AI围棋对局'}</p>
+                      <p>{mode === 'pvp' ? 'PVP联机围棋' : '围棋对局'}</p>
                       <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between">
-                        <span className="text-gray-400">难度</span>
-                        <span className="font-medium capitalize">{difficulty}</span>
-                      </div>
-                      <div className="mt-1 flex justify-between">
-                        <span className="text-gray-400">思考时间</span>
-                        <span className="font-medium">{thinkTimeRef.current}ms</span>
-                      </div>
-                      <div className="mt-1 flex justify-between">
                         <span className="text-gray-400">棋盘</span>
                         <span className="font-medium">9×9路</span>
+                      </div>
+                      <div className="mt-1 flex justify-between">
+                        <span className="text-gray-400">手数</span>
+                        <span className="font-medium">{moveCount}</span>
                       </div>
                     </motion.div>
                   )}
@@ -1062,28 +1058,6 @@ export const GoBoard = React.memo(function GoBoard({
               <Trophy size={16} className="text-gray-400" />
             </div>
           </div>
-
-          {/* Difficulty Selector (AI only) */}
-          {mode === 'ai' && (
-            <div className="flex gap-1.5">
-              {(['easy', 'medium', 'hard'] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDifficulty(d)}
-                  disabled={gameStatus !== 'playing'}
-                  className={clsx(
-                    'flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all',
-                    difficulty === d
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700',
-                    gameStatus !== 'playing' && 'opacity-50 cursor-not-allowed'
-                  )}
-                >
-                  {d === 'easy' ? '简单' : d === 'medium' ? '中等' : '困难'}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Go Board */}
           <div
