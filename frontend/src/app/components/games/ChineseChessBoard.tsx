@@ -226,14 +226,12 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
             recordDifficultyResult(true);
             processMatchFinish(true, 80, 'B', '棋坛新秀');
             setShowResultModal(true);
-            onGameOver?.('win');
           } else {
             setGameStatus('lost');
             saveGameResult('loss');
             recordDifficultyResult(false);
             processMatchFinish(false, 35, 'D', '继续努力');
             setShowResultModal(true);
-            onGameOver?.('loss');
           }
           return newBoard;
         }
@@ -250,7 +248,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
       recordDifficultyResult(true);
       processMatchFinish(true, 80, 'B', '对方认输');
       setShowResultModal(true);
-      onGameOver?.('win');
     },
     onRemoteFinished: (data) => {
       if (gameStatus !== 'playing') return;
@@ -262,19 +259,16 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         recordDifficultyResult(true);
         processMatchFinish(true, 80, 'B', '表现出色');
         setShowResultModal(true);
-        onGameOver?.('win');
       } else if (data.status === 'finished' && data.winnerId) {
         setGameStatus('lost');
         saveGameResult('loss');
         recordDifficultyResult(false);
         processMatchFinish(false, 35, 'D', '继续加油');
         setShowResultModal(true);
-        onGameOver?.('loss');
       } else {
         setGameStatus('draw');
         processMatchFinish(false, 50, 'C', '势均力敌');
         setShowResultModal(true);
-        onGameOver?.('draw');
       }
     }
   });
@@ -320,7 +314,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
             processMatchFinish(true, 80, 'B', '棋坛新秀');
             setShowResultModal(true);
 
-            onGameOver?.('win');
           } else {
             setGameStatus('lost');
             saveGameResult('loss');
@@ -329,7 +322,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
             processMatchFinish(false, 35, 'D', '继续努力');
             setShowResultModal(true);
 
-            onGameOver?.('loss');
           }
           return;
         }
@@ -424,7 +416,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         processMatchFinish(false, 35, 'D', '继续努力');
         setShowResultModal(true);
 
-        onGameOver?.('loss');
         return;
       }
 
@@ -508,7 +499,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
       breakdown: {}
     });
     setShowResultModal(true);
-    onGameOver?.('loss');
   };
 
   const saveGameResult = (result: 'win' | 'loss' | 'draw') => {

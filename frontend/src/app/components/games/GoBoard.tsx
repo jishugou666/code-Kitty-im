@@ -523,7 +523,6 @@ export const GoBoard = React.memo(function GoBoard({
       });
       processMatchFinish(true, winScore, 'B', '对方认输');
       setShowResultModal(true);
-      onGameOver?.('win');
     },
     onRemoteFinished: (data) => {
       if (gameStatus !== 'playing') return;
@@ -547,7 +546,6 @@ export const GoBoard = React.memo(function GoBoard({
         });
         processMatchFinish(true, winScore, 'B', '表现出色');
         setShowResultModal(true);
-        onGameOver?.('win');
       } else if (data.status === 'finished' && data.winnerId) {
         setGameStatus('lost');
         setBoardShake(true);
@@ -566,7 +564,6 @@ export const GoBoard = React.memo(function GoBoard({
         });
         processMatchFinish(false, Math.abs(loseScore), 'D', '继续加油');
         setShowResultModal(true);
-        onGameOver?.('loss');
       } else {
         setGameStatus('draw');
         const newStats = { ...stats, draws: stats.draws + 1 };
@@ -583,7 +580,6 @@ export const GoBoard = React.memo(function GoBoard({
         });
         processMatchFinish(false, drawScore + 5, 'C', '势均力敌');
         setShowResultModal(true);
-        onGameOver?.('draw');
       }
     }
   });
@@ -697,7 +693,6 @@ export const GoBoard = React.memo(function GoBoard({
       });
       processMatchFinish(true, winScore, 'B', '表现出色');
       setShowResultModal(true);
-      onGameOver?.('win');
       recordDifficultyResult(true);
     } else if (result === 'lost') {
       setGameStatus('lost');
@@ -717,7 +712,6 @@ export const GoBoard = React.memo(function GoBoard({
       });
       processMatchFinish(false, Math.abs(loseScore), 'D', '继续加油');
       setShowResultModal(true);
-      onGameOver?.('loss');
       recordDifficultyResult(false);
     } else {
       setGameStatus('draw');
@@ -735,7 +729,6 @@ export const GoBoard = React.memo(function GoBoard({
       });
       processMatchFinish(false, drawScore + 5, 'C', '势均力敌');
       setShowResultModal(true);
-      onGameOver?.('draw');
       recordDifficultyResult(false);
     }
   }, [stats, processMatchFinish, onGameOver]);
@@ -947,7 +940,6 @@ export const GoBoard = React.memo(function GoBoard({
       breakdown: {}
     });
     setShowResultModal(true);
-    onGameOver?.('loss');
     recordDifficultyResult(false);
   };
 

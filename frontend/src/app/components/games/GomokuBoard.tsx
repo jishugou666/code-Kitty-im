@@ -562,14 +562,12 @@ export const GomokuBoard = React.memo(function GomokuBoard({
                 recordDifficultyResult(true);
                 processMatchFinish(true, 78, 'B', '连珠新星');
                 setShowResultModal(true);
-                onGameOver?.('win');
               } else {
                 setGameStatus('lost');
                 saveGameResult('loss');
                 recordDifficultyResult(false);
                 processMatchFinish(false, 32, 'D', '再接再厉');
                 setShowResultModal(true);
-                onGameOver?.('loss');
               }
             }, 0);
             return newBoard;
@@ -581,7 +579,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
               recordDifficultyResult(false);
               processMatchFinish(false, 50, 'C', '势均力敌');
               setShowResultModal(true);
-              onGameOver?.('draw');
             }, 0);
           }
           return newBoard;
@@ -597,7 +594,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         recordDifficultyResult(true);
         processMatchFinish(true, 78, 'B', '对方认输');
         setShowResultModal(true);
-        onGameOver?.('win');
       },
       onRemoteFinished: (data) => {
         if (gameStatus !== 'playing') return;
@@ -609,21 +605,18 @@ export const GomokuBoard = React.memo(function GomokuBoard({
           recordDifficultyResult(true);
           processMatchFinish(true, 78, 'B', '表现出色');
           setShowResultModal(true);
-          onGameOver?.('win');
         } else if (data.status === 'finished' && data.winnerId) {
           setGameStatus('lost');
           saveGameResult('loss');
           recordDifficultyResult(false);
           processMatchFinish(false, 32, 'D', '继续加油');
           setShowResultModal(true);
-          onGameOver?.('loss');
         } else {
           setGameStatus('draw');
           saveGameResult('draw');
           recordDifficultyResult(false);
           processMatchFinish(false, 50, 'C', '势均力敌');
           setShowResultModal(true);
-          onGameOver?.('draw');
         }
       }
     }
@@ -819,7 +812,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         processMatchFinish(false, 32, 'D', '再接再厉');
         setShowResultModal(true);
 
-        onGameOver?.('loss');
         return;
       }
       if (newBoard.every(r => r.every(c => c !== EMPTY))) {
@@ -829,8 +821,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
 
         processMatchFinish(false, 50, 'C', '势均力敌');
         setShowResultModal(true);
-
-        onGameOver?.('draw');
       }
     }, tt);
     return () => { clearTimeout(timer); clearInterval(interval); setAiThinkProgress(0); setThinkingPhase(''); };
@@ -886,8 +876,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         });
         processMatchFinish(true, winScore, 'B', '连珠新星');
         setShowResultModal(true);
-
-        onGameOver?.('win');
       } else {
         setGameStatus('lost');
         saveGameResult('loss');
@@ -904,8 +892,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         });
         processMatchFinish(false, Math.abs(loseScore), 'D', '再接再厉');
         setShowResultModal(true);
-
-        onGameOver?.('loss');
       }
       return;
     }
@@ -924,8 +910,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         highlights: [], performanceBonuses: [], breakdown: {}
       });
       setShowResultModal(true);
-
-      onGameOver?.('draw');
       return;
     }
     if (mode === 'ai') {
@@ -1014,7 +998,6 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         breakdown: {}
       });
       setShowResultModal(true);
-      onGameOver?.('loss');
     }
   };
 

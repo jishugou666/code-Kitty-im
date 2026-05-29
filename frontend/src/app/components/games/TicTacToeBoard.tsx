@@ -272,7 +272,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
         processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '对方认输');
         setShowResultModal(true);
-        onGameOver?.('win');
       },
       onRemoteFinished: (data) => {
         if (gameStatus !== 'playing') return;
@@ -287,7 +286,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           setScoreChange(`+${10 + Math.floor(Math.random() * 3)}`);
           processMatchFinish(true, 10 + Math.floor(Math.random() * 3), 'B', '表现出色');
           setShowResultModal(true);
-          onGameOver?.('win');
         } else if (data.status === 'finished' && data.winnerId) {
           setGameStatus('lost');
           setBoardShake(true);
@@ -297,7 +295,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           setScoreChange(`-${3 + Math.floor(Math.random() * 3)}`);
           processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
           setShowResultModal(true);
-          onGameOver?.('loss');
         } else {
           setGameStatus('draw');
           const newStats = { ...stats, draws: stats.draws + 1 };
@@ -305,7 +302,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
           processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
           setShowResultModal(true);
-          onGameOver?.('draw');
         }
       }
     }
@@ -515,7 +511,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       });
       processMatchFinish(true, defaultScore, 'B', '表现出色');
       setShowResultModal(true);
-      onGameOver?.('win');
       recordDifficultyResult(true);
       return;
     }
@@ -541,7 +536,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       });
       processMatchFinish(false, Math.abs(loseScore), 'D', '继续加油');
       setShowResultModal(true);
-      onGameOver?.('loss');
       recordDifficultyResult(false);
       return;
     }
@@ -564,7 +558,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       });
       processMatchFinish(false, drawScore + 5, 'C', '势均力敌');
       setShowResultModal(true);
-      onGameOver?.('draw');
       recordDifficultyResult(false);
       return;
     }
@@ -632,7 +625,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         processMatchFinish(false, 6 + Math.floor(Math.random() * 3), 'D', '继续加油');
         setShowResultModal(true);
 
-        onGameOver?.('loss');
         recordDifficultyResult(false);
         return;
       }
@@ -647,7 +639,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
         setShowResultModal(true);
 
-        onGameOver?.('draw');
         recordDifficultyResult(false);
       }
     }, tt);
@@ -711,7 +702,6 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       breakdown: {}
     });
     setShowResultModal(true);
-    onGameOver?.('loss');
     recordDifficultyResult(false);
   };
 

@@ -828,6 +828,43 @@
   - **修改文件**：`frontend/src/app/components/games/GameInviteReceiver.tsx`
   - **构建验证**：✓ exit code 0, built in 10.38s
 
+### 2026-05-29 (续)
+- ✅ **AI对手真实用户匹配系统升级（三级回退策略）**
+  - **需求**：AI模式的对手应从站内注册用户中随机抽取，显示真实头像，无头像时回退到首字母大写头像
+  - **升级前问题**：
+    - `fetchRealOpponents()` 仅尝试 `gameApi.getRandomOpponent()`（单个用户）
+    - 失败后直接降级为随机中文假名（王伟、李强等）
+    - 仅返回1个对手，每次游戏对手多样性不足
+  - **升级后方案（三级回退）**：
+    | 优先级 | 数据源 | 数量 | 说明 |
+    |--------|--------|------|------|
+    | 1 | `gameApi.getRandomOpponent()` | 1人 | 后端专用随机对手API |
+    | 2 | `userApi.searchUsers('')` | 最多8人 | 全站用户搜索，排除自己，随机打乱 |
+    | 3 | `gameApi.getLeaderboard({limit:10})` | 最多6人 | 排行榜活跃玩家（仅当前两级都空时启用） |
+    | 4 | 随机中文姓名 | 1人 | 最终兜底 |
+  - **去重机制**：Strategy 2 结果通过 `allOpponents.some(o => o.id === user.id)` 排除已存在的用户
+  - **缓存策略**：2分钟TTL缓存（`CACHE_TTL = 120000`），`generateOpponent()` 从缓存池随机选取
+  - **头像处理**：
+    - 真实头像 → `getAvatarUrl(url)` 渲染（带缓存破坏参数）
+    - 空/无头像 → `displayOpponent?.nickname?.charAt(0)?.toUpperCase() || '?'` 首字母圆形背景
+    - 所有4个棋盘组件统一三重回退渲染：PVP真实头像 → AI对手头像 → 首字母头像
+  - **修改文件**：
+    - `frontend/src/app/components/games/dynamicDifficulty.ts` — 重写 `fetchRealOpponents()`
+  - **构建验证**：✓ exit code 0, 2838 modules, built in 10.42s
+
+- ✅ **删除旧版结算遮罩 + GameResultModal关闭返回大厅**
+  - **需求**：GameResultModal关闭后仍显示旧版+10分弹窗，需删除旧版并直接返回大厅
+  - **修改范围**：全部4个棋盘组件
+  - **删除内容**：
+    | 组件 | 删除行数 | 删除内容 |
+    |------|---------|---------|
+    | TicTacToeBoard.tsx | ~100行 | AnimatePresence旧版emoji+score+stats+replay遮罩 |
+    | GomokuBoard.tsx | ~72行 | 同上 |
+    | GoBoard.tsx | ~104行 | 同上 |
+    | ChineseChessBoard.tsx | ~39行 | 同上 |
+  - **关键改动**：GameResultModal 的 `onClose` 回调从 `() => setShowResultModal(false)` 改为调用 `onGameOver?.(result)` 触发返回大厅导航
+  - **总计删除**：~315行冗余代码
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
