@@ -14,6 +14,7 @@ import { uploadApi } from '../../api/upload';
 import { conversationApi } from '../../api/conversation';
 import { gameApi } from '../../api/game';
 import { useIsMobile } from '../components/ui/use-mobile';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -745,7 +746,7 @@ export function Chat() {
                     {!isOwnMessage && !isRecalled && (
                       <div className={clsx(isMobile ? "w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold mr-1.5 sm:mr-2 flex-shrink-0 overflow-hidden" : "w-8 h-8 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-xs font-semibold mr-2 flex-shrink-0 overflow-hidden")}>
                         {message.sender_avatar ? (
-                          <img src={message.sender_avatar} alt={message.sender_nickname || 'U'} className="w-full h-full object-cover" />
+                          <img src={getAvatarUrl(message.sender_avatar)} alt={message.sender_nickname || 'U'} className="w-full h-full object-cover" />
                         ) : (
                           (message.sender_nickname || 'U')[0]?.toUpperCase() || 'U'
                         )}

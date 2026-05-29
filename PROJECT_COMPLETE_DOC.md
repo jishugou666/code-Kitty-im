@@ -1342,6 +1342,89 @@ bcrypt.hash(password, 10)
 - **基础分同步调整**：胜利75→10-12 / 失败30→6-8 / 平局50→8-9
 - **processMatchFinish fallback值**：全部从硬编码10/-5改为使用传入的defaultScore参数
 
+#### 🔴 Bug修复：五子棋连活四就判输 + handleFinish未定义报错
+- **现象**：用户反馈"连成活四就判我输了"，控制台 `ReferenceError: handleFinish is not defined`
+- **根因**：[useGameChannel.ts:83](frontend/src/hooks/useGameChannel.ts#L83) cleanup 函数中 typo — `handleFinish` 少了 `ed`，应为 `handleFinished`
+- **影响链路**：
+  ```
+  对方落子 → 组件重渲染 → useEffect cleanup 执行
+    → unbind('game-finished', handleFinish) ❌ ReferenceError!
+      → cleanup 中断 → Pusher 通道残留 → 游戏状态异常
+        → 胜负判定在错误状态下执行 → 误判结果
+  ```
+- **修复**：`handleFinish` → `handleFinished`（1个字符之差）
+- **验证**：checkFive 函数逻辑正确（要求 line.length >= 5），问题纯由 typo 导致
+
+#### 🔴 致命Bug修复：dynamicDifficulty.ts 未定义变量导致全局游戏结束崩溃
+- **现象**：任何游戏模式结束时（胜利/失败）控制台报 `ReferenceError: Cannot read properties of undefined (reading 'adjustmentSpeed')`
+- **根因**：[dynamicDifficulty.ts:149,159](frontend/src/app/components/games/dynamicDifficulty.ts#L149) 引用 `state.currentLevel` 和 `DIFFICULTY_CONFIG.adjustmentSpeed`，但：
+  - `DifficultyState` 接口中**缺少 `currentLevel` 字段**
+  - 模块级作用域中**完全未定义 `DIFFICULTY_CONFIG` 常量**
+  - `resetDifficulty` 也引用了不存在的 `currentLevel`
+- **影响范围**：**所有四个游戏模式**（井字棋/五子棋/象棋/围棋）每次对局结束都触发
+- **修复**：
+  - DifficultyState 接口添加 `currentLevel: number`
+  - 新增 `const DIFFICULTY_CONFIG = { adjustmentSpeed: 0.05 }`
+  - state 初始值添加 `currentLevel: 0.5`
+  - GameType 类型新增 `'go'`，GAME_TIME_RANGE 新增 go 配置 `{ minSec: 5, maxSec: 15 }`
+
+#### 🆕 围棋(Go)模式完整实现
+- **新增文件** [GoBoard.tsx](frontend/src/app/components/games/GoBoard.tsx) — 约950行完整组件
+- **围棋规则实现**（简化版9路棋盘）：
+  - 落子交叉点、吃子提子（气尽提取）、打劫禁止(Ko rule)、双Pass终局
+  - 中国规则计分（数子法+贴7.5目）
+  - 5个星位标记（天元+四角星）、木纹棋盘背景
+- **AI 对战系统**（三档难度）：
+  | 难度 | 策略 |
+  |------|------|
+  | Easy | 随机扰动25% + 角优先 + 基本吃子检测 |
+  | Medium | 吃子优先(Atari) + Atari防守 + 角边评估 |
+  | Hard | 强评估(领地+气数+中心度) + 阻止对手吃子 + 模式识别 |
+  - 动态思考延时：5~15秒 + 四阶段思考动画
+- **PVP 联机**：完整支持（initMatch/getMatch + useGameChannel + 对手信息 + 回合控制）
+- **UI 特有元素**：Pass按钮(双方连续Pass终局)、提子计数栏、3D立体棋子
+- **Games.tsx 集成**：
+  - ActiveGame 类型新增 `'go'`，网格改为4列布局
+  - 新增围棋入口卡片（琥珀色主题 + Grid3X3 图标）
+  - URL参数路由支持 `/games?matchId=X&gameType=go`
+  - 历史记录 gameTypeConfig 新增 go 条目
+- **评分机制**：与其它三棋一致（6-12分范围）
+
+#### 四棋盘一致性架构验证
+| 维度 | TicTacToe | Gomoku | ChineseChess | Go |
+|------|-----------|--------|-------------|-----|
+| Props接口 | mode/matchId/onGameOver ✅ | ✅ | ✅ | ✅ |
+| State结构 | board/status/opponent/stats/score/modal/perf+pvp ✅ | ✅ | ✅ | ✅ |
+| AI系统 | generateOpponent + dynamicDifficulty + thinkingPhases ✅ | ✅ | ✅ | ✅ |
+| PVP联机 | useGameChannel + initMatch(getMatch) + myColor ✅ | ✅ | ✅ | ✅ |
+| 评分弹窗 | GameResultModal + processMatchFinish(6-12分) ✅ | ✅ | ✅ | ✅ |
+| UI布局 | 对手卡→状态栏→棋盘→控制区→弹窗 ✅ | ✅ | ✅ | ✅ |
+
+#### 🔴 Bug修复：头像更换后其他用户看不到（缓存+store未同步）
+- **现象**：用户更换头像后自己看到新头像，但其他用户仍显示旧头像
+- **根因1**：[Settings.tsx:16](frontend/src/app/pages/Settings.tsx#L16) 使用 `setUser` 但 authStore 只导出 `updateUser` → **保存后authStore永远不更新**
+- **根因2**：全项目19处 `<img src={avatar}>` 无缓存破坏参数 → 浏览器缓存旧图
+- **修复方案**：
+  - 新建 [avatarCache.ts](frontend/src/lib/avatarCache) 工具函数：
+    - `getAvatarUrl(url)` — 自动追加 `?_t=timestamp` 破坏浏览器缓存
+    - 每次渲染生成新时间戳，确保图片始终最新
+  - Settings.tsx：`setUser` → `updateUser` + **上传成功后立即同步authStore**（不等点保存）
+  - 全部19处头像 `<img src>` 统一使用 `getAvatarUrl()` 包装
+- **覆盖文件**（11个）：
+  | 文件 | 头像位置数 |
+  |------|-----------|
+  | Settings.tsx | 1 |
+  | Profile.tsx | 1 |
+  | MainLayout.tsx | 1 |
+  | ContactsSidebar.tsx | 2 |
+  | SearchModal.tsx | 1 |
+  | Chat.tsx | 1 |
+  | Games.tsx | 1 |
+  | TicTacToeBoard.tsx | 2 |
+  | GomokuBoard.tsx | 2 |
+  | ChineseChessBoard.tsx | 2 |
+  | Studio.tsx + StudioConfigPreview.tsx | 5 |
+
 #### 🔴 致命架构缺陷修复：useGameChannel + useWebSocket 反复重订阅导致事件丢失
 - **问题1现象**：PVP联机对局第一手同步成功，第二手后双方卡死（对方收不到落子）
 - **问题2现象**：Chat会话消息列表不实时更新，明明已收到消息但UI不显示

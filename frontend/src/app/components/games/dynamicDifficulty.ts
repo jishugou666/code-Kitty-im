@@ -91,24 +91,31 @@ export async function generateOpponent(playerRating: number = 1000): Promise<Opp
   return opponent;
 }
 
-export type GameType = 'tictactoe' | 'gomoku' | 'chinese_chess';
+export type GameType = 'tictactoe' | 'gomoku' | 'chinese_chess' | 'go';
 
 const GAME_TIME_RANGE: Record<GameType, { minSec: number; maxSec: number }> = {
   tictactoe: { minSec: 2, maxSec: 5 },
   gomoku: { minSec: 3, maxSec: 8 },
   chinese_chess: { minSec: 3, maxSec: 7 },
+  go: { minSec: 5, maxSec: 15 },
 };
 
 interface DifficultyState {
   consecutiveWins: number;
   consecutiveLosses: number;
   totalGames: number;
+  currentLevel: number;
 }
+
+const DIFFICULTY_CONFIG = {
+  adjustmentSpeed: 0.05,
+};
 
 let state: DifficultyState = {
   consecutiveWins: 0,
   consecutiveLosses: 0,
   totalGames: 0,
+  currentLevel: 0.5,
 };
 
 export function getDynamicDifficulty(gameType: GameType, moveCount: number = 0): {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, ChevronDown, Star, Eye, ExternalLink, Loader2, Save, Search, Zap } from 'lucide-react';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
@@ -306,7 +307,7 @@ function WorksSection({ works, loading, onDrop, dragWorkRef }: WorksSectionProps
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-snug">{work.name}</h3>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <img src={work.user.avatar_url} alt="" className="w-5 h-5 rounded-full" />
+                        <img src={getAvatarUrl(work.user.avatar_url)} alt="" className="w-5 h-5 rounded-full" />
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[80px]">{work.user.nickname}</span>
                       </div>
                       <div className="flex items-center gap-1 text-gray-400 text-xs">
@@ -598,7 +599,7 @@ export default function StudioConfigPreview({ onSave, isSaving }: StudioConfigPr
                   <h4 className="text-xs font-semibold text-black dark:text-white mb-1 line-clamp-1">{work.name}</h4>
                   <div className="flex items-center justify-between text-black/40 dark:text-white/40">
                     <div className="flex items-center gap-1.5">
-                      <img src={work.user.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+                      <img src={getAvatarUrl(work.user.avatar_url)} alt="" className="w-4 h-4 rounded-full" />
                       <span className="text-[10px] truncate max-w-[60px]">{work.user.nickname}</span>
                     </div>
                     <div className="flex items-center gap-1 text-[10px]">

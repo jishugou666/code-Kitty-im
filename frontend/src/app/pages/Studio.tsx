@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, useInView } from 'motion/react';
 import { ArrowRight, ChevronDown, Star, Eye, ExternalLink, Loader2 } from 'lucide-react';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const CODEMAO_PROXY = `${API_BASE_URL}/proxy/studio`;
@@ -536,7 +537,7 @@ function MembersSection({ members, loading }: { members: MemberItem[]; loading: 
                     <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all w-[200px] h-[280px] flex flex-col">
                       <div className="pt-6 pb-2 px-4 text-center flex-shrink-0">
                         <img
-                          src={member.avatar_url}
+                          src={getAvatarUrl(member.avatar_url)}
                           alt={member.name}
                           className="w-20 h-20 rounded-2xl object-cover mx-auto group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"

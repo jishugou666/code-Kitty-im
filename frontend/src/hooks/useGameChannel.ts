@@ -80,7 +80,7 @@ export function useGameChannel(
       if (channelRef.current) {
         channelRef.current.unbind('game-move', handleMove);
         channelRef.current.unbind('game-surrender', handleSurrender);
-        channelRef.current.unbind('game-finished', handleFinish);
+        channelRef.current.unbind('game-finished', handleFinished);
         pusher.unsubscribe(channelName);
         channelRef.current = null;
       }

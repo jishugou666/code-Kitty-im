@@ -9,6 +9,7 @@ import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { useToast } from '../../hooks/useToast';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { settingsApi } from '../../api/settings';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 
 export function Profile() {
@@ -178,7 +179,7 @@ export function Profile() {
             <div className={isMobile ? "w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] rounded-full p-[3px] sm:p-[4px] bg-white/20 dark:bg-black/20 backdrop-blur-md relative z-10 overflow-hidden" : "w-[120px] h-[120px] rounded-full p-[4px] bg-white/20 dark:bg-black/20 backdrop-blur-md relative z-10 overflow-hidden"}>
               {user?.avatar ? (
                 <img
-                  src={user.avatar}
+                  src={getAvatarUrl(user.avatar)}
                   alt="Profile"
                   className={isMobile ? "w-full h-full rounded-full object-cover border-[3px] sm:border-[4px] border-white dark:border-[#1A1D21]" : "w-full h-full rounded-full object-cover border-[4px] border-white dark:border-[#1A1D21]"}
                 />

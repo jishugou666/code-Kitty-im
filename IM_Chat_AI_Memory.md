@@ -1439,21 +1439,33 @@
 ### 任务44: 电脑不灭屏工具脚本
 - **执行时间**: 2026-05-24
 - **任务内容**:
-  - 创建 Windows 不灭屏 PowerShell 脚本
+  - 创建 Windows 不灭屏 PowerShell 脚本（CLI版本 + GUI版本）
   - 使用 Windows 官方 API `SetThreadExecutionState` (kernel32.dll)
   - 防止屏幕自动关闭和系统进入睡眠状态
 - **新增文件**:
-  - `scripts/keep-awake.ps1` - 不灭屏脚本
+  - `scripts/keep-awake.ps1` - CLI版不灭屏脚本（无界面，终端运行）
+  - `scripts/keep-awake-gui.ps1` - GUI版不灭屏工具（Windows Forms窗口，推荐使用）
 - **核心实现**:
   - 通过 P/Invoke 调用 `SetThreadExecutionState` API
   - 设置 `ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED` 标志组合
   - 每30秒循环刷新一次，持续保持屏幕和系统唤醒
-  - 按 Ctrl+C 可随时停止程序
+- **GUI版本功能** (keep-awake-gui.ps1):
+  - 深色主题 Windows Forms 窗口 (420x520)
+  - 状态指示灯 + 文字状态显示 (RUNNING绿色 / STOPPED灰色)
+  - START / STOP 一键切换按钮（蓝色启动/红色停止）
+  - 4个实时数据卡片：
+    - ELAPSED: 运行时长计时器 (HH:mm:ss)
+    - REFRESHES: 累计刷新次数
+    - NEXT REFRESH: 下次刷新倒计时 (30s递减)
+    - STARTED AT: 启动时间戳
+  - 底部进度条可视化倒计时进度
+  - 关闭窗口自动恢复系统休眠设置
 - **技术优势**:
   - 使用官方 Win32 API，比模拟按键更可靠、更轻量
   - 不影响正常使用，不占用系统资源
   - 同时防止屏幕关闭和系统休眠两种行为
-- **执行结果**: ✅ 完成（已运行验证）
+  - GUI版本支持可视化控制，用户体验更好
+- **执行结果**: ✅ 完成（CLI+GUI均已运行验证）
 
 ### 任务45: TicTacToeBoard.tsx 动态难度系统与对手信息集成
 - **执行时间**: 2026-05-25
@@ -1697,6 +1709,61 @@
   - 启动三个游戏，结束后确认只显示新弹窗（白色背景）
   - 确认游戏重置功能正常工作
 - **相关文档**: `MODIFICATION_RECORD_20260525.md`
+- **执行结果**: ✅ 完成
+
+### 任务52: GoBoard.tsx 围棋棋盘组件创建
+- **执行时间**: 2026-05-29
+- **任务内容**:
+  - 创建完整的围棋（Go）游戏组件，与现有三个棋盘（井字棋/五子棋/中国象棋）完全一致的架构和风格
+  - 实现 9×9 路围棋棋盘，支持简化版围棋规则
+- **新增文件**:
+  - `frontend/src/app/components/games/GoBoard.tsx` — 围棋完整游戏组件（约950行）
+    - Props: mode(ai/pvp), matchId, onGameOver
+    - 棋盘类型: Stone = 0(空) | 1(黑) | 2(白), BOARD_SIZE=9
+    - 核心围棋逻辑函数:
+      - `getNeighbors(row, col)` — 获取相邻交叉点（上下左右）
+      - `getGroup(board, row, col)` — 获取连通棋子组（BFS）
+      - `getLiberties(board, group)` — 数气（计算组的自由度）
+      - `placeStone(board, row, col, color)` — 落子+提子（自动移除无气的对方棋组）
+      - `isValidMove(board, row, col, color, koPoint)` — 合法性检测+打劫规则
+      - `calculateScore(board)` — 中国规则计分（数子法：活子+领地，贴7.5目）
+    - AI 对战系统:
+      - Easy: 随机+角优先+基本吃子检测
+      - Medium: 吃子优先+防守 Atari + 角边评估
+      - Hard: 强评估函数(领地+吃子+连接+模式识别)+阻止对手吃子
+      - 使用 getDynamicDifficulty('go', moveCount) 动态思考延时(5~15秒)
+      - 使用 getThinkingPhases() 思考阶段动画
+    - PVP 联机功能:
+      - initMatch 支持 pvp 模式加载对局（gameType: 'go'）
+      - useGameChannel 订阅 onRemoteMove/onRemoteSurrender/onRemoteFinished
+      - 回合控制基于 myColor（黑/白）
+      - 远程落子自动应用到本地棋盘并更新提子数
+    - UI 特性:
+      - 木纹渐变背景棋盘（#DEB887 → #B8865A）
+      - SVG 绘制棋盘线 + 星位标记（天元+四角星，共5个星位）
+      - 黑白棋子径向渐变渲染（3D立体效果）+ 最后落子红点标记
+      - Pass 按钮（跳过回合，双方连续Pass终局）
+      - 提子计数显示（黑方/白方各显示提子数）
+      - 难度选择器：Easy/Medium/Hard 三档（仅AI模式）
+      - GameResultModal 弹窗集成（与 TicTacToe 一致方式）
+      - 结果覆盖层：复盘步骤、分享成绩、再来一局
+      - useGameHeartbeat 心跳保活
+    - 评分机制（6-12分范围）:
+      - 胜利: +10~+12, processMatchFinish(true, score, 'B', '表现出色')
+      - 失败: -3~-5, processMatchFinish(false, score, 'D', '继续加油')
+      - 平局: +1~+3, processMatchFinish(false, score, 'C', '势均力敌')
+      - difficultyCoeff: 1.2（与中国象棋一致）
+    - 快捷键: P(Pass), R(重开), ESC(认输)
+    - localStorage 存储 go_stats（胜/负/平）
+- **依赖模块**:
+  - `dynamicDifficulty.ts` — 已包含 GameType='go' 配置（minSec:5, maxSec:15）
+  - `GameResultModal.tsx` — 结算弹窗组件
+  - `useGameHeartbeat` / `useGameChannel` — 心跳和实时通信 Hook
+- **注意**: dynamicDifficulty.ts 的 GameType 类型已包含 'go'，无需修改
+- **待后续**:
+  - Games.tsx 页面需添加围棋入口（路由/导航集成）
+  - 数据库 game_match 表的 game_type ENUM 需添加 'go'
+  - 数据库 user_game_profile 表需添加 go_wins/go_losses 字段
 - **执行结果**: ✅ 完成
 
 ---
@@ -2666,5 +2733,5 @@ CREATE TABLE migration_log (
 
 ---
 
-**文档更新时间**: 2026-05-25
-**文档版本**: v2.0.5
+**文档更新时间**: 2026-05-24
+**文档版本**: v2.0.6

@@ -7,6 +7,7 @@ import { conversationApi } from '../../api/conversation';
 import { contactApi } from '../../api/contact';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -135,7 +136,7 @@ export function SearchModal({ isOpen, onClose, onAddSuccess, fullscreen = false 
                 >
                   <div className="relative">
                     {result.avatar ? (
-                      <img src={result.avatar} alt={result.nickname} className="w-12 h-12 rounded-full object-cover" />
+                      <img src={getAvatarUrl(result.avatar)} alt={result.nickname} className="w-12 h-12 rounded-full object-cover" />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white font-semibold text-lg">
                         {(result.nickname || result.username || 'U')[0].toUpperCase()}

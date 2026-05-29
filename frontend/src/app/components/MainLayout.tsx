@@ -12,6 +12,7 @@ import { MobileNav } from "./MobileNav";
 import { useSystemNotification } from '../../hooks/useSystemNotification';
 import { messageEventBus } from '../../lib/messageEventBus';
 import { useGlobalWebSocket } from '../../hooks/useWebSocket';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
 export function MainLayout() {
   const location = useLocation();
@@ -146,7 +147,7 @@ export function MainLayout() {
         <div className="mt-auto">
            <button onClick={() => navigate("/settings")} className="w-10 h-10 rounded-full border-2 border-transparent hover:border-[#007AFF] transition-all overflow-hidden shadow-sm">
              {user?.avatar ? (
-               <img src={user.avatar} alt={user.nickname || user.username} className="w-full h-full object-cover" />
+               <img src={getAvatarUrl(user.avatar)} alt={user.nickname || user.username} className="w-full h-full object-cover" />
              ) : (
                <div className="w-full h-full bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-sm font-semibold">
                  {(user?.nickname || user?.username || 'U')[0].toUpperCase()}

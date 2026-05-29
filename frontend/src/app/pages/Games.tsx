@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
-import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Star, Flame, ChevronUp, Sparkles } from 'lucide-react';
+import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Star, Flame, ChevronUp, Sparkles, Grid3X3 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
 import { GomokuBoard } from '../components/games/GomokuBoard';
 import { ChineseChessBoard } from '../components/games/ChineseChessBoard';
+import { GoBoard } from '../components/games/GoBoard';
+import { getAvatarUrl } from '../../lib/avatarCache';
 
-type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess';
+type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess' | 'go';
 type TabType = 'leaderboard' | 'history';
 
 export function Games() {
@@ -36,7 +38,7 @@ export function Games() {
   const [pvpLoading, setPvpLoading] = useState(false);
 
   useEffect(() => {
-    if (urlMatchId && urlGameType && ['tictactoe', 'gomoku', 'chess'].includes(urlGameType)) {
+    if (urlMatchId && urlGameType && ['tictactoe', 'gomoku', 'chess', 'go'].includes(urlGameType)) {
       setActiveGame(urlGameType);
       setPvpMatchId(Number(urlMatchId));
     }
@@ -156,6 +158,31 @@ export function Games() {
           </div>
         </div>
         <ChineseChessBoard
+          mode={pvpMatchId ? 'pvp' : 'ai'}
+          matchId={pvpMatchId || undefined}
+          onGameOver={handleGameOver}
+        />
+      </div>
+    );
+  }
+
+  if (activeGame === 'go') {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10] p-4 overflow-auto">
+        <div className="w-full max-w-2xl flex items-center justify-between mb-4">
+          <button
+            onClick={handleBackToLobby}
+            className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
+          >
+            <ArrowLeft size={16} />
+            返回大厅
+          </button>
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            {pvpMatchId ? 'PVP 对战' : '在线对局'}
+          </div>
+        </div>
+        <GoBoard
           mode={pvpMatchId ? 'pvp' : 'ai'}
           matchId={pvpMatchId || undefined}
           onGameOver={handleGameOver}
@@ -376,7 +403,7 @@ export function Games() {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <motion.button
             whileHover={{ scale: 1.02, y: -4 }}
             whileTap={{ scale: 0.98 }}
@@ -457,6 +484,34 @@ export function Games() {
                 <span className="mx-1">·</span>
                 <Clock size={14} />
                 <span>约 10-30 分钟</span>
+              </div>
+            </div>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveGame('go')}
+            className="group relative bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl rounded-[14px] p-6 shadow-lg border border-black/5 dark:border-white/5 text-left transition-all hover:shadow-xl overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/30 dark:bg-amber-900/20 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-500" />
+
+            <div className="relative z-10 space-y-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-amber-600 to-amber-800 rounded-[14px] flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                <Grid3X3 size={28} className="text-white" strokeWidth={2.5} />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">围棋</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">千年棋道，黑白博弈</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <User size={14} />
+                <span>实时匹配</span>
+                <span className="mx-1">·</span>
+                <Clock size={14} />
+                <span>约 15-30 分钟</span>
               </div>
             </div>
           </motion.button>
@@ -559,7 +614,7 @@ export function Games() {
                           }}
                         >
                           {entry.avatar ? (
-                            <img src={entry.avatar} alt={entry.nickname} className="w-full h-full object-cover" />
+                            <img src={getAvatarUrl(entry.avatar)} alt={entry.nickname} className="w-full h-full object-cover" />
                           ) : (
                             entry.nickname[0]?.toUpperCase() || '?'
                           )}
@@ -620,7 +675,8 @@ export function Games() {
                       const gameTypeConfig = {
                         tictactoe: { icon: CircleDot, name: '井字棋', color: 'from-blue-400 to-blue-600' },
                         gomoku: { icon: Circle, name: '五子棋', color: 'from-gray-700 to-gray-900' },
-                        chess: { icon: Crown, name: '中国象棋', color: 'from-red-400 to-red-600' }
+                        chess: { icon: Crown, name: '中国象棋', color: 'from-red-400 to-red-600' },
+                        go: { icon: Grid3X3, name: '围棋', color: 'from-amber-600 to-amber-800' }
                       };
                       const config = gameTypeConfig[match.game_type];
                       const GameIcon = config.icon;

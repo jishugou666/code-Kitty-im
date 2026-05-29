@@ -9,6 +9,7 @@ import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
+import { getAvatarUrl } from '../../../lib/avatarCache';
 
 interface GomokuBoardProps {
   matchId?: number;
@@ -1339,10 +1340,10 @@ export function GomokuBoard({
             <>
               <div className="flex items-center gap-3 mb-3">
                 {mode === 'pvp' && pvpOpponent?.avatar ? (
-                  <img src={pvpOpponent.avatar} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                  <img src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
                 ) : (
                   <img
-                    src={displayOpponent.avatar}
+                    src={getAvatarUrl(displayOpponent.avatar)}
                     alt={displayOpponent.nickname}
                     className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"
                   />

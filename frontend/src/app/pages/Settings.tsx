@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 import { settingsApi } from '../../api/settings';
 import { uploadApi } from '../../api/upload';
 import { useAuthStore } from '../../store/authStore';
+import { getAvatarUrl } from '../../lib/avatarCache';
 import { useToast } from '../../hooks/useToast';
 import { useSystemNotification } from '../../hooks/useSystemNotification';
 import { useIsMobile } from '../components/ui/use-mobile';
@@ -13,7 +14,7 @@ import { useIsMobile } from '../components/ui/use-mobile';
 export function Settings() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { user, setUser, logout } = useAuthStore();
+  const { user, updateUser, logout } = useAuthStore();
   const { toast, ToastContainer } = useToast();
   const isMobile = useIsMobile();
   const { isSupported: notifySupported, permissionStatus: notifyPermission, requestPermission: requestNotify } = useSystemNotification();
@@ -76,7 +77,7 @@ export function Settings() {
     try {
       const response = await settingsApi.updateProfile(profile);
       if (response.code === 200) {
-        setUser(response.data);
+        updateUser(response.data);
         toast(t('common.success'), 'success');
       } else {
         toast(response.msg || t('common.error'), 'error');
@@ -132,7 +133,11 @@ export function Settings() {
       try {
         const uploadRes = await uploadApi.uploadImage(base64);
         if (uploadRes.code === 200 && uploadRes.data?.url) {
-          setProfile(prev => ({ ...prev, avatar: uploadRes.data.url }));
+          const newAvatarUrl = uploadRes.data.url;
+          setProfile(prev => ({ ...prev, avatar: newAvatarUrl }));
+          if (user) {
+            updateUser({ ...user, avatar: newAvatarUrl });
+          }
           toast(t('common.success'), 'success');
         } else {
           toast(uploadRes.msg || t('common.error'), 'error');
@@ -182,7 +187,7 @@ export function Settings() {
             >
               {(avatarPreview || profile.avatar || user?.avatar) ? (
                 <img
-                  src={avatarPreview || profile.avatar || user?.avatar}
+                  src={getAvatarUrl(avatarPreview || profile.avatar || user?.avatar)}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
