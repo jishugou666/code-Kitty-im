@@ -1938,6 +1938,40 @@
 
 ---
 
+### 任务56: AI模式对手改为真实站内注册用户 + 头像字母回退
+- **执行时间**: 2026-05-29
+- **任务内容**:
+  - AI模式的虚拟对手从假名字（王伟、李强等）+ dicebear占位头像改为真实站内注册用户
+  - 对手昵称显示真实用户的 nickname，头像显示真实 avatar（如有）
+  - 无头像时显示首字母大写默认头像（蓝紫渐变背景 + 白色粗体字），与聊天界面风格一致
+- **修改文件**:
+  - `frontend/src/app/components/games/dynamicDifficulty.ts` — fetchRealOpponents 多级回退策略
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` — 头像渲染三目回退
+  - `frontend/src/app/components/games/GomokuBoard.tsx` — 头像渲染三目回退
+  - `frontend/src/app/components/games/ChineseChessBoard.tsx` — 头像渲染三目回退
+  - `frontend/src/app/components/games/GoBoard.tsx` — 头像渲染三目回退
+- **核心变更**:
+
+  #### dynamicDifficulty.ts - fetchRealOpponents 多级回退
+  - **策略1**: 调用 `gameApi.getRandomOpponent()` 获取游戏API随机对手（保持原有逻辑）
+  - **策略2（新增）**: 策略1失败时，动态 import `userApi.searchUsers('')` 搜索全站用户列表
+    - 过滤掉当前登录用户自己（通过 `useAuthStore.getState().user?.id`）
+    - 从过滤后的用户中随机抽取一个作为对手
+    - 返回真实 nickname / avatar / id
+  - **avatar处理**: 真实用户的 avatar 保持原始值（空字符串），不再填充 FALLBACK_AVATARS 占位图URL
+    - 由调用方（棋盘组件）负责空头像的UI回退显示
+
+  #### 4个棋盘组件 - 头像渲染三目回退
+  - 原逻辑: `pvp有头像? → ImageWithLazyLoad(pvp) : ImageWithLazyLoad(ai)`
+  - 新逻辑: `pvp有头像? → ImageWithLazyLoad(pvp) : ai有头像? → ImageWithLazyLoad(ai) : 字母头像div`
+  - 字母头像样式: `w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0`
+  - 显示内容: `displayOpponent?.nickname?.charAt(0)?.toUpperCase() || '?'`
+  - 所有4个组件统一此模式：TicTacToeBoard / GomokuBoard / ChineseChessBoard / GoBoard
+- **构建验证**: ✅ npm run build 通过（2838 modules, exit code 0）
+- **执行结果**: ✅ 完成
+
+---
+
 ## 重要问题修复记录
 
 ### 问题: 注册逻辑缺少唯一性检查

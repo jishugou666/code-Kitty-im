@@ -33,24 +33,25 @@ const CACHE_TTL = 120000;
 
 async function fetchRealOpponents(): Promise<Opponent[]> {
   const myId = useAuthStore.getState().user?.id;
+  const allOpponents: Opponent[] = [];
 
   try {
     const res = await gameApi.getRandomOpponent();
     if (res.code === 200 && res.data) {
       const user = res.data;
-      return [{
+      allOpponents.push({
         id: user.id,
         nickname: user.nickname,
         avatar: user.avatar || '',
         rankTier: user.rankTier || 'iron',
         rankLabel: RANK_NAMES[user.rankTier] || '铁器',
         rating: user.rating || 1000,
-      }];
+      });
     }
   } catch (err) {
     const status = err?.response?.status;
     if (status !== 404) {
-      console.warn('[Matchmaking] 获取真实对手失败:', status || err.message);
+      console.warn('[Matchmaking] 获取随机对手失败:', status || err.message);
     }
   }
 
@@ -59,23 +60,45 @@ async function fetchRealOpponents(): Promise<Opponent[]> {
     const res = await userApi.searchUsers('');
     if (res.data && Array.isArray(res.data) && res.data.length > 0) {
       const others = res.data.filter((u: any) => u.id !== myId);
-      if (others.length > 0) {
-        const user = others[Math.floor(Math.random() * others.length)];
-        return [{
+      const shuffled = others.sort(() => Math.random() - 0.5);
+      for (const user of shuffled.slice(0, 8)) {
+        if (allOpponents.some(o => o.id === user.id)) continue;
+        allOpponents.push({
           id: user.id,
           nickname: user.nickname || user.username || '玩家',
           avatar: user.avatar || '',
           rankTier: 'bronze',
           rankLabel: '青铜',
           rating: 800 + Math.floor(Math.random() * 400),
-        }];
+        });
       }
     }
   } catch (err: any) {
     console.warn('[Matchmaking] 搜索用户获取对手失败:', err.message);
   }
 
-  return [];
+  if (allOpponents.length === 0) {
+    try {
+      const lbRes = await gameApi.getLeaderboard({ limit: 10 });
+      if (lbRes.data && Array.isArray(lbRes.data) && lbRes.data.length > 0) {
+        const others = lbRes.data.filter((u: any) => u.user_id !== myId);
+        for (const entry of others.slice(0, 6)) {
+          allOpponents.push({
+            id: entry.user_id,
+            nickname: entry.nickname || '高手',
+            avatar: entry.avatar || '',
+            rankTier: entry.rank_tier || 'gold',
+            rankLabel: RANK_NAMES[entry.rank_tier] || '黄金',
+            rating: entry.rating || 1200,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Matchmaking] 排行榜获取对手失败:', err.message);
+    }
+  }
+
+  return allOpponents;
 }
 
 export async function generateOpponent(playerRating: number = 1000): Promise<Opponent> {
