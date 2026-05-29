@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+﻿import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { gameApi } from '../../../api/game';
@@ -75,8 +75,8 @@ const ChessPiece = React.memo(({ piece, isSelected, isCheck, isLastMove, isAnima
         isLastMove && 'ring-2 ring-blue-400 ring-offset-1 ring-offset-transparent'
       )}
       style={{
-        width: '76%',
-        height: '76%',
+        width: '72%',
+        height: '72%',
         flexShrink: 0,
         background: isRed
           ? 'radial-gradient(circle at 35% 30%, #fff5e6, #f0d9a0 40%, #e8c870 70%, #d4a030)'
@@ -600,27 +600,27 @@ export function ChineseChessBoard({
           )}
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl shadow-xl" style={{
+        <div className="relative overflow-visible rounded-2xl shadow-xl" style={{
           background: 'linear-gradient(145deg, #F5DEB3 0%, #E8C98B 25%, #DDB878 50%, #D4B06A 75%, #CBA65A 100%)',
-          padding: '12px'
+          padding: 'calc(var(--ccs) * 0.5)'
         }}>
           <div className="absolute inset-0 opacity-[0.05] pointer-events-none rounded-2xl" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
             backgroundSize: '180px 180px'
           }} />
 
-          <div className="chess-board-container relative overflow-hidden" style={{
+          <div className="chess-board-container relative overflow-visible" style={{
             '--ccs': cellSizeVar,
-            width: `calc(var(--ccs) * ${COLS} + 16px)`,
-            height: `calc(var(--ccs) * ${ROWS} + 16px)`,
+            width: `calc(var(--ccs) * ${COLS - 1})`,
+            height: `calc(var(--ccs) * ${ROWS - 1})`,
             position: 'relative',
-            padding: '8px'
+            padding: '0'
           } as React.CSSProperties}>
             {/* SVG Background for perfect alignment */}
             <svg
               width="100%"
               height="100%"
-              viewBox={`0 0 ${(COLS - 1) * 30 + 1} ${(ROWS - 1) * 30 + 1}`}
+              viewBox={`0 0 ${COLS - 1} ${ROWS - 1}`}
               preserveAspectRatio="xMidYMid meet"
               className="absolute top-0 left-0 pointer-events-none"
               style={{ zIndex: 1 }}
@@ -629,48 +629,48 @@ export function ChineseChessBoard({
               {Array.from({ length: ROWS }).map((_, i) => (
                 <line
                   key={`hl-${i}`}
-                  x1="0.5"
-                  y1={i * 30 + 0.5}
-                  x2={(COLS - 1) * 30 + 0.5}
-                  y2={i * 30 + 0.5}
+                  x1="0"
+                  y1={i}
+                  x2={COLS - 1}
+                  y2={i}
                   stroke="#3D1F00"
-                  strokeWidth="0.7"
+                  strokeWidth="0.03"
                 />
               ))}
               {Array.from({ length: COLS }).map((_, i) => (
                 <g key={`vl-${i}`}>
                   <line
-                    x1={i * 30 + 0.5}
-                    y1="0.5"
-                    x2={i * 30 + 0.5}
-                    y2={4 * 30 + 0.5}
+                    x1={i}
+                    y1="0"
+                    x2={i}
+                    y2={4}
                     stroke="#3D1F00"
-                    strokeWidth="0.7"
+                    strokeWidth="0.03"
                   />
                   <line
-                    x1={i * 30 + 0.5}
-                    y1={5 * 30 + 0.5}
-                    x2={i * 30 + 0.5}
-                    y2={(ROWS - 1) * 30 + 0.5}
+                    x1={i}
+                    y1={5}
+                    x2={i}
+                    y2={ROWS - 1}
                     stroke="#3D1F00"
-                    strokeWidth="0.7"
+                    strokeWidth="0.03"
                   />
                 </g>
               ))}
               {/* Palace diagonals (9 corners) */}
-              <line x1={3 * 30 + 0.5} y1={0 * 30 + 0.5} x2={5 * 30 + 0.5} y2={2 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
-              <line x1={5 * 30 + 0.5} y1={0 * 30 + 0.5} x2={3 * 30 + 0.5} y2={2 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
-              <line x1={3 * 30 + 0.5} y1={7 * 30 + 0.5} x2={5 * 30 + 0.5} y2={9 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
-              <line x1={5 * 30 + 0.5} y1={7 * 30 + 0.5} x2={3 * 30 + 0.5} y2={9 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
+              <line x1="3" y1="0" x2="5" y2="2" stroke="#3D1F00" strokeWidth="0.03" />
+              <line x1="5" y1="0" x2="3" y2="2" stroke="#3D1F00" strokeWidth="0.03" />
+              <line x1="3" y1="7" x2="5" y2="9" stroke="#3D1F00" strokeWidth="0.03" />
+              <line x1="5" y1="7" x2="3" y2="9" stroke="#3D1F00" strokeWidth="0.03" />
               {/* Flying general paths (the two outside lines for crossing river) */}
-              <line x1="0.5" y1={4 * 30 + 0.5} x2={0.5} y2={5 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
-              <line x1={8 * 30 + 0.5} y1={4 * 30 + 0.5} x2={8 * 30 + 0.5} y2={5 * 30 + 0.5} stroke="#3D1F00" strokeWidth="0.7" />
-              {/* Elephant crossing river? No, just 3x3 palace already there */}
+              <line x1="0" y1="4" x2="0" y2="5" stroke="#3D1F00" strokeWidth="0.03" />
+              <line x1="8" y1="4" x2="8" y2="5" stroke="#3D1F00" strokeWidth="0.03" />
               {/* Outer border */}
-              <rect x="-2" y="-2" width={(COLS - 1) * 30 + 5} height={(ROWS - 1) * 30 + 5} fill="none" stroke="#3D1F00" strokeWidth="2.5" />
-              <rect x="4" y="4" width={(COLS - 1) * 30 - 7} height={(ROWS - 1) * 30 - 7} fill="none" stroke="#3D1F00" strokeWidth="1" />
+              <rect x="-0.08" y="-0.08" width={COLS - 1 + 0.16} height={ROWS - 1 + 0.16} fill="none" stroke="#3D1F00" strokeWidth="0.08" />
+              <rect x="0.15" y="0.15" width={COLS - 1 - 0.3} height={ROWS - 1 - 0.3} fill="none" stroke="#3D1F00" strokeWidth="0.03" />
             </svg>
 
+            
             {/* Clickable cells as absolute positioned circles */}
             {board.map((row, rowIndex) =>
               row.map((cell, colIndex) => {
@@ -696,8 +696,8 @@ export function ChineseChessBoard({
                     style={{
                       width: 'var(--ccs)',
                       height: 'var(--ccs)',
-                      left: `calc(var(--ccs) * ${colIndex} - var(--ccs)/2)`,
-                      top: `calc(var(--ccs) * ${rowIndex} - var(--ccs)/2)`,
+                      left: `calc(var(--ccs) * ${colIndex})`,
+                      top: `calc(var(--ccs) * ${rowIndex})`,
                       zIndex: isSelected ? 15 : 5,
                       borderRadius: '50%',
                       display: 'flex',
@@ -772,7 +772,7 @@ export function ChineseChessBoard({
                       if (c !== -1) return c;
                     }
                     return 4;
-                  })()} + var(--ccs) * 0.06)`
+                  })()} - var(--ccs) * 0.44 + var(--ccs) * 0.06)`
                 }}
               />
             )}
