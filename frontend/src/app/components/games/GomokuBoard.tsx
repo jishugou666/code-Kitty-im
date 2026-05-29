@@ -527,7 +527,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
   const thinkTimeRef = useRef<number>(4000);
 
   const {
-    matchId,
+    matchId, setMatchId,
     gameStatus,
     setGameStatus,
     isAIThinking,

@@ -232,7 +232,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
   const thinkTimeRef = useRef<number>(3000);
 
   const {
-    matchId,
+    matchId, setMatchId,
     gameStatus,
     setGameStatus,
     isAIThinking,

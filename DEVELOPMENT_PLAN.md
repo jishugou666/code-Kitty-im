@@ -979,6 +979,27 @@
   - **构建验证**：✓ exit code 0, 2838 modules, built in 10.39s
   - **⚠️ 注意**：以上修改均为本地代码，需要重新部署前端到生产环境后生效
 
+- ✅ **`setMatchId is not defined` 致命错误修复**
+  - **现象**：控制台报错 `ReferenceError: setMatchId is not defined`，createMatch 失败后进入离线模式
+  - **根因**：TicTacToeBoard 和 GomokuBoard 从 `useGameMatch` Hook 解构时 **遗漏了 `setMatchId`**：
+    ```typescript
+    // 错误（修复前）:
+    const { matchId, gameStatus, ... } = useGameMatch({...});
+    //              ↑ 有matchId
+    //              ↓ 但没有setMatchId！
+    
+    // 后续代码却在使用：
+    setMatchId(res.data.id);   // ReferenceError!
+    ```
+  - **为什么 GoBoard 和 ChineseChessBoard 没有此问题**：它们不使用 useGameMatch Hook，各自用 `const [matchId, setMatchId] = useState(null)` 管理状态
+  - **修复**（每个文件改1行）：
+    | 文件 | 修改 |
+    |------|------|
+    | `TicTacToeBoard.tsx:234` | `matchId,` → `matchId, setMatchId,` |
+    | `GomokuBoard.tsx:529` | `matchId,` → `matchId, setMatchId,` |
+  - **构建验证**：✓ exit code 0, 2838 modules, built in 9.64s
+  - **经验教训**：从共享Hook解构变量时，必须逐一对照 Hook 的 return 对象和组件的实际使用列表，确保无遗漏
+
 ### 2026-05-22
 - ✅ 移除 Admin 后台的群组管理功能
   - 删除了所有群组相关的 state 变量、函数和 UI 组件
