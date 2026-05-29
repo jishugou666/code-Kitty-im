@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { conversationApi, Conversation } from '../api/conversation';
 import { messageApi, Message } from '../api/message';
+import type { AppError } from '../types';
 
 interface ChatState {
   conversations: Conversation[];
@@ -32,7 +33,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         conversations: response.data,
         isLoading: false
       });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch conversations',
         isLoading: false
@@ -55,7 +56,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
         isLoading: false
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch messages',
         isLoading: false
@@ -77,7 +78,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [conversationId]: [...(state.messages[conversationId] || []), newMessage]
         }
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({ error: error.message || 'Failed to send message' });
       throw error;
     }

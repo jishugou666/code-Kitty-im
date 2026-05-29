@@ -19,6 +19,7 @@ import { useIsMobile } from '../components/ui/use-mobile';
 import { getAvatarUrl } from '../../lib/avatarCache';
 import { ImageWithLazyLoad } from '../components/ui/ImageWithLazyLoad';
 import { VirtualMessageList } from '../components/VirtualMessageList';
+import type { Message, Conversation, ConversationMember, AppError } from '../../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -103,7 +104,7 @@ const MessageItem = React.memo(({
         onTouchStart={handleTouchStart}
       >
         {message.type === 'text' && <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>}
-        {message.type === 'image' && !isRecalled && <img src={message.content} alt="图片" className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
+        {message.type === 'image' && !isRecalled && <img src={message.content} alt={t('chat.image')} className={isMobile ? "rounded-lg max-w-[200px] sm:max-w-full" : "rounded-lg max-w-full"} />}
         {message.type === 'recalled' && (
           <p className={clsx(isMobile ? "text-[13px] sm:text-sm italic opacity-60" : "text-sm italic opacity-60")}>{message.content}</p>
         )}
@@ -255,7 +256,7 @@ export function Chat() {
   const isMobile = useIsMobile();
 
   const conversation = conversations.find(c => c.id === conversationId);
-  const otherUser = conversation?.members?.find((m: any) => m.id !== user?.id);
+  const otherUser = conversation?.members?.find((m: ConversationMember) => m.id !== user?.id);
 
   useWebSocket(conversationId || undefined, (newMessage) => {
     if (newMessage.type === 'recalled' || newMessage.type === 'message-recalled') {
@@ -342,7 +343,7 @@ export function Chat() {
       if (result.isTemp) {
         setShowAntiFraudTip(true);
         setTimeout(() => setShowAntiFraudTip(false), 5000);
-        const otherUser = conversation?.members?.find((m: any) => m.id !== user?.id);
+        const otherUser = conversation?.members?.find((m: ConversationMember) => m.id !== user?.id);
         if (otherUser) {
           await tempConversationApi.record(conversationId, otherUser.id);
         }
@@ -384,7 +385,7 @@ export function Chat() {
       } else {
         toast(res.msg || t('game.inviteFailed'), 'error');
       }
-    } catch (error: any) {
+    } catch (error: AppError) {
       console.error('Invite game error:', error);
       toast(error.message || t('game.inviteFailed'), 'error');
     } finally {
@@ -407,7 +408,7 @@ export function Chat() {
         setTimeout(() => loadMessages(), 500);
         toast(t('game.rejectedInvite'), 'info');
       }
-    } catch (err: any) {
+    } catch (err: AppError) {
       toast(err.message || t('errors.defaultError'), 'error');
     }
   };
@@ -685,9 +686,9 @@ export function Chat() {
     } catch { return ''; }
   };
 
-  const groupMessagesByDate = (msgs: any[]) => {
+  const groupMessagesByDate = (msgs: Message[]) => {
     if (!Array.isArray(msgs) || msgs.length === 0) return {};
-    const groups: { [key: string]: any[] } = {};
+    const groups: { [key: string]: Message[] } = {};
     msgs.forEach(msg => {
       if (!msg) return;
       const dateKey = formatDate(msg?.created_at);
@@ -709,7 +710,7 @@ export function Chat() {
   const safeMessages = Array.isArray(messages) ? messages : [];
   const messageGroups = groupMessagesByDate(safeMessages);
 
-  const renderMessageItem = useCallback((message: any, isOwnMessage: boolean, isRecalled: boolean) => {
+  const renderMessageItem = useCallback((message: Message, isOwnMessage: boolean, isRecalled: boolean) => {
     return (
       <MessageItem
         message={message}
@@ -830,7 +831,7 @@ export function Chat() {
             ) : notifications.length === 0 ? (
               <div className="text-center text-black/40 dark:text-white/40 py-12">
                 <Megaphone size={48} className="mx-auto mb-4 opacity-30" />
-                <p className="text-sm">暂无系统通知</p>
+                <p className="text-sm">{t('chat.noNotifications')}</p>
               </div>
             ) : (
               notifications.map((notif) => {
@@ -927,7 +928,7 @@ export function Chat() {
               
               <div className={isMobile ? "mb-5 text-center" : "mb-4"}>
                 <h3 className={isMobile ? "text-lg font-semibold text-gray-900 dark:text-white mb-1" : "text-sm font-semibold text-gray-900 dark:text-white mb-1"}>
-                  消息操作
+                  {t('chat.messageActions')}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {selectedMessage.content?.substring(0, 40)}{selectedMessage.content?.length > 40 ? '...' : ''}
@@ -942,16 +943,16 @@ export function Chat() {
                       if (res.code === 200) {
                         setMessages(prev => prev.map(m =>
                           m.id === selectedMessage.id
-                            ? { ...m, type: 'recalled', content: '此消息已撤回' }
+                            ? { ...m, type: 'recalled', content: t('chat.messageRecalled') }
                             : m
                         ));
                         fetchConversations();
-                        toast('已撤回', 'success');
+                        toast(t('chat.recallSuccess'), 'success');
                       } else {
-                        toast(res.msg || '撤回失败', 'error');
+                        toast(res.msg || t('chat.recallFailed'), 'error');
                       }
                     } catch {
-                      toast('撤回失败', 'error');
+                      toast(t('chat.recallFailed'), 'error');
                     }
                     setShowMessageMenu(false);
                   }}
@@ -963,13 +964,13 @@ export function Chat() {
                   <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 12h18M3 6h18M3 18h18" strokeDasharray="4 4" strokeDashoffset="4" />
                   </svg>
-                  <span className="font-medium">撤回消息</span>
+                  <span className="font-medium">{t('chat.recallMessage')}</span>
                 </button>
                 
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(selectedMessage.content);
-                    toast('已复制', 'success');
+                    toast(t('chat.copySuccess'), 'success');
                     setShowMessageMenu(false);
                   }}
                   className={clsx(
@@ -981,7 +982,7 @@ export function Chat() {
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                   </svg>
-                  <span className="font-medium">复制</span>
+                  <span className="font-medium">{t('chat.copyAction')}</span>
                 </button>
                 
                 <button
@@ -989,9 +990,9 @@ export function Chat() {
                     try {
                       const conversations = await import('../../api/conversation').then(m => m.conversationApi.getList());
                       if (conversations.code === 200) {
-                        const targets = conversations.data.filter((c: any) => c.id !== conversationId);
+                        const targets = conversations.data.filter((c: Conversation) => c.id !== conversationId);
                         if (targets.length === 0) {
-                          toast('没有其他会话可转发', 'warning');
+                          toast(t('chat.noOtherConversations'), 'warning');
                           setShowMessageMenu(false);
                           return;
                         }
@@ -1001,10 +1002,10 @@ export function Chat() {
                           content: selectedMessage.content,
                           type: selectedMessage.type
                         });
-                        toast('已转发', 'success');
+                        toast(t('chat.forwardSuccess'), 'success');
                       }
                     } catch {
-                      toast('转发失败', 'error');
+                      toast(t('chat.forwardFailed'), 'error');
                     }
                     setShowMessageMenu(false);
                   }}
@@ -1016,7 +1017,7 @@ export function Chat() {
                   <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/>
                   </svg>
-                  <span className="font-medium">转发</span>
+                  <span className="font-medium">{t('chat.forwardAction')}</span>
                 </button>
                 
                 <button
@@ -1026,7 +1027,7 @@ export function Chat() {
                     isMobile ? "rounded-xl bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 font-medium active:bg-gray-200 dark:active:bg-white/20" : "rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10"
                   )}
                 >
-                  取消
+                  {t('chat.cancelAction')}
                 </button>
               </div>
             </motion.div>
@@ -1063,7 +1064,7 @@ export function Chat() {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute bottom-14 left-0 bg-white dark:bg-[#1A1D21] rounded-xl shadow-lg border border-gray-200/50 dark:border-white/10 p-2 min-w-[120px] z-50">
                 <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" id="image-upload" />
                 <label htmlFor="image-upload" className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg cursor-pointer text-sm active:bg-gray-200 dark:active:bg-white/20">
-                  <Image size={16} /> 图片
+                  <Image size={16} /> {t('chat.image')}
                 </label>
               </motion.div>
             )}
@@ -1074,7 +1075,7 @@ export function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="输入消息..."
+              placeholder={t('chat.sendPlaceholder')}
               className={isMobile ? "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400" : "w-full h-11 px-4 bg-gray-100 dark:bg-[#0E1116] rounded-full outline-none text-sm text-gray-900 dark:text-white placeholder:text-gray-400"}
             />
           </div>
@@ -1116,7 +1117,7 @@ export function Chat() {
             >
               <div className="px-5 py-4 border-b border-gray-100 dark:border-white/10">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">邀请对弈</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('game.inviteTitle')}</h3>
                   <button
                     onClick={() => setShowGameInviteModal(false)}
                     className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"
@@ -1125,15 +1126,15 @@ export function Chat() {
                   </button>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  邀请 <span className="font-medium text-gray-700 dark:text-gray-300">{otherUser?.nickname || otherUser?.username || '对方'}</span> 进行一局对战
+                  {t('game.inviteDesc')} <span className="font-medium text-gray-700 dark:text-gray-300">{otherUser?.nickname || otherUser?.username || t('game.opponent')}</span>
                 </p>
               </div>
 
               <div className="p-4 space-y-3">
                 {[
-                  { key: 'tictactoe', name: '井字棋', icon: '⭕', desc: '简单快捷的三子连线' },
-                  { key: 'gomoku', name: '五子棋', icon: '⚫', desc: '经典五子连珠' },
-                  { key: 'chess', name: '中国象棋', icon: '♟️', desc: '楚河汉界，运筹帷幄' },
+                  { key: 'tictactoe', name: t('game.tictactoe'), icon: '⭕', desc: t('game.tictactoeDesc') },
+                  { key: 'gomoku', name: t('game.gomoku'), icon: '⚫', desc: t('game.gomokuDesc') },
+                  { key: 'chess', name: t('game.chess'), icon: '♟️', desc: t('game.chessDesc') },
                 ].map((game) => (
                   <button
                     key={game.key}
@@ -1152,7 +1153,7 @@ export function Chat() {
               </div>
 
               <div className="px-5 py-3 bg-gray-50 dark:bg-black/20 text-center">
-                <p className="text-xs text-gray-400">选择一个游戏模式开始对战</p>
+                <p className="text-xs text-gray-400">{t('game.selectGameMode')}</p>
               </div>
             </motion.div>
           </motion.div>

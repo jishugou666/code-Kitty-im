@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
 import { Circle, CircleDot, Crown, Clock, Trophy, TrendingUp, Gamepad2, ArrowLeft, User, Star, Flame, ChevronUp, Sparkles, Grid3X3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { RankBadge } from '../components/games/RankBadge';
 import { TicTacToeBoard } from '../components/games/TicTacToeBoard';
@@ -17,6 +18,7 @@ type ActiveGame = null | 'tictactoe' | 'gomoku' | 'chess' | 'go';
 type TabType = 'leaderboard' | 'history';
 
 export function Games() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const urlMatchId = searchParams.get('matchId');
   const urlGameType = searchParams.get('gameType') as ActiveGame | null;
@@ -84,12 +86,12 @@ export function Games() {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return '刚刚';
-    if (mins < 60) return `${mins}分钟前`;
+    if (mins < 1) return t('chat.justOnline');
+    if (mins < 60) return t('chat.minutesAgo', { count: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}小时前`;
+    if (hours < 24) return t('chat.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}天前`;
+    if (days < 7) return t('chat.daysAgo', { count: days });
     return date.toLocaleDateString('zh-CN');
   };
 
@@ -102,11 +104,11 @@ export function Games() {
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
             <ArrowLeft size={16} />
-            返回大厅
+            {t('game.backToLobby')}
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {pvpMatchId ? 'PVP 对战' : '在线对局'}
+            {pvpMatchId ? t('game.pvpMatch') : t('game.onlineGame')}
           </div>
         </div>
         <ErrorBoundary>
@@ -129,11 +131,11 @@ export function Games() {
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
             <ArrowLeft size={16} />
-            返回大厅
+            {t('game.backToLobby')}
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {pvpMatchId ? 'PVP 对战' : '在线对局'}
+            {pvpMatchId ? t('game.pvpMatch') : t('game.onlineGame')}
           </div>
         </div>
         <ErrorBoundary>
@@ -156,11 +158,11 @@ export function Games() {
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
             <ArrowLeft size={16} />
-            返回大厅
+            {t('game.backToLobby')}
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {pvpMatchId ? 'PVP 对战' : '在线对局'}
+            {pvpMatchId ? t('game.pvpMatch') : t('game.onlineGame')}
           </div>
         </div>
         <ErrorBoundary>
@@ -183,11 +185,11 @@ export function Games() {
             className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-white/60 dark:bg-gray-800/40 backdrop-blur-sm border border-black/5 dark:border-white/5 text-gray-700 dark:text-gray-300 hover:bg-white/80 transition-all shadow-sm"
           >
             <ArrowLeft size={16} />
-            返回大厅
+            {t('game.backToLobby')}
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            {pvpMatchId ? 'PVP 对战' : '在线对局'}
+            {pvpMatchId ? t('game.pvpMatch') : t('game.onlineGame')}
           </div>
         </div>
         <ErrorBoundary>

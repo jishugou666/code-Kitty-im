@@ -247,7 +247,10 @@
     "inviteFailed": "Invite failed",
     "acceptSuccess": "Accepted! Entering game...",
     "rejectedInvite": "Invite rejected",
-    "opponent": "Opponent"
+    "opponent": "Opponent",
+    "backToLobby": "Back to Lobby",
+    "pvpMatch": "PVP Match",
+    "onlineGame": "Online Game"
   },
   "chat": {
     "message": "Messages",

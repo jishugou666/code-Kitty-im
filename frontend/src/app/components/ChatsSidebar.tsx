@@ -11,6 +11,7 @@ import { conversationApi } from '../../api/conversation';
 import { useIsMobile } from './ui/use-mobile';
 import { getAvatarUrl } from '../../lib/avatarCache';
 import { ImageWithLazyLoad } from './ui/ImageWithLazyLoad';
+import type { Conversation, ConversationMember } from '../../types';
 
 export function ChatsSidebar() {
   const navigate = useNavigate();
@@ -22,8 +23,8 @@ export function ChatsSidebar() {
   const [searchResults, setSearchResults] = useState<SearchMessageResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const [notificationConv, setNotificationConv] = useState<any>(null);
-  const [worldChannel, setWorldChannel] = useState<any>(null);
+  const [notificationConv, setNotificationConv] = useState<Conversation | null>(null);
+  const [worldChannel, setWorldChannel] = useState<Conversation | null>(null);
 
   const { conversations, fetchConversations, isLoading } = useChatStore();
   const { user, token } = useAuthStore();
@@ -88,9 +89,9 @@ export function ChatsSidebar() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const getOtherUser = (chat: any) => {
+  const getOtherUser = (chat: Conversation) => {
     if (chat.type === 'single' && chat.members) {
-      const otherMember = chat.members.find((m: any) => m.id !== user?.id) || { nickname: 'Unknown', avatar: '', role: 'user' };
+      const otherMember = chat.members.find((m: ConversationMember) => m.id !== user?.id) || { nickname: 'Unknown', avatar: '', role: 'user' };
       return otherMember;
     }
     return { nickname: chat.name || 'Unknown', avatar: chat.avatar || '', role: 'user' };
@@ -122,14 +123,14 @@ export function ChatsSidebar() {
   const privateChats = conversations
     .filter(c => c.type === 'single')
     .sort((a, b) => {
-      const techGodA = a.members?.some((m: any) => m.nickname === '技术狗');
-      const techGodB = b.members?.some((m: any) => m.nickname === '技术狗');
+      const techGodA = a.members?.some((m: ConversationMember) => m.nickname === '技术狗');
+      const techGodB = b.members?.some((m: ConversationMember) => m.nickname === '技术狗');
       if (techGodA && !techGodB) return -1;
       if (!techGodA && techGodB) return 1;
       return new Date(b.last_message_time || 0).getTime() - new Date(a.last_message_time || 0).getTime();
     });
 
-  const renderChatItem = (chat: any) => {
+  const renderChatItem = (chat: Conversation) => {
     const isActive = id === String(chat.id);
     const otherUser = getOtherUser(chat);
     const displayName = otherUser?.nickname || 'Unknown';

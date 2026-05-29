@@ -279,7 +279,10 @@
     "inviteFailed": "邀请失败",
     "acceptSuccess": "接受成功！正在进入对局...",
     "rejectedInvite": "已拒绝邀请",
-    "opponent": "对方"
+    "opponent": "对方",
+    "backToLobby": "返回大厅",
+    "pvpMatch": "PVP 对战",
+    "onlineGame": "在线对局"
   },
   "chat": {
     "message": "消息",
