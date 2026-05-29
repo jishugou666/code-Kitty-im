@@ -23,12 +23,6 @@ import type { Message, Conversation, ConversationMember, AppError } from '../../
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const GAME_TYPE_NAMES: Record<string, string> = {
-  tictactoe: t('game.tictactoe'),
-  gomoku: t('game.gomoku'),
-  chess: t('game.chess')
-};
-
 interface MessageItemProps {
   message: any;
   isOwnMessage: boolean;
@@ -37,6 +31,7 @@ interface MessageItemProps {
   userId?: number | null;
   onShowMenu: (message: any) => void;
   onRespondGameInvite: (matchId: number, accepted: boolean, gameType?: string) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }
 
 const MessageItem = React.memo(({
@@ -46,7 +41,8 @@ const MessageItem = React.memo(({
   isMobile,
   userId,
   onShowMenu,
-  onRespondGameInvite
+  onRespondGameInvite,
+  t
 }: MessageItemProps) => {
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -215,7 +211,7 @@ const MessageItem = React.memo(({
 
 MessageItem.displayName = 'MessageItem';
 
-function formatLastSeen(lastSeen: string | null | undefined): string {
+function formatLastSeen(lastSeen: string | null | undefined, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (!lastSeen) return t('chat.offline');
   const now = Date.now();
   const time = new Date(lastSeen).getTime();
@@ -231,6 +227,13 @@ export function Chat() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const conversationId = parseInt(id || '0');
+
+  const GAME_TYPE_NAMES: Record<string, string> = {
+    tictactoe: t('game.tictactoe'),
+    gomoku: t('game.gomoku'),
+    chess: t('game.chess')
+  };
+
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -723,9 +726,10 @@ export function Chat() {
           setShowMessageMenu(true);
         }}
         onRespondGameInvite={handleRespondGameInvite}
+        t={t}
       />
     );
-  }, [isMobile, user?.id, handleRespondGameInvite]);
+  }, [isMobile, user?.id, handleRespondGameInvite, t]);
 
   return (
     <div className="h-full flex flex-col bg-[#FAFAFC] dark:bg-[#0A0C10]">
@@ -747,7 +751,7 @@ export function Chat() {
                 <span className="text-gray-500 dark:text-gray-400">{t('chat.worldChannel')}</span>
               ) : otherUser ? (
                 <span className={otherUser.status === 1 ? "text-[#34C759]" : "text-gray-400 dark:text-gray-500"}>
-                  {otherUser.status === 1 ? t('chat.online') : formatLastSeen(otherUser.last_seen)}
+                  {otherUser.status === 1 ? t('chat.online') : formatLastSeen(otherUser.last_seen, t)}
                 </span>
               ) : (
                 <span className="text-gray-500 dark:text-gray-400">{t('chat.memberCount', { count: conversation?.members?.length || 0 })}</span>
