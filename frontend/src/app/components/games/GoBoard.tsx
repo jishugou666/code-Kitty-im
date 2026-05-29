@@ -476,6 +476,7 @@ export const GoBoard = React.memo(function GoBoard({
   useEffect(() => {
     if (mode === 'ai') {
       generateOpponent().then(setOpponent);
+      setMyColor('black');
     }
   }, [mode]);
 

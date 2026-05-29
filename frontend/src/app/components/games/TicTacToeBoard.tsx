@@ -376,6 +376,12 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     }
   }, [mode]);
 
+  useEffect(() => {
+    if (gameStatus === 'idle') {
+      setGameStatus('playing');
+    }
+  }, []);
+
   useGameHeartbeat(matchId, gameStatus === 'playing');
 
   const initMatch = useCallback(async () => {
@@ -963,7 +969,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
       </div>
 
       <AnimatePresence>
-        {gameStatus !== 'playing' && !showResultModal && (
+        {gameStatus !== 'playing' && gameStatus !== 'idle' && !showResultModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
