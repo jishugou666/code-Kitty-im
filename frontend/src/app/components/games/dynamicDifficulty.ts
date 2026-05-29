@@ -1,4 +1,5 @@
 import { gameApi } from '../../../api/game';
+import { useAuthStore } from '../../../store/authStore';
 
 const RANK_NAMES: Record<string, string> = {
   iron: '铁器', bronze: '青铜', silver: '白银',
@@ -31,6 +32,8 @@ let lastFetchTime = 0;
 const CACHE_TTL = 120000;
 
 async function fetchRealOpponents(): Promise<Opponent[]> {
+  const myId = useAuthStore.getState().user?.id;
+
   try {
     const res = await gameApi.getRandomOpponent();
     if (res.code === 200 && res.data) {
@@ -38,7 +41,7 @@ async function fetchRealOpponents(): Promise<Opponent[]> {
       return [{
         id: user.id,
         nickname: user.nickname,
-        avatar: user.avatar || FALLBACK_AVATARS[Math.floor(Math.random() * FALLBACK_AVATARS.length)],
+        avatar: user.avatar || '',
         rankTier: user.rankTier || 'iron',
         rankLabel: RANK_NAMES[user.rankTier] || '铁器',
         rating: user.rating || 1000,
@@ -50,6 +53,28 @@ async function fetchRealOpponents(): Promise<Opponent[]> {
       console.warn('[Matchmaking] 获取真实对手失败:', status || err.message);
     }
   }
+
+  try {
+    const { userApi } = await import('../../../api/user');
+    const res = await userApi.searchUsers('');
+    if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+      const others = res.data.filter((u: any) => u.id !== myId);
+      if (others.length > 0) {
+        const user = others[Math.floor(Math.random() * others.length)];
+        return [{
+          id: user.id,
+          nickname: user.nickname || user.username || '玩家',
+          avatar: user.avatar || '',
+          rankTier: 'bronze',
+          rankLabel: '青铜',
+          rating: 800 + Math.floor(Math.random() * 400),
+        }];
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Matchmaking] 搜索用户获取对手失败:', err.message);
+  }
+
   return [];
 }
 

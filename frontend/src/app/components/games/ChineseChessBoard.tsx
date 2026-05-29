@@ -567,7 +567,10 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
           setShowResultModal(false);
           resetBoard();
         }}
-        onClose={() => setShowResultModal(false)}
+        onClose={() => {
+          setShowResultModal(false);
+          onGameOver?.(gameStatus === 'won' ? 'win' : gameStatus === 'lost' ? 'loss' : 'draw');
+        }}
       />
 
       <div className="flex-1 flex flex-col items-center gap-3 w-full lg:w-auto">
@@ -835,8 +838,12 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
               <div className="flex items-center gap-3 mb-3">
                 {mode === 'pvp' && pvpOpponent?.avatar ? (
                   <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+                ) : displayOpponent?.avatar ? (
+                  <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
                 ) : (
-                  <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {displayOpponent?.nickname?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
@@ -955,45 +962,6 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         </div>
       </div>
 
-      <AnimatePresence>
-        {gameStatus !== 'playing' && !showResultModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-            onClick={resetBoard}
-          >
-            <motion.div
-              initial={{ scale: 0.85, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.85, y: 30, opacity: 0 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl text-center space-y-4 min-w-[280px] max-w-[360px] w-full"
-            >
-              <motion.p
-                initial={{ scale: 0, rotate: -15 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', delay: 0.1, stiffness: 250 }}
-                className="text-5xl"
-              >{rc?.emoji}</motion.p>
-              <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{rc?.text}</p>
-              <p className={clsx("text-base font-bold", rc?.color)}>
-                积分 {rc?.score}
-              </p>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 space-y-1.5 text-left text-xs">
-                <div className="flex justify-between"><span className="text-gray-500">总步数</span><span className="font-mono font-semibold">{history.length}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">用时</span><span className="font-mono font-semibold">{formatTime(timerSeconds)}</span></div>
-              </div>
-              <button
-                onClick={resetBoard}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold hover:from-blue-600 hover:to-blue-700 shadow-md transition-all"
-              >再来一局</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }, (prevProps, nextProps) => {

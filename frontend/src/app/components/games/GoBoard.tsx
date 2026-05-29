@@ -1014,7 +1014,10 @@ export const GoBoard = React.memo(function GoBoard({
           setShowResultModal(false);
           resetBoard();
         }}
-        onClose={() => setShowResultModal(false)}
+        onClose={() => {
+          setShowResultModal(false);
+          onGameOver?.(gameStatus === 'won' ? 'win' : gameStatus === 'lost' ? 'loss' : 'draw');
+        }}
       />
 
       {/* Opponent Info Card */}
@@ -1024,8 +1027,12 @@ export const GoBoard = React.memo(function GoBoard({
             <div className="flex items-center gap-3 mb-3">
               {mode === 'pvp' && pvpOpponent?.avatar ? (
                 <ImageWithLazyLoad src={getAvatarUrl(pvpOpponent.avatar)} alt={pvpOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
+              ) : displayOpponent?.avatar ? (
+                <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 object-cover" />
               ) : (
-                <ImageWithLazyLoad src={getAvatarUrl(displayOpponent.avatar)} alt={displayOpponent.nickname} className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                  {displayOpponent?.nickname?.charAt(0)?.toUpperCase() || '?'}
+                </div>
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
@@ -1296,113 +1303,6 @@ export const GoBoard = React.memo(function GoBoard({
           </div>
         </div>
       </div>
-
-      {/* Result Overlay */}
-      <AnimatePresence>
-        {rc && gameStatus !== 'playing' && !showResultModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) resetBoard(); }}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0, scale: 0.95 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: -20, opacity: 0, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-white dark:bg-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-4 min-w-[280px] sm:min-w-[320px] max-w-[90vw]"
-            >
-              <motion.p
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.1, stiffness: 300 }}
-                className="text-6xl"
-              >
-                {rc.emoji}
-              </motion.p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {rc.text}
-              </p>
-              <p className={clsx('text-lg font-semibold', rc.color)}>
-                {rc.score}
-              </p>
-
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 space-y-1.5 text-sm">
-                <div className="flex justify-between text-gray-500">
-                  <span>⏱ 用时</span><span className="font-mono font-medium text-gray-700 dark:text-gray-300">{formatTime(elapsedTime)}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>♟ 手数</span><span className="font-medium text-gray-700 dark:text-gray-300">{moveCount}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>● 提子</span><span className="font-medium text-gray-700 dark:text-gray-300">黑{blackCaptures} / 白{whiteCaptures}</span>
-                </div>
-                <div className="flex justify-between text-gray-500">
-                  <span>🏆 历史胜率</span><span className="font-medium text-gray-700 dark:text-gray-300">{winRate}% ({stats.wins}/{totalGames})</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => setShowReplay(v => !v)}
-                  className="flex-1 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-1.5"
-                >
-                  <History size={15} />
-                  {showReplay ? '收起复盘' : '查看复盘'}
-                </button>
-                <button
-                  onClick={shareResult}
-                  className="min-h-[44px] w-11 flex items-center justify-center rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                  aria-label="分享成绩"
-                >
-                  <Share2 size={16} />
-                </button>
-              </div>
-
-              <AnimatePresence>
-                {showReplay && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-xl p-3 space-y-1 text-left">
-                      <p className="text-xs font-semibold text-gray-400 mb-2">对局步骤</p>
-                      {history.slice(0, moveCount).map((entry, i) => {
-                        const label = entry.lastMove
-                          ? `${String.fromCharCode(65 + entry.lastMove[1])}${BOARD_SIZE - entry.lastMove[0]}`
-                          : 'Pass';
-                        return (
-                          <div key={i} className="text-xs flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                            <span className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold shrink-0">
-                              {i + 1}
-                            </span>
-                            <span className={entry.player === BLACK ? 'text-gray-800 font-semibold' : 'text-gray-400'}>
-                              {entry.player === BLACK ? '●' : '○'}
-                            </span>
-                            <span>→ {label}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={resetBoard}
-                className="w-full min-h-[48px] py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-medium hover:from-amber-700 hover:to-orange-700 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-amber-500/25"
-              >
-                再来一局
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <style>{`
         @keyframes flash {
