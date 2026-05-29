@@ -613,13 +613,14 @@ export const GomokuBoard = React.memo(function GomokuBoard({
           setShowResultModal(true);
         } else {
           setGameStatus('draw');
-        saveGameResult('draw');
-        recordDifficultyResult(false);
-        processMatchFinish(false, 50, 'C', '势均力敌', true);
-        setShowResultModal(true);
+          saveGameResult('draw');
+          recordDifficultyResult(false);
+          processMatchFinish(false, 50, 'C', '势均力敌', true);
+          setShowResultModal(true);
+        }
       }
     }
-  });
+  }, [board, gameStatus, isAIThinking, lastMoveIndex, stats, onGameOver, matchId, mode, mySymbol]);
 
   const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string, isDraw?: boolean) => {
     const displayScore = isDraw ? Math.abs(defaultScore) : (won ? defaultScore : -Math.abs(defaultScore));
