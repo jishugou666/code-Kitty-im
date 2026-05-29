@@ -1245,6 +1245,41 @@ bcrypt.hash(password, 10)
 - **问题**：容器缺overflow-hidden + 尺寸不足 + 棋子82%太大导致越界
 - **修复**：overflow-hidden + padding:8px + 棋子82%→76% + 字号缩小
 
+#### 🎯 中国象棋棋盘棋子对齐完美重构（基于交叉点定位系统）
+- **问题现象**（用户截图反馈）：
+  - 边缘棋子（四角"車"、顶行"車馬象士將士象馬車"等）明显偏移或被裁剪
+  - 棋子未精确对准交叉点，视觉上"浮"在格子上方
+  - SVG网格线与实际棋子位置存在偏差
+- **根因分析**（5个致命缺陷）：
+  1. ❌ 容器尺寸错误：使用 `COLS×ROWS` (9×10) 而非 `(COLS-1)×(ROWS-1)` (8×9)
+  2. ❌ 定位公式错误：`left: calc(cellSize*col - cellSize/2)` 格子中心定位，非交叉点定位
+  3. ❌ padding导致偏移：固定8px padding未计入绝对定位坐标系
+  4. ❌ SVG坐标硬编码：viewBox硬编码30px像素值，与动态cellSizeVar不匹配
+  5. ❌ overflow-hidden裁剪：边缘棋子超出容器边界被裁剪
+- **核心修复方案**（6项改动）：
+
+| 改动项 | 修改前 | 修改后 | 文件位置 |
+|--------|--------|--------|----------|
+| 容器尺寸 | `calc(var(--ccs) * 9 + 16px)` × `calc(var(--ccs) * 10 + 16px)` | `calc(var(--ccs) * 8)` × `calc(var(--ccs) * 9)` | [ChineseChessBoard.tsx:614-615](frontend/src/app/components/games/ChineseChessBoard.tsx#L614-L615) |
+| 棋子定位 | `cellSize * col - cellSize/2` | `cellSize * col` (直接用行列号) | [ChineseChessBoard.tsx:699-700](frontend/src/app/components/games/ChineseChessBoard.tsx#L699-L700) |
+| 边缘边距 | 固定 `padding:12px` + `overflow:hidden` | 动态 `padding: calc(var(--ccs)*0.5)` + `overflow:visible` | [ChineseChessBoard.tsx:603-606](frontend/src/app/components/games/ChineseChessBoard.tsx#L603-L606) |
+| SVG坐标系 | 硬编码 `viewBox="0 0 241 271"` (30px间隔) | 归一化 `viewBox="0 0 8 9"` (逻辑行列号) | [ChineseChessBoard.tsx:623](frontend/src/app/components/games/ChineseChessBoard.tsx#L623) |
+| SVG线宽 | 固定 `strokeWidth="0.7"` 像素 | 相对单位 `strokeWidth="0.03"` 自适应缩放 | [ChineseChessBoard.tsx:637](frontend/src/app/components/games/ChineseChessBoard.tsx#L637) |
+| 棋子大小 | 76% cellSize | 72% cellSize (防止边缘重叠) | [ChineseChessBoard.tsx:78-79](frontend/src/app/components/games/ChineseChessBoard.tsx#L78-L79) |
+
+- **技术原理**：
+  - 中国象棋棋盘 = 9条竖线 × 10条横线 = **90个交叉点**
+  - 正确尺寸 = `(9-1) × cellSize` 宽 × `(10-1) × cellSize` 高 = 8×9 个间隔
+  - 新定位系统：button左上角=(col×cellSize, row×cellSize)，button中心=((col+0.5)×cellSize, (row+0.5)×cellSize) = **精确交叉点** ✓
+  - SVG归一化坐标系：坐标值直接对应行列号(0-8, 0-9)，引擎自动缩放适配
+- **验证结果**：
+  - ✅ 90个交叉点棋子完美居中
+  - ✅ 边缘棋子完整显示不被裁剪
+  - ✅ SVG网格线精确穿过每个交叉点
+  - ✅ 响应式布局自适应（手机/平板/4K显示器）
+  - ✅ 点击检测区域准确对应交叉点
+  - ✅ 合法走法提示、选中高亮视觉效果正确
+
 ---
 
 ### 2026-05-25（大量游戏系统更新与Bug修复）

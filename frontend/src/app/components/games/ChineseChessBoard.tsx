@@ -600,30 +600,34 @@ export function ChineseChessBoard({
           )}
         </div>
 
-        <div className="relative overflow-visible rounded-2xl shadow-xl" style={{
+        <div className="relative rounded-2xl shadow-xl overflow-hidden" style={{
           background: 'linear-gradient(145deg, #F5DEB3 0%, #E8C98B 25%, #DDB878 50%, #D4B06A 75%, #CBA65A 100%)',
-          padding: 'calc(var(--ccs) * 0.5)'
+          padding: '4px'
         }}>
           <div className="absolute inset-0 opacity-[0.05] pointer-events-none rounded-2xl" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
             backgroundSize: '180px 180px'
           }} />
 
-          <div className="chess-board-container relative overflow-visible" style={{
+          <div className="chess-board-container relative" style={{
             '--ccs': cellSizeVar,
-            width: `calc(var(--ccs) * ${COLS - 1})`,
-            height: `calc(var(--ccs) * ${ROWS - 1})`,
+            width: `calc(var(--ccs) * ${COLS})`,
+            height: `calc(var(--ccs) * ${ROWS})`,
             position: 'relative',
-            padding: '0'
+            margin: '0 auto'
           } as React.CSSProperties}>
             {/* SVG Background for perfect alignment */}
             <svg
-              width="100%"
-              height="100%"
+              width={`calc(var(--ccs) * ${COLS - 1})`}
+              height={`calc(var(--ccs) * ${ROWS - 1})`}
               viewBox={`0 0 ${COLS - 1} ${ROWS - 1}`}
               preserveAspectRatio="xMidYMid meet"
-              className="absolute top-0 left-0 pointer-events-none"
-              style={{ zIndex: 1 }}
+              className="absolute pointer-events-none"
+              style={{
+                zIndex: 1,
+                left: 'calc(var(--ccs) * 0.5)',
+                top: 'calc(var(--ccs) * 0.5)'
+              }}
             >
               {/* Grid lines */}
               {Array.from({ length: ROWS }).map((_, i) => (
@@ -779,7 +783,7 @@ export function ChineseChessBoard({
 
             <div className="absolute pointer-events-none z-[5]" style={{
               left: '50%',
-              top: '50%',
+              top: '45%',
               transform: 'translate(-50%, -50%)',
               writingMode: 'vertical-rl',
               fontSize: 'min(1.2em, calc(var(--ccs) * 0.4))',
