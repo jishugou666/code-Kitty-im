@@ -9,7 +9,7 @@ import { useGameHeartbeat } from '../../../hooks/useGameHeartbeat';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
-import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
+import { ImageWithLazyLoad } from '../ui/ImageWithLazyLoad';
 import { useGameMatch } from '../../../hooks/useGameMatch';
 
 interface TicTacToeBoardProps {
@@ -240,9 +240,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     moveCount,
     setMoveCount,
     scoreChange,
-    initMatch,
     simulateAIThink,
-    surrender,
     finishMatch
   } = useGameMatch({
     gameType: 'tictactoe',

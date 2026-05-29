@@ -10,7 +10,7 @@ import { useGameChannel } from '../../../hooks/useGameChannel';
 import { useAuthStore } from '../../../store/authStore';
 import { GameResultModal } from './GameResultModal';
 import { getAvatarUrl } from '../../../lib/avatarCache';
-import { ImageWithLazyLoad } from '../../ui/ImageWithLazyLoad';
+import { ImageWithLazyLoad } from '../ui/ImageWithLazyLoad';
 
 interface GoBoardProps {
   mode?: 'ai' | 'pvp';
