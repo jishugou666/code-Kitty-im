@@ -577,7 +577,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
               setGameStatus('draw');
               saveGameResult('draw');
               recordDifficultyResult(false);
-              processMatchFinish(false, 50, 'C', '势均力敌');
+              processMatchFinish(false, 50, 'C', '势均力敌', true);
               setShowResultModal(true);
             }, 0);
           }
@@ -613,23 +613,23 @@ export const GomokuBoard = React.memo(function GomokuBoard({
           setShowResultModal(true);
         } else {
           setGameStatus('draw');
-          saveGameResult('draw');
-          recordDifficultyResult(false);
-          processMatchFinish(false, 50, 'C', '势均力敌');
-          setShowResultModal(true);
-        }
+        saveGameResult('draw');
+        recordDifficultyResult(false);
+        processMatchFinish(false, 50, 'C', '势均力敌', true);
+        setShowResultModal(true);
       }
     }
   });
 
-  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string, isDraw?: boolean) => {
+    const displayScore = isDraw ? Math.abs(defaultScore) : (won ? defaultScore : -Math.abs(defaultScore));
     if (!matchId) {
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
         bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
-        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        title: defaultTitle, ratingChange: displayScore * 0.4,
+        rawRatingChange: Math.round(displayScore * 0.4),
         difficultyCoeff: 0.85, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -645,8 +645,8 @@ export const GomokuBoard = React.memo(function GomokuBoard({
           gradeColor: '#22C55E',
           bgGradient: 'from-green-500 to-emerald-500',
           title: finishRes.data.performance_title || defaultTitle,
-          ratingChange: finishRes.data.score_change || (won ? 22 : -12),
-          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 22 : -12)) / 1),
+          ratingChange: finishRes.data.score_change || displayScore * 0.4,
+          rawRatingChange: Math.round((finishRes.data.score_change || displayScore * 0.4) / 1),
           difficultyCoeff: 0.85,
           strengthCoeff: 1.0,
           highlights: finishRes.data.highlights || [],
@@ -655,20 +655,20 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         });
       } else {
         setPerformanceResult({
-          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
           gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-          title: defaultTitle, ratingChange: won ? 22 : -12,
-          rawRatingChange: won ? 22 : -12,
+          title: defaultTitle, ratingChange: displayScore,
+          rawRatingChange: displayScore,
           difficultyCoeff: 0.85, strengthCoeff: 1.0,
           highlights: [], performanceBonuses: [], breakdown: {}
         });
       }
     } catch {
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? 22 : -12,
-        rawRatingChange: won ? 22 : -12,
+        title: defaultTitle, ratingChange: displayScore,
+        rawRatingChange: displayScore,
         difficultyCoeff: 0.85, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -839,7 +839,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         saveGameResult('draw');
         recordDifficultyResult(false);
 
-        processMatchFinish(false, 50, 'C', '势均力敌');
+        processMatchFinish(false, 50, 'C', '势均力敌', true);
         setShowResultModal(true);
       }
     }, tt);
@@ -920,7 +920,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
       saveGameResult('draw');
       recordDifficultyResult(false);
 
-      processMatchFinish(false, 50, 'C', '势均力敌');
+      processMatchFinish(false, 50, 'C', '势均力敌', true);
       setPerformanceResult({
         score: 50, grade: 'C', gradeLabel: '势均力敌',
         gradeColor: '#F59E0B', bgGradient: 'from-amber-500 to-yellow-500',

@@ -124,14 +124,15 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
   const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
   const [pvpLoaded, setPvpLoaded] = useState(false);
 
-  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string, isDraw?: boolean) => {
+    const displayScore = isDraw ? Math.abs(defaultScore) * 0.3 : (won ? defaultScore * 0.4 : -defaultScore * 0.2);
     if (!matchId) {
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
         bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? defaultScore * 0.4 : -defaultScore * 0.2,
-        rawRatingChange: won ? Math.round(defaultScore * 0.4) : -Math.round(defaultScore * 0.2),
+        title: defaultTitle, ratingChange: displayScore,
+        rawRatingChange: Math.round(displayScore),
         difficultyCoeff: 1.2, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -147,8 +148,8 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
           gradeColor: '#22C55E',
           bgGradient: 'from-green-500 to-emerald-500',
           title: finishRes.data.performance_title || defaultTitle,
-          ratingChange: finishRes.data.score_change || (won ? 30 : -15),
-          rawRatingChange: Math.round((finishRes.data.score_change || (won ? 30 : -15)) / 1),
+          ratingChange: finishRes.data.score_change || displayScore,
+          rawRatingChange: Math.round((finishRes.data.score_change || displayScore) / 1),
           difficultyCoeff: 1.2,
           strengthCoeff: 1.0,
           highlights: finishRes.data.highlights || [],
@@ -157,20 +158,20 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         });
       } else {
         setPerformanceResult({
-          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
           gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-          title: defaultTitle, ratingChange: won ? 30 : -15,
-          rawRatingChange: won ? 30 : -15,
+          title: defaultTitle, ratingChange: displayScore,
+          rawRatingChange: Math.round(displayScore),
           difficultyCoeff: 1.2, strengthCoeff: 1.0,
           highlights: [], performanceBonuses: [], breakdown: {}
         });
       }
     } catch {
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? 30 : -15,
-        rawRatingChange: won ? 30 : -15,
+        title: defaultTitle, ratingChange: displayScore,
+        rawRatingChange: Math.round(displayScore),
         difficultyCoeff: 1.2, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -267,7 +268,7 @@ export const ChineseChessBoard = React.memo(function ChineseChessBoard({
         setShowResultModal(true);
       } else {
         setGameStatus('draw');
-        processMatchFinish(false, 50, 'C', '势均力敌');
+        processMatchFinish(false, 50, 'C', '势均力敌', true);
         setShowResultModal(true);
       }
     }

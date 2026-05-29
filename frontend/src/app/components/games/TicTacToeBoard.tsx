@@ -300,29 +300,30 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           const newStats = { ...stats, draws: stats.draws + 1 };
           setStats(newStats); saveStatsToStorage(newStats);
           setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
-          processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+          processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌', true);
           setShowResultModal(true);
         }
       }
     }
   });
 
-  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string) => {
+  const processMatchFinish = useCallback(async (won: boolean, defaultScore: number, defaultGrade: string, defaultTitle: string, isDraw?: boolean) => {
+    const displayScore = isDraw ? Math.abs(defaultScore) : (won ? defaultScore : -Math.abs(defaultScore));
     if (!matchId) {
       console.warn('[TicTacToe] processMatchFinish: matchId为空，跳过finish API调用，使用默认分数显示');
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: defaultGrade === 'S' ? '#FF6B6B' : defaultGrade === 'A' ? '#A855F7' : defaultGrade === 'B' ? '#3B82F6' : '#22C55E',
         bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
-        rawRatingChange: won ? defaultScore : -defaultScore,
+        title: defaultTitle, ratingChange: displayScore,
+        rawRatingChange: displayScore,
         difficultyCoeff: 0.4, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
       return;
     }
     try {
-      console.log(`[TicTacToe] 调用finish API: matchId=${matchId}, won=${won}`);
+      console.log(`[TicTacToe] 调用finish API: matchId=${matchId}, won=${won}${isDraw ? ', isDraw=true' : ''}`);
       const finishRes = await gameApi.finish(matchId, { won });
       console.log('[TicTacToe] finish API响应:', finishRes.data);
       if (finishRes.data?.performance_score !== undefined) {
@@ -333,8 +334,8 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
           gradeColor: '#22C55E',
           bgGradient: 'from-green-500 to-emerald-500',
           title: finishRes.data.performance_title || defaultTitle,
-          ratingChange: finishRes.data.score_change || (won ? defaultScore : -defaultScore),
-          rawRatingChange: Math.round((finishRes.data.score_change || (won ? defaultScore : -defaultScore)) / 1),
+          ratingChange: finishRes.data.score_change || displayScore,
+          rawRatingChange: Math.round((finishRes.data.score_change || displayScore) / 1),
           difficultyCoeff: 0.4,
           strengthCoeff: 1.0,
           highlights: finishRes.data.highlights || [],
@@ -343,10 +344,10 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         });
       } else {
         setPerformanceResult({
-          score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+          score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
           gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-          title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
-          rawRatingChange: won ? defaultScore : -defaultScore,
+          title: defaultTitle, ratingChange: displayScore,
+          rawRatingChange: displayScore,
           difficultyCoeff: 0.4, strengthCoeff: 1.0,
           highlights: [], performanceBonuses: [], breakdown: {}
         });
@@ -354,10 +355,10 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     } catch (err: any) {
       console.error('[TicTacToe] finish API调用失败:', err?.message || err);
       setPerformanceResult({
-        score: defaultScore, grade: defaultGrade, gradeLabel: defaultTitle,
+        score: Math.abs(defaultScore), grade: defaultGrade, gradeLabel: defaultTitle,
         gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
-        title: defaultTitle, ratingChange: won ? defaultScore : -defaultScore,
-        rawRatingChange: won ? defaultScore : -defaultScore,
+        title: defaultTitle, ratingChange: displayScore,
+        rawRatingChange: displayScore,
         difficultyCoeff: 0.4, strengthCoeff: 1.0,
         highlights: [], performanceBonuses: [], breakdown: {}
       });
@@ -661,7 +662,7 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
         saveStatsToStorage(newStats);
         setScoreChange(`+${1 + Math.floor(Math.random() * 3)}`);
 
-        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌');
+        processMatchFinish(false, 8 + Math.floor(Math.random() * 2), 'C', '势均力敌', true);
         setShowResultModal(true);
 
         recordDifficultyResult(false);
