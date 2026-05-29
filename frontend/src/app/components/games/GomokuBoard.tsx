@@ -874,7 +874,16 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         saveGameResult('win');
         recordDifficultyResult(true);
 
-        processMatchFinish(true, 78, 'B', '连珠新星');
+        const winScore = 78;
+        setPerformanceResult({
+          score: winScore, grade: 'B', gradeLabel: '连珠新星',
+          gradeColor: '#3B82F6', bgGradient: 'from-blue-500 to-cyan-500',
+          title: '连珠新星', ratingChange: winScore,
+          rawRatingChange: winScore,
+          difficultyCoeff: 0.4, strengthCoeff: 1.0,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+        processMatchFinish(true, winScore, 'B', '连珠新星');
         setShowResultModal(true);
 
         onGameOver?.('win');
@@ -883,7 +892,16 @@ export const GomokuBoard = React.memo(function GomokuBoard({
         saveGameResult('loss');
         recordDifficultyResult(false);
 
-        processMatchFinish(false, 32, 'D', '再接再厉');
+        const loseScore = -32;
+        setPerformanceResult({
+          score: Math.abs(loseScore), grade: 'D', gradeLabel: '再接再厉',
+          gradeColor: '#EF4444', bgGradient: 'from-red-500 to-orange-500',
+          title: '再接再厉', ratingChange: loseScore,
+          rawRatingChange: loseScore,
+          difficultyCoeff: 0.2, strengthCoeff: 0.6,
+          highlights: [], performanceBonuses: [], breakdown: {}
+        });
+        processMatchFinish(false, Math.abs(loseScore), 'D', '再接再厉');
         setShowResultModal(true);
 
         onGameOver?.('loss');
@@ -896,6 +914,14 @@ export const GomokuBoard = React.memo(function GomokuBoard({
       recordDifficultyResult(false);
 
       processMatchFinish(false, 50, 'C', '势均力敌');
+      setPerformanceResult({
+        score: 50, grade: 'C', gradeLabel: '势均力敌',
+        gradeColor: '#F59E0B', bgGradient: 'from-amber-500 to-yellow-500',
+        title: '势均力敌', ratingChange: 50,
+        rawRatingChange: 50,
+        difficultyCoeff: 0.3, strengthCoeff: 0.8,
+        highlights: [], performanceBonuses: [], breakdown: {}
+      });
       setShowResultModal(true);
 
       onGameOver?.('draw');
