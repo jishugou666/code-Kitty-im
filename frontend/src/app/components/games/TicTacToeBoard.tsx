@@ -236,10 +236,12 @@ export const TicTacToeBoard = React.memo(function TicTacToeBoard({
     gameStatus,
     setGameStatus,
     isAIThinking,
+    setIsAIThinking,
     aiThinkProgress,
     moveCount,
     setMoveCount,
     scoreChange,
+    initializingRef,
     simulateAIThink,
     finishMatch
   } = useGameMatch({

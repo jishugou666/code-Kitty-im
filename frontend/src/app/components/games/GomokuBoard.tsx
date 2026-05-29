@@ -531,6 +531,7 @@ export const GomokuBoard = React.memo(function GomokuBoard({
     gameStatus,
     setGameStatus,
     isAIThinking,
+    setIsAIThinking,
     aiThinkProgress,
     moveCount,
     setMoveCount,
