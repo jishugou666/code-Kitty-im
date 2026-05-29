@@ -1915,6 +1915,29 @@
 
 ---
 
+### 优化: 游戏组件紧急Bug修复（useGameMatch集成副作用）
+- **发现时间**: 2026-05-29
+- **问题优先级**: P0 紧急
+- **问题描述**:
+  1. 井字棋/五子棋一进入游戏就弹出结算窗口（步数0，用时00:00）
+  2. 围棋对手信息卡显示"你执白棋"但状态栏显示"你的回合（黑棋）"，颜色矛盾
+- **根因分析**:
+  1. `useGameMatch` Hook 的 `gameStatus` 初始值为 `'idle'`，TicTacToeBoard/GomokuBoard 缺少 idle→playing 自动转换机制，导致内联结果遮罩层条件 `gameStatus !== 'playing'` 对 'idle' 误触发
+  2. GoBoard 在 AI 模式下 `myColor` 状态从未被初始化（保持 null），显示逻辑 `myColor === 'black' ? '黑棋' : '白棋'` 将 null 错误地解析为"白棋"
+- **修复内容**:
+  1. TicTacToeBoard: 添加 `useEffect(() => { if (gameStatus === 'idle') setGameStatus('playing'); }, [])` + 遮罩层条件增加 `&& gameStatus !== 'idle'`
+  2. GomokuBoard: 同上相同修复
+  3. GoBoard: AI 模式下添加 `setMyColor('black')` 初始化
+- **影响文件**:
+  - `frontend/src/app/components/games/TicTacToeBoard.tsx` (+6行)
+  - `frontend/src/app/components/games/GomokuBoard.tsx` (+6行)
+  - `frontend/src/app/components/games/GoBoard.tsx` (+1行)
+- **构建验证**: ✅ npm run build 通过（2838 modules, exit code 0）
+- **详细记录**: 见 `MODIFICATION_RECORD_20260529_GameComponent_Fix.md`
+- **状态**: ✅ 已修复
+
+---
+
 ## 重要问题修复记录
 
 ### 问题: 注册逻辑缺少唯一性检查

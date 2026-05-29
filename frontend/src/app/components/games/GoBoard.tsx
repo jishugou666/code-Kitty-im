@@ -388,7 +388,7 @@ export const GoBoard = React.memo(function GoBoard({
   const [scoreChange, setScoreChange] = useState<string>('');
   const [showResultModal, setShowResultModal] = useState(false);
   const [performanceResult, setPerformanceResult] = useState<any>(null);
-  const [myColor, setMyColor] = useState<'black' | 'white' | null>(null);
+  const [myColor, setMyColor] = useState<'black' | 'white' | null>(mode === 'ai' ? 'black' : null);
   const [pvpOpponent, setPvpOpponent] = useState<{ nickname: string; avatar: string | null } | null>(null);
   const [pvpLoaded, setPvpLoaded] = useState(false);
   const [currentPlayer, setCurrentPlayer] = useState<Stone>(BLACK);
@@ -766,7 +766,9 @@ export const GoBoard = React.memo(function GoBoard({
     const timer = setTimeout(() => {
       clearInterval(interval);
       setAiThinkProgress(100);
-      const aiColor = currentPlayer === BLACK ? WHITE : BLACK;
+      const aiColor = mode === 'ai'
+        ? (myColor === 'black' ? WHITE : BLACK)
+        : (currentPlayer === BLACK ? WHITE : BLACK);
       const aiMove = getAIMove(board, difficulty, aiColor, koPoint, moveCount);
 
       if (aiMove === null) {
@@ -964,7 +966,7 @@ export const GoBoard = React.memo(function GoBoard({
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayOpponent.nickname}</p>
-                <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'black' ? '黑' : myColor === 'white' ? '白' : '?'}` : `围棋对局 · 你执${myColor === 'black' ? '黑棋' : '白棋'}`}</p>
+                <p className="text-xs text-gray-500">{mode === 'pvp' ? `PVP对战 · 你执${myColor === 'black' ? '黑' : myColor === 'white' ? '白' : '?'}` : `围棋对局 · 你执黑棋`}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
