@@ -54,7 +54,7 @@ export function useHeartbeat() {
       });
 
       // 连接出错时也标记离线
-      pusher.connection.bind('error', (err: any) => {
+      pusher.connection.bind('error', (err: { error?: { message?: string } }) => {
         console.error('[Heartbeat] Pusher connection error:', err?.error?.message);
         markOffline();
       });

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { gameApi, GameMatch, UserProfile, LeaderboardEntry } from '../api/game';
+import type { AppError } from '../types';
 
 interface GameState {
   profile: UserProfile | null;
@@ -36,7 +37,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         profile: response.data,
         isLoading: false
       });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch game profile',
         isLoading: false
@@ -53,7 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         leaderboard: response.data,
         isLoading: false
       });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch leaderboard',
         isLoading: false
@@ -75,7 +76,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         isLoading: false
       });
       return match;
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to create match',
         isLoading: false
@@ -93,7 +94,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         currentMatch: updatedMatch || state.currentMatch,
         isLoading: false
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to make move',
         isLoading: false
@@ -111,7 +112,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         currentMatch: updatedMatch || state.currentMatch,
         isLoading: false
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to surrender',
         isLoading: false
@@ -128,7 +129,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         history: response.data || [],
         isHistoryLoading: false
       });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch match history',
         isHistoryLoading: false

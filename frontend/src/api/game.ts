@@ -1,4 +1,5 @@
 import apiClient from './client';
+import type { GameMove } from '../types';
 
 export interface GameMatch {
   id: number;
@@ -9,7 +10,7 @@ export interface GameMatch {
   winner_id: number | null;
   status: 'playing' | 'finished' | 'abandoned';
   ai_difficulty: 'easy' | 'medium' | 'hard';
-  moves: any[];
+  moves: GameMove[];
   duration_seconds: number | null;
   score_change: number | null;
   created_at: string;
@@ -18,7 +19,7 @@ export interface GameMatch {
   performance_grade: string | null;
   performance_title: string | null;
   highlights: string[] | null;
-  performance_details: Record<string, any> | null;
+  performance_details: Record<string, unknown> | null;
 }
 
 export interface UserProfile {

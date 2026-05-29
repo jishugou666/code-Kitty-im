@@ -3,6 +3,7 @@ import Pusher from 'pusher-js';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { messageEventBus } from '../lib/messageEventBus';
+import type { PusherMessageEvent, PusherMessageRecallEvent, MessageEventHandler } from '../types';
 
 const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
 const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER || 'ap1';
@@ -21,7 +22,7 @@ export function getPusher(): Pusher {
   return globalPusher;
 }
 
-export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) => void) {
+export function useWebSocket(conversationId?: number, onNewMessage?: MessageEventHandler) {
   const channelRef = useRef<ReturnType<Pusher['subscribe']> | null>(null);
   const { token, isAuthenticated } = useAuthStore();
   const { addMessage, fetchMessages } = useChatStore();
@@ -42,20 +43,20 @@ export function useWebSocket(conversationId?: number, onNewMessage?: (msg: any) 
 
       channelRef.current = pusher.subscribe(channelName);
 
-      const handleNewMessage = (data: any) => {
+      const handleNewMessage = (data: PusherMessageEvent) => {
         if (data && data.id) {
           addMessageRef.current(data.conversation_id, data);
         }
         onNewMessageRef.current?.(data);
       };
 
-      const handleMessageRecalled = (data: any) => {
+      const handleMessageRecalled = (data: PusherMessageRecallEvent) => {
         if (data && data.messageId) {
           fetchMessagesRef.current(data.conversationId);
         }
       };
 
-      const handleMessageUpdated = (data: any) => {
+      const handleMessageUpdated = (data: PusherMessageEvent) => {
         onNewMessageRef.current?.(data);
       };
 
@@ -101,7 +102,7 @@ export function useGlobalWebSocket() {
         fetchConversationsRef.current();
       };
 
-      const handleGlobalNewMessage = (data: any) => {
+      const handleGlobalNewMessage = (data: PusherMessageEvent) => {
         console.log('[GlobalWebSocket] 📨 Received new-message on user channel:', data?.id, data?.sender_nickname);
         messageEventBus.emit(data);
       };

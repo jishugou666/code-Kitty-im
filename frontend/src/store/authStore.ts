@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { userApi, UserProfile, LoginRequest, RegisterRequest } from '../api/user';
+import type { AppError, User } from '../types';
 
 interface AuthState {
   user: UserProfile | null;
@@ -71,7 +72,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false
           });
-        } catch (error: any) {
+        } catch (error: AppError) {
           set({
             error: error.message || 'Login failed',
             isLoading: false
@@ -91,7 +92,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false
           });
-        } catch (error: any) {
+        } catch (error: AppError) {
           set({
             error: error.message || 'Registration failed',
             isLoading: false

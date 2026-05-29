@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { contactApi, Contact } from '../api/contact';
+import { contactApi } from '../api/contact';
+import type { AppError, Contact } from '../types';
 
 interface ContactState {
   contacts: Contact[];
@@ -27,7 +28,7 @@ export const useContactStore = create<ContactState>((set) => ({
     try {
       const response = await contactApi.getContactList();
       set({ contacts: response.data, isLoading: false });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch contacts',
         isLoading: false
@@ -40,7 +41,7 @@ export const useContactStore = create<ContactState>((set) => ({
     try {
       const response = await contactApi.getPendingRequests();
       set({ pendingRequests: response.data, isLoading: false });
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({
         error: error.message || 'Failed to fetch pending requests',
         isLoading: false
@@ -51,7 +52,7 @@ export const useContactStore = create<ContactState>((set) => ({
   addContact: async (userId) => {
     try {
       await contactApi.addContact(userId);
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({ error: error.message || 'Failed to add contact' });
       throw error;
     }
@@ -63,7 +64,7 @@ export const useContactStore = create<ContactState>((set) => ({
       set((state) => ({
         pendingRequests: state.pendingRequests.filter((c) => c.id !== userId)
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({ error: error.message || 'Failed to accept contact' });
       throw error;
     }
@@ -75,7 +76,7 @@ export const useContactStore = create<ContactState>((set) => ({
       set((state) => ({
         pendingRequests: state.pendingRequests.filter((c) => c.id !== userId)
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({ error: error.message || 'Failed to reject contact' });
       throw error;
     }
@@ -87,7 +88,7 @@ export const useContactStore = create<ContactState>((set) => ({
       set((state) => ({
         contacts: state.contacts.filter((c) => c.id !== userId)
       }));
-    } catch (error: any) {
+    } catch (error: AppError) {
       set({ error: error.message || 'Failed to delete contact' });
       throw error;
     }

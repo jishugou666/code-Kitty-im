@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
 import React from "react";
 import { clsx } from "clsx";
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../hooks/useToast';
@@ -17,13 +18,14 @@ import { gameApi } from '../../api/game';
 import { useIsMobile } from '../components/ui/use-mobile';
 import { getAvatarUrl } from '../../lib/avatarCache';
 import { ImageWithLazyLoad } from '../components/ui/ImageWithLazyLoad';
+import { VirtualMessageList } from '../components/VirtualMessageList';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const GAME_TYPE_NAMES: Record<string, string> = {
-  tictactoe: '井字棋',
-  gomoku: '五子棋',
-  chess: '中国象棋'
+  tictactoe: t('game.tictactoe'),
+  gomoku: t('game.gomoku'),
+  chess: t('game.chess')
 };
 
 interface MessageItemProps {
@@ -112,7 +114,7 @@ const MessageItem = React.memo(({
               return (
                 <div className="flex items-center gap-2">
                   <File size={isMobile ? 14 : 16} />
-                  <span className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{fileData.name || '未知文件'}</span>
+                  <span className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{fileData.name || t('chat.unknownFile')}</span>
                 </div>
               );
             } catch { return <p className={clsx(isMobile ? "text-[13px] sm:text-sm" : "text-sm")}>{message.content}</p>; }
@@ -149,14 +151,15 @@ const MessageItem = React.memo(({
                       isRejected ? "text-red-700 dark:text-red-300" :
                       "text-indigo-700 dark:text-indigo-300"
                     )}>
-                      {isAccepted ? '对局已开始' : isRejected ? '邀请已拒绝' : '游戏邀请'}
+                      {isAccepted ? t('game.gameStarted') : isRejected ? t('game.inviteRejected') : t('game.invite')}
                     </span>
                   </div>
                   <div className="px-3 py-2">
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">
                       {isSelfInvite
-                        ? `你邀请对方进行一局 ${inviteData.gameName || inviteData.gameType}`
-                        : `${inviteData.inviterName || '对方'} 邀请你进行一局 ${inviteData.gameName || inviteData.gameType}`}
+                        ? `${t('game.invite')} ${inviteData.gameName || inviteData.gameType}`
+                        : `${inviteData.inviterName || t('game.opponent')} ${t('game.inviteDesc')} ${inviteData.gameName || inviteData.gameType}`
+                      }
                     </p>
                     {canRespond && (
                       <div className="flex gap-2 mt-1">
@@ -164,13 +167,13 @@ const MessageItem = React.memo(({
                           onClick={() => onRespondGameInvite(inviteData.matchId, true)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
                         >
-                          <CheckCircle2 size={12} /> 同意
+                          <CheckCircle2 size={12} /> {t('game.accept')}
                         </button>
                         <button
                           onClick={() => onRespondGameInvite(inviteData.matchId, false, inviteData.gameType)}
                           className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 transition-colors"
                         >
-                          <XCircle size={12} /> 拒绝
+                          <XCircle size={12} /> {t('game.reject')}
                         </button>
                       </div>
                     )}
@@ -179,12 +182,12 @@ const MessageItem = React.memo(({
                         onClick={() => window.location.href = `/games?matchId=${inviteData.matchId}&gameType=${inviteData.gameType}`}
                         className="w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors mt-1"
                       >
-                        <CheckCircle2 size={12} /> 进入对局
+                        <CheckCircle2 size={12} /> {t('game.enterGame')}
                       </button>
                     )}
                     {(isRejected || (!isPending && !isSelfInvite)) && (
                       <p className="text-[10px] text-gray-400 text-center mt-1">
-                        {isRejected ? '已拒绝该邀请' : '对方已响应邀请'}
+                        {isRejected ? t('game.inviteRejected') : t('game.inviteAccepted')}
                       </p>
                     )}
                   </div>
@@ -212,19 +215,20 @@ const MessageItem = React.memo(({
 MessageItem.displayName = 'MessageItem';
 
 function formatLastSeen(lastSeen: string | null | undefined): string {
-  if (!lastSeen) return '离线';
+  if (!lastSeen) return t('chat.offline');
   const now = Date.now();
   const time = new Date(lastSeen).getTime();
   const diff = now - time;
-  if (diff < 60000) return '刚刚在线';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前在线`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前在线`;
-  return `${Math.floor(diff / 86400000)}天前在线`;
+  if (diff < 60000) return t('chat.justOnline');
+  if (diff < 3600000) return t('chat.minutesAgo', { count: Math.floor(diff / 60000) });
+  if (diff < 86400000) return t('chat.hoursAgo', { count: Math.floor(diff / 3600000) });
+  return t('chat.daysAgo', { count: Math.floor(diff / 86400000) });
 }
 
 export function Chat() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const conversationId = parseInt(id || '0');
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -258,7 +262,7 @@ export function Chat() {
       const recalledMessageId = newMessage.messageId || newMessage.id;
       setMessages(prev => prev.map(m =>
         m.id === recalledMessageId
-          ? { ...m, type: 'recalled', content: '此消息已撤回' }
+          ? { ...m, type: 'recalled', content: t('chat.messageRecalled') }
           : m
       ));
     } else if (newMessage.type === 'message-deleted') {
@@ -375,14 +379,14 @@ export function Chat() {
       });
       if (res.code === 200) {
         setShowGameInviteModal(false);
-        toast(`已向 ${otherUser.nickname || otherUser.username || '对方'} 发送${GAME_TYPE_NAMES[gameType]}邀请，等待对方回应...`, 'success');
+        toast(`${t('game.inviteSent', { gameName: GAME_TYPE_NAMES[gameType] })} ${otherUser.nickname || otherUser.username || t('game.opponent')}`, 'success');
         setTimeout(() => loadMessages(), 500);
       } else {
-        toast(res.msg || '邀请失败', 'error');
+        toast(res.msg || t('game.inviteFailed'), 'error');
       }
     } catch (error: any) {
       console.error('Invite game error:', error);
-      toast(error.message || '邀请失败', 'error');
+      toast(error.message || t('game.inviteFailed'), 'error');
     } finally {
       setIsInvitingGame(false);
     }
@@ -394,17 +398,17 @@ export function Chat() {
       const { gameApi } = await import('../../api/game');
       const res = await gameApi.respondGameInvite({ matchId, accepted });
       if (res.code === 200 && accepted) {
-        toast('接受成功！正在进入对局...', 'success');
+        toast(t('game.acceptSuccess'), 'success');
         const actualGameType = gameType || res.data?.game_type || '';
         setTimeout(() => {
           window.location.href = `/games?matchId=${matchId}&gameType=${actualGameType}`;
         }, 600);
       } else if (res.code === 200) {
         setTimeout(() => loadMessages(), 500);
-        toast('已拒绝邀请', 'info');
+        toast(t('game.rejectedInvite'), 'info');
       }
     } catch (err: any) {
-      toast(err.message || '操作失败', 'error');
+      toast(err.message || t('errors.defaultError'), 'error');
     }
   };
 
@@ -539,15 +543,15 @@ export function Chat() {
         fetchConversations();
       } else if (data.code === 429 && data.data?.blocked) {
         setMessages(prev => prev.filter(m => m.id !== tempId));
-        toast(`⛔ ${data.data.details || '消息被拦截'}`, 'warning');
+        toast(`⛔ ${data.data.details || t('chat.sendFailed')}`, 'warning');
       } else {
         setMessages(prev => prev.filter(m => m.id !== tempId));
-        toast(data.msg || '发送失败', 'error');
+        toast(data.msg || t('chat.sendFailed'), 'error');
       }
     } catch (error) {
       console.error('Failed to send message:', error);
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      toast('发送失败', 'error');
+      toast(t('chat.sendFailed'), 'error');
     }
   };
 
@@ -556,7 +560,7 @@ export function Chat() {
     if (!file || !conversationId || !token) return;
 
     if (!file.type.startsWith('image/')) {
-      toast('只支持图片文件', 'info');
+      toast(t('chat.imageOnly'), 'info');
       return;
     }
 
@@ -570,7 +574,7 @@ export function Chat() {
       try {
         const uploadRes = await uploadApi.uploadImage(base64);
         if (uploadRes.code !== 200 || !uploadRes.data?.url) {
-          toast(uploadRes.msg || '图片上传失败', 'error');
+          toast(uploadRes.msg || t('chat.imageUploadFailed'), 'error');
           setPreviewImage(null);
           return;
         }
@@ -595,11 +599,11 @@ export function Chat() {
           setMessages(prev => [...(prev || []), data.data]);
           fetchConversations();
         } else {
-          toast(data.msg || '发送失败', 'error');
+          toast(data.msg || t('chat.sendFailed'), 'error');
         }
       } catch (error) {
         console.error('Failed to send image:', error);
-        toast('发送失败', 'error');
+        toast(t('chat.sendFailed'), 'error');
       } finally {
         setPreviewImage(null);
       }
@@ -642,11 +646,11 @@ export function Chat() {
           setMessages(prev => [...(prev || []), data.data]);
           fetchConversations();
         } else {
-          toast(data.msg || '发送失败', 'error');
+          toast(data.msg || t('chat.sendFailed'), 'error');
         }
       } catch (error) {
         console.error('Failed to send file:', error);
-        toast('发送失败', 'error');
+        toast(t('chat.sendFailed'), 'error');
       }
     };
     reader.readAsDataURL(file);
@@ -697,13 +701,30 @@ export function Chat() {
   if (!conversationId) {
     return (
       <div className="h-full flex items-center justify-center bg-[#FAFAFC] dark:bg-[#0A0C10]">
-        <p className="text-gray-500">请选择一个会话</p>
+        <p className="text-gray-500">{t('chat.selectConversation')}</p>
       </div>
     );
   }
 
   const safeMessages = Array.isArray(messages) ? messages : [];
   const messageGroups = groupMessagesByDate(safeMessages);
+
+  const renderMessageItem = useCallback((message: any, isOwnMessage: boolean, isRecalled: boolean) => {
+    return (
+      <MessageItem
+        message={message}
+        isOwnMessage={isOwnMessage}
+        isRecalled={isRecalled}
+        isMobile={isMobile}
+        userId={user?.id}
+        onShowMenu={(msg) => {
+          setSelectedMessage(msg);
+          setShowMessageMenu(true);
+        }}
+        onRespondGameInvite={handleRespondGameInvite}
+      />
+    );
+  }, [isMobile, user?.id, handleRespondGameInvite]);
 
   return (
     <div className="h-full flex flex-col bg-[#FAFAFC] dark:bg-[#0A0C10]">
@@ -715,20 +736,20 @@ export function Chat() {
           </button>
           <div>
             <h2 className={isMobile ? "font-semibold text-gray-900 dark:text-white text-xs sm:text-sm flex items-center gap-1.5" : "font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2"}>
-              {conversation?.name || '聊天'}
+              {conversation?.name || t('chat.message')}
               {isTempConversation && <AlertTriangle size={isMobile ? 12 : 14} className="text-yellow-500" />}
             </h2>
             <p className={isMobile ? "text-[10px] sm:text-xs hidden sm:block" : "text-xs"}>
               {isNotificationConv ? (
-                <span className="text-gray-500 dark:text-gray-400">系统通知</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('chat.systemNotification')}</span>
               ) : conversation?.type === 'world' ? (
-                <span className="text-gray-500 dark:text-gray-400">世界频道</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('chat.worldChannel')}</span>
               ) : otherUser ? (
                 <span className={otherUser.status === 1 ? "text-[#34C759]" : "text-gray-400 dark:text-gray-500"}>
-                  {otherUser.status === 1 ? '在线' : formatLastSeen(otherUser.last_seen)}
+                  {otherUser.status === 1 ? t('chat.online') : formatLastSeen(otherUser.last_seen)}
                 </span>
               ) : (
-                <span className="text-gray-500 dark:text-gray-400">{(conversation?.members?.length || 0)} 位成员</span>
+                <span className="text-gray-500 dark:text-gray-400">{t('chat.memberCount', { count: conversation?.members?.length || 0 })}</span>
               )}
             </p>
           </div>
@@ -737,7 +758,7 @@ export function Chat() {
           <button
             onClick={() => setShowGameInviteModal(true)}
             className={isMobile ? "p-1.5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors" : "p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors"}
-            title="邀请下棋"
+            title={t('chat.inviteChess')}
           >
             <Gamepad2 size={isMobile ? 18 : 18} className="text-[#007AFF]" />
           </button>
@@ -749,7 +770,7 @@ export function Chat() {
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700/30 px-4 py-2">
           <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 text-xs">
             <ShieldAlert size={14} />
-            <span>临时会话，请注意保护个人信息和财产安全，谨防诈骗！</span>
+            <span>{t('chat.tempConversationWarning')}</span>
           </div>
         </div>
       )}
@@ -768,9 +789,9 @@ export function Chat() {
                 <ShieldAlert size={20} className="text-yellow-600 dark:text-yellow-400" />
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">安全提示</h4>
+                <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-1">{t('chat.securityTip')}</h4>
                 <p className="text-xs text-yellow-700 dark:text-yellow-400 leading-relaxed">
-                  这是一个临时会话对象，双方不是好友关系。请务必保护好您的个人信息，不要向陌生人透露手机号、银行卡、密码等敏感信息。如遇诈骗行为，请及时举报。
+                  {t('chat.securityTipContent')}
                 </p>
               </div>
               <button onClick={() => setShowAntiFraudTip(false)} className="text-yellow-500 hover:text-yellow-600">
@@ -782,8 +803,25 @@ export function Chat() {
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {isNotificationConv ? (
+      {!isNotificationConv ? (
+        <VirtualMessageList
+          messages={safeMessages}
+          messageGroups={messageGroups}
+          isLoading={isLoading}
+          isLoadingHistory={isLoadingHistory}
+          isMobile={isMobile}
+          userId={user?.id}
+          onShowMenu={(msg) => {
+            setSelectedMessage(msg);
+            setShowMessageMenu(true);
+          }}
+          onRespondGameInvite={handleRespondGameInvite}
+          messagesContainerRef={messagesContainerRef}
+          onLoadMore={loadOlderMessages}
+          hasMore={hasMore}
+          renderMessageItem={renderMessageItem}
+        />
+      ) : (
           <div className="space-y-3 px-0 py-2">
             {isLoading ? (
               <div className="flex items-center justify-center h-32">
@@ -800,9 +838,9 @@ export function Chat() {
                   notif.type === 'success' ? 'from-green-500 to-emerald-500' :
                   notif.type === 'announcement' ? 'from-purple-500 to-pink-500' :
                   'from-blue-500 to-cyan-500';
-                const typeLabel = notif.type === 'info' ? '信息' :
-                  notif.type === 'warning' ? '警告' :
-                  notif.type === 'success' ? '成功' : '公告';
+                const typeLabel = notif.type === 'info' ? t('chat.info') :
+                  notif.type === 'warning' ? t('chat.warningLabel') :
+                  notif.type === 'success' ? t('chat.successLabel') : t('chat.announcement');
 
                 return (
                   <motion.div
@@ -862,57 +900,8 @@ export function Chat() {
               })
             )}
           </div>
-        ) : (
-          <>
-        {isLoadingHistory && (
-          <div className="flex items-center justify-center py-4">
-            <div className="w-6 h-6 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="w-8 h-8 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : safeMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-400 dark:text-gray-500">
-            <p>暂无消息</p>
-            <p className="text-xs mt-1">开始聊天吧</p>
-          </div>
-        ) : (
-          Object.entries(messageGroups).map(([date, msgs]) => (
-            <div key={date}>
-              <div className="flex items-center gap-2 my-4">
-                <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
-                <span className="text-xs text-gray-400 dark:text-gray-500 px-2">{date}</span>
-                <div className="flex-1 h-px bg-gray-200/50 dark:bg-white/10" />
-              </div>
-              {Array.isArray(msgs) && msgs.map((message) => {
-                if (!message) return null;
-                const isOwnMessage = message.sender_id === user?.id;
-                const isRecalled = message.type === 'recalled';
-                return (
-                  <MessageItem
-                    key={message.id || Math.random()}
-                    message={message}
-                    isOwnMessage={isOwnMessage}
-                    isRecalled={isRecalled}
-                    isMobile={isMobile}
-                    userId={user?.id}
-                    onShowMenu={(msg) => {
-                      setSelectedMessage(msg);
-                      setShowMessageMenu(true);
-                    }}
-                    onRespondGameInvite={handleRespondGameInvite}
-                  />
-                );
-              })}
-            </div>
-          ))
-        )}
-          </>
         )}
         <div ref={messagesEndRef} />
-      </div>
 
       {/* Message Menu */}
       <AnimatePresence>

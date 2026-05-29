@@ -4,6 +4,7 @@ import { gameApi } from '../api/game';
 import { useGameChannel } from './useGameChannel';
 import { getDynamicDifficulty, recordGameResult } from '../app/components/games/dynamicDifficulty';
 import type { GameType } from '../app/components/games/dynamicDifficulty';
+import type { GameMoveEvent, GameFinishedEvent } from './useGameChannel';
 
 interface UseGameMatchOptions {
   gameType: GameType;
@@ -11,9 +12,9 @@ interface UseGameMatchOptions {
   matchId?: number | null;
   onGameOver?: (result: 'win' | 'loss' | 'draw') => void;
   channelCallbacks?: {
-    onRemoteMove?: (data: any) => void;
+    onRemoteMove?: (data: GameMoveEvent) => void;
     onRemoteSurrender?: () => void;
-    onRemoteFinished?: (data: any) => void;
+    onRemoteFinished?: (data: GameFinishedEvent) => void;
   };
 }
 
@@ -66,7 +67,7 @@ export function useGameMatch(options: UseGameMatchOptions) {
   }, [_matchId, mode, gameType]);
 
   const callbacks = {
-    onRemoteMove: channelCallbacks?.onRemoteMove || ((data: any) => {
+    onRemoteMove: channelCallbacks?.onRemoteMove || ((data: GameMoveEvent) => {
       console.log('Remote move received:', data);
     }),
     onRemoteSurrender: channelCallbacks?.onRemoteSurrender || (() => {
@@ -77,7 +78,7 @@ export function useGameMatch(options: UseGameMatchOptions) {
       recordGameResult(true);
       onGameOver?.('win');
     }),
-    onRemoteFinished: channelCallbacks?.onRemoteFinished || ((data: any) => {
+    onRemoteFinished: channelCallbacks?.onRemoteFinished || ((data: GameFinishedEvent) => {
       if (gameStatus !== 'playing') return;
       const myId = user?.id;
       const iWon = data.winnerId === myId;

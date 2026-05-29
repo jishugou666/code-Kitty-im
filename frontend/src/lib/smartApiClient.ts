@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { smartScheduler, getSchedulerStats, type RequestPriority } from './smartScheduler';
+import type { AppError, UnknownRecord } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -7,7 +8,7 @@ interface QueuedAxiosRequest {
   config: InternalAxiosRequestConfig;
   priority: RequestPriority;
   resolve: (value: AxiosResponse) => void;
-  reject: (error: any) => void;
+  reject: (error: AppError) => void;
 }
 
 class SmartApiClient {
@@ -161,19 +162,19 @@ class SmartApiClient {
     });
   }
 
-  get<T = any>(url: string, priority: RequestPriority = 'normal', config?: any): Promise<T> {
+  get<T = UnknownRecord>(url: string, priority: RequestPriority = 'normal', config?: InternalAxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'GET', url, priority });
   }
 
-  post<T = any>(url: string, data?: any, priority: RequestPriority = 'normal', config?: any): Promise<T> {
+  post<T = UnknownRecord>(url: string, data?: UnknownRecord, priority: RequestPriority = 'normal', config?: InternalAxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'POST', url, data, priority });
   }
 
-  put<T = any>(url: string, data?: any, priority: RequestPriority = 'normal', config?: any): Promise<T> {
+  put<T = UnknownRecord>(url: string, data?: UnknownRecord, priority: RequestPriority = 'normal', config?: InternalAxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'PUT', url, data, priority });
   }
 
-  delete<T = any>(url: string, priority: RequestPriority = 'normal', config?: any): Promise<T> {
+  delete<T = UnknownRecord>(url: string, priority: RequestPriority = 'normal', config?: InternalAxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'DELETE', url, priority });
   }
 

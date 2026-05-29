@@ -1,12 +1,13 @@
 import apiClient from './client';
+import type { AIFeedback, AIServiceStatus, UnknownRecord } from '../types';
 
 export interface AIServiceStats {
   name: string;
   status: string;
   description: string;
-  details: Record<string, any>;
+  details: UnknownRecord;
   features?: string[];
-  config?: Record<string, any>;
+  config?: UnknownRecord;
 }
 
 export interface AIStatsResponse {
@@ -37,7 +38,7 @@ export interface AIFeedback {
   target_id: number;
   content: string;
   content_full: string;
-  metadata: any;
+  metadata: UnknownRecord;
   ai_confidence: number;
   ai_analysis: string;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
@@ -65,9 +66,32 @@ export interface AIServiceStatus {
   status: 'running' | 'idle' | 'error' | 'maintenance';
   current_task: string;
   task_progress: number;
-  task_detail: any;
-  metrics: any;
+  task_detail: UnknownRecord;
+  metrics: UnknownRecord;
   last_heartbeat: string;
+}
+
+// AI Activity Log entry
+export interface AIActivityLog {
+  id: number;
+  service: string;
+  action: string;
+  details: UnknownRecord;
+  timestamp: string;
+  user_id?: number;
+}
+
+// AI Blacklist entry
+export interface AIBlacklistEntry {
+  id: number;
+  type: 'user' | 'ip' | 'device' | 'content';
+  value: string;
+  reason: string;
+  severity: 'warning' | 'mute' | 'block' | 'ban';
+  created_by: number;
+  created_at: string;
+  expires_at?: string;
+  is_active: boolean;
 }
 
 export const aiApi = {
@@ -91,7 +115,7 @@ export const aiApi = {
     return apiClient.get('/ai/service-status');
   },
 
-  getAIServiceStats(): Promise<{ data: any }> {
+  getAIServiceStats(): Promise<{ data: AIServiceStatus[] }> {
     return apiClient.get('/ai/service-stats');
   },
 
@@ -109,7 +133,7 @@ export const aiApi = {
     return apiClient.get(`/ai/feedback/${id}`);
   },
 
-  handleFeedback(id: number, action: 'approve' | 'reject', handleResult?: string): Promise<{ data: any }> {
+  handleFeedback(id: number, action: 'approve' | 'reject', handleResult?: string): Promise<{ data: { success: boolean; message: string } }> {
     return apiClient.post(`/ai/feedback/${id}/handle`, { action, handleResult });
   },
 
@@ -118,7 +142,7 @@ export const aiApi = {
     action?: string;
     page?: number;
     limit?: number;
-  }): Promise<{ data: any }> {
+  }): Promise<{ data: { list: AIActivityLog[]; total: number; page: number; limit: number } }> {
     return apiClient.get('/ai/activity-log', { params });
   },
 
@@ -127,7 +151,7 @@ export const aiApi = {
     status?: string;
     page?: number;
     limit?: number;
-  }): Promise<{ data: any }> {
+  }): Promise<{ data: { list: AIBlacklistEntry[]; total: number; page: number; limit: number } }> {
     return apiClient.get('/ai/blacklist', { params });
   },
 
@@ -137,11 +161,11 @@ export const aiApi = {
     reason?: string;
     severity?: 'warning' | 'mute' | 'block' | 'ban';
     expiresAt?: string;
-  }): Promise<{ data: any }> {
+  }): Promise<{ data: AIBlacklistEntry }> {
     return apiClient.post('/ai/blacklist', data);
   },
 
-  removeFromBlacklist(id: number): Promise<{ data: any }> {
+  removeFromBlacklist(id: number): Promise<{ data: { success: boolean } }> {
     return apiClient.delete(`/ai/blacklist/${id}`);
   }
 };

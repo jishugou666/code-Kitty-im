@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '../store/authStore';
+import type { PusherMessageEvent } from '../types';
 
 interface SystemNotificationOptions {
   title: string;
@@ -18,7 +19,7 @@ export function useSystemNotification(autoRequest = true) {
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
   const hasAutoRequested = useRef(false);
-  const notifyNewMessageRef = useRef<(message: any) => void>(() => {});
+  const notifyNewMessageRef = useRef<(message: PusherMessageEvent) => void>(() => {});
 
   useEffect(() => {
     const supported = 'Notification' in window;
@@ -103,7 +104,7 @@ export function useSystemNotification(autoRequest = true) {
     }
   }, [isSupported, permissionStatus]);
 
-  const notifyNewMessage = useCallback((message: any) => {
+  const notifyNewMessage = useCallback((message: PusherMessageEvent) => {
     console.log('[SystemNotification] 📨 notifyNewMessage triggered:', {
       id: message?.id,
       sender: message?.sender_nickname,

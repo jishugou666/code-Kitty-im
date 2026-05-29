@@ -7,7 +7,7 @@ interface UseSmartDataOptions<T> {
   priority?: 'high' | 'medium' | 'low';
   ttl?: number;
   prefetch?: boolean;
-  dependencies?: any[];
+  dependencies?: unknown[];
 }
 
 export function useSmartData<T>(options: UseSmartDataOptions<T>) {

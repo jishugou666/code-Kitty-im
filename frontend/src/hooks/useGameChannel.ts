@@ -56,20 +56,20 @@ export function useGameChannel(
 
     channelRef.current = pusher.subscribe(channelName);
 
-    const handleMove = (data: any) => {
+    const handleMove = (data: GameMoveEvent) => {
       if (data && data.userId !== myUserIdRef.current) {
-        callbacksRef.current.onRemoteMove?.(data as GameMoveEvent);
+        callbacksRef.current.onRemoteMove?.(data);
       }
     };
 
-    const handleSurrender = (data: any) => {
+    const handleSurrender = (data: GameSurrenderEvent) => {
       if (data && data.userId !== myUserIdRef.current) {
-        callbacksRef.current.onRemoteSurrender?.(data as GameSurrenderEvent);
+        callbacksRef.current.onRemoteSurrender?.(data);
       }
     };
 
-    const handleFinished = (data: any) => {
-      callbacksRef.current.onRemoteFinished?.(data as GameFinishedEvent);
+    const handleFinished = (data: GameFinishedEvent) => {
+      callbacksRef.current.onRemoteFinished?.(data);
     };
 
     channelRef.current.bind('game-move', handleMove);
