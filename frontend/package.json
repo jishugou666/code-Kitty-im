@@ -42,6 +42,7 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
+    "@tanstack/react-virtual": "^3.13.26",
     "axios": "^1.7.7",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
