@@ -34,6 +34,30 @@ interface MessageItemProps {
   t: (key: string, options?: Record<string, unknown>) => string;
 }
 
+const formatTime = (timeStr: string | undefined | null) => {
+  if (!timeStr) return '';
+  try {
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  } catch { return ''; }
+};
+
+const formatDate = (timeStr: string | undefined | null) => {
+  if (!timeStr) return '';
+  try {
+    const date = new Date(timeStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (isNaN(date.getTime())) return '';
+    if (date.toDateString() === today.toDateString()) return '今天';
+    if (date.toDateString() === yesterday.toDateString()) return '昨天';
+    return date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+  } catch { return ''; }
+};
+
 const MessageItem = React.memo(({
   message,
   isOwnMessage,
@@ -663,30 +687,6 @@ export function Chat() {
       fileInputRef.current.value = '';
     }
     setShowAttachMenu(false);
-  };
-
-  const formatTime = (timeStr: string | undefined | null) => {
-    if (!timeStr) return '';
-    try {
-      const date = new Date(timeStr);
-      if (isNaN(date.getTime())) return '';
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    } catch { return ''; }
-  };
-
-  const formatDate = (timeStr: string | undefined | null) => {
-    if (!timeStr) return '';
-    try {
-      const date = new Date(timeStr);
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (isNaN(date.getTime())) return '';
-      if (date.toDateString() === today.toDateString()) return '今天';
-      if (date.toDateString() === yesterday.toDateString()) return '昨天';
-      return date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
-    } catch { return ''; }
   };
 
   const groupMessagesByDate = (msgs: Message[]) => {
